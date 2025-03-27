@@ -1,0 +1,53 @@
+#!/bin/bash
+
+
+# 接收传递进来的参数
+start_command="$1"
+
+# 定义宿主机挂载目录和容器内目标目录
+INIT_DATA_APP_CONFIG="/init_data/config.yaml"
+INIT_DATA_APP_ACL="/init_data/acl.hujson"
+INIT_DATA_DB_DIR="/init_data/data"
+INIT_DATA_APP_DIR="/init_data"
+
+
+CONTAINER_CONFIG_DIR="/etc/headscale"
+CONTAINER_DB_DIR="/var/lib/headscale"
+CONTAINER_APP_DIR="/app"
+
+
+mkdir /app
+mkdir /etc/headscale
+
+# 检查容器内的 headscale 目录是否为空
+if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
+    cp -r $INIT_DATA_APP_CONFIG $CONTAINER_CONFIG_DIR
+    cp -r $INIT_DATA_APP_ACL $CONTAINER_CONFIG_DIR
+	echo "复制配置文件"
+else
+    echo "检测到flask存在已有数据"
+fi
+
+
+# 检查容器内的 DB存放 目录是否为空
+if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
+	echo "将自动生成数据库文件"
+	# 初始化数据库
+	python3 -m flask db init
+	python3 -m flask db migrate
+	python3 -m flask db upgrade
+else
+    echo "检测到SQLITE已有数据"
+fi
+
+
+# 检查容器内的 config 目录是否为空
+if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
+    cp -r $INIT_DATA_APP_DIR/* $CONTAINER_APP_DIR
+	echo "复制flask文件"
+else
+    echo "检测到headscale配置文件已存在"
+fi
+
+# 执行传递进来的启动命令
+eval $start_command
