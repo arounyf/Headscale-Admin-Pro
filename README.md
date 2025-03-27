@@ -5,11 +5,11 @@
 [![docker pulls](https://img.shields.io/docker/pulls/runyf/hs-admin.svg?color=brightgreen)](https://hub.docker.com/r/runyf/hs-admin)
 [![platfrom](https://img.shields.io/badge/platform-amd64%20%7C%20arm64-brightgreen)](https://hub.docker.com/r/runyf/hs-admin/tags)
 
-重点升级：
-1、基于本人发布的headscale-Admin使用python进行了后端重构
-2、容器内置headscale、实现快速搭建
-3、容器内置流量监测、无需额外安装插件
-4、基于headscale新版本0.25.0进行开发和测试
+重点升级：   
+1、基于本人发布的headscale-Admin使用python进行了后端重构   
+2、容器内置headscale、实现快速搭建   
+3、容器内置流量监测、无需额外安装插件   
+4、基于headscale新版本0.25.0进行开发和测试   
 
 官方qq群： 892467054
 # 时间线
