@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from utils import record_log
+from utils import record_log, reload_headscale
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
@@ -65,7 +65,8 @@ def reg():
             db.session.add(new_acl)
             db.session.commit()
 
-
+            res_json['data'] = reload_headscale()
+            
             res_json['code'],res_json['msg'] = '0','注册成功'
 
 
