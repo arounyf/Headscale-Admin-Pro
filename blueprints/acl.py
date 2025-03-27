@@ -1,10 +1,10 @@
 import json
 from flask_login import login_required
-import subprocess
 from exts import db
 from login_setup import role_required
 from models import UserModel,  ACLModel
 from flask import Blueprint,  request
+from utils import reload_headscale
 
 bp = Blueprint("acl", __name__, url_prefix='/api/acl')
 
@@ -153,11 +153,4 @@ def read_acl():
 @login_required
 @role_required("manager")
 def reload():
-    # systemctl reload headscale
-    try:
-        # 执行 systemctl reload headscale 命令
-        result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
-        res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',result.stdout
-    except subprocess.CalledProcessError as e:
-        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
-    return res_json
+    return reload_headscale()

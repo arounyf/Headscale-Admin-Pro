@@ -1,10 +1,11 @@
 import json
 import math
 import os
-
+from flask import current_app
 import psutil
 from exts import db
 from datetime import datetime
+import subprocess
 
 
 
@@ -46,12 +47,18 @@ def get_sys_info():
 
     recv = {}
     sent = {}
-    net_interface = "ens18"
+    
+
+    net_interface = current_app.config['SERVER_NET']
 
 
     data = psutil.net_io_counters(pernic=True)
     interfaces = data.keys()
+    
+    sent_speed = recv_speed = 0
+
     for interface in interfaces:
+        #print(interface)
         if interface == net_interface:  # 只处理 ens18 网卡
             sent.setdefault(interface, data.get(interface).bytes_sent)
             recv.setdefault(interface, data.get(interface).bytes_recv)
@@ -99,3 +106,16 @@ def get_data_record():
 
 
 
+def reload_headscale():
+    res_json = {'code': '', 'data': '', 'msg': ''}
+    # kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)
+    try:
+        # 执行 重载ACL 命令
+        #result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
+        reload_command = "ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1"
+        result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
+        
+        res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',result.stdout
+    except subprocess.CalledProcessError as e:
+        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
+    return res_json

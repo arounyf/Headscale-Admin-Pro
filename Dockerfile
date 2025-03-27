@@ -36,7 +36,4 @@ RUN pip3 install apscheduler
 
 
 
-
-RUN chmod u+x headscale
-
 CMD ["sh", "-c", "./init.sh './headscale serve & python3 app.py'"]

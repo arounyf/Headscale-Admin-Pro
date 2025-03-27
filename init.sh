@@ -6,7 +6,6 @@ start_command="$1"
 
 # 定义宿主机挂载目录和容器内目标目录
 INIT_DATA_APP_CONFIG="/init_data/config.yaml"
-INIT_DATA_APP_ACL="/init_data/acl.hujson"
 INIT_DATA_DB_DIR="/init_data/data"
 INIT_DATA_APP_DIR="/init_data"
 
@@ -22,7 +21,8 @@ mkdir /etc/headscale
 # 检查容器内的 headscale 目录是否为空
 if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
     cp -r $INIT_DATA_APP_CONFIG $CONTAINER_CONFIG_DIR
-    cp -r $INIT_DATA_APP_ACL $CONTAINER_CONFIG_DIR
+	echo "创建ACL文件"
+	touch $CONTAINER_CONFIG_DIR/acl.hujson
 	echo "复制配置文件"
 else
     echo "检测到flask存在已有数据"
@@ -48,6 +48,9 @@ if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
 else
     echo "检测到headscale配置文件已存在"
 fi
+
+cd /app
+chmod u+x headscale
 
 # 执行传递进来的启动命令
 eval $start_command
