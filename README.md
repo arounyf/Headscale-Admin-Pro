@@ -13,7 +13,23 @@ qq群 892467054
 2025年3月26日headscale-Admin首个版本正式开源发布
 
 # 使用docker部署
-1. 
+```shell
+mkdir ~/hs-admin
+cd ~/hs-admin
+docker-compose -d
+```
+
+1、修改配置文件 config.py
+
+
+说明
+- BEARER_TOKEN创建命令： `docker exec -it hs-admin  /app/headscale apikey create`
+- TAILSCALE_UP_URL： headscale server url
+- SERVER_NET：宿主机网卡名，流量统计使用
+其它基本无需更改
+
+
+
 
 # 功能
 - 用户管理
@@ -31,7 +47,7 @@ qq群 892467054
 
 
 # 兼容性
-仅通过headscale:v0.25.0测试
+hs-admin:v2.0基于headscale:v0.25.0开发测试
 
 # 系统截图
 
