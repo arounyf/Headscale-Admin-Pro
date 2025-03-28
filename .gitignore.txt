@@ -1,1 +1,3 @@
 /migrations
+/__pycache__
+/.idea

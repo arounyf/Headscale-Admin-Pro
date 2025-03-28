@@ -50,6 +50,7 @@ else
 fi
 
 cd /app
+rm config.yaml
 chmod u+x headscale
 
 # 执行传递进来的启动命令

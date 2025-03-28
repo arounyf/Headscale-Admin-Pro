@@ -45,11 +45,12 @@ app.register_blueprint(log_bp)
 
 #定义一个定时任务函数,每个一个小时记录一下流量使用情况
 def my_task():
-    return get_data_record()
+    with app.app_context():
+        return get_data_record()
 # 创建调度器
 scheduler = BackgroundScheduler()
 # 添加任务，每隔 10 秒执行一次
-scheduler.add_job(func=my_task, trigger='interval',seconds=600)
+scheduler.add_job(func=my_task, trigger='interval',seconds=3600)
 # 启动调度器
 scheduler.start()
 

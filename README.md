@@ -21,10 +21,11 @@
 ```shell
 mkdir ~/hs-admin
 cd ~/hs-admin
-docker-compose -d
+wget https://github.com/arounyf/Headscale-Admin-Pro/blob/main/docker-compose.yml
+docker-compose up -d
 ```
 
-1、修改配置文件 config.py
+1、修改配置文件1 ~/hs-admin/app/config.py
 
 
 说明
@@ -32,8 +33,17 @@ docker-compose -d
 - TAILSCALE_UP_URL： headscale server url
 - SERVER_NET：宿主机网卡名，流量统计使用
 其它基本无需更改
+   
+1、修改配置文件2 ~/hs-admin/config/config.yaml   
+   
+此为headscale配置文件   
 
 
+3、访问 http://ip:5000   
+    
+说明   
+
+- 注册admin账户即为系统管理员账户   
 
 
 # 功能
