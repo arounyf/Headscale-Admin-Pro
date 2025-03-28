@@ -15,7 +15,7 @@ RUN apk update && \
         python3 \
         py3-pip \
         wget \
-        gcc p3-dev musl-dev linux-headers
+        gcc python3-dev musl-dev linux-headers
 
 RUN python3 -m venv /venv
 RUN /venv/bin/pip install --no-cache-dir \
