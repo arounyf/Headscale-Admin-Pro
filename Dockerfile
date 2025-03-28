@@ -14,8 +14,8 @@ RUN apk update && \
         tzdata \
         python3 \
         py3-pip \
-        wget 
-
+        wget \
+        gcc p3-dev musl-dev linux-headers
 
 RUN python3 -m venv /venv
 RUN /venv/bin/pip install --no-cache-dir \
