@@ -62,7 +62,10 @@ docker-compose up -d
 
 
 # 兼容性
-hs-admin:v2.0基于headscale:v0.25.0开发测试
+headscale 0.25.0   
+headscale 0.25.1   
+
+
 
 # 系统截图
 
