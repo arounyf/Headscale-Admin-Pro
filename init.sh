@@ -21,11 +21,11 @@ mkdir /etc/headscale
 # 检查容器内的 headscale 目录是否为空
 if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
     cp -r $INIT_DATA_APP_CONFIG $CONTAINER_CONFIG_DIR
-	echo "创建ACL文件"
-	touch $CONTAINER_CONFIG_DIR/acl.hujson
 	echo "复制配置文件"
+	touch $CONTAINER_CONFIG_DIR/acl.hujson
+	echo "创建ACL文件"
 else
-    echo "检测到flask存在已有数据"
+    echo "检测到headscale存在配置文件"
 fi
 
 
@@ -41,16 +41,21 @@ else
 fi
 
 
-# 检查容器内的 config 目录是否为空
+# 检查容器内的 app 目录是否为空
 if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
-    cp -r $INIT_DATA_APP_DIR/* $CONTAINER_APP_DIR
 	echo "复制flask文件"
+    cp -r $INIT_DATA_APP_DIR/* $CONTAINER_APP_DIR
+	rm $CONTAINER_APP_DIR/config.yaml
+	rm $CONTAINER_APP_DIR/init.sh
+	rm $CONTAINER_APP_DIR/Dockerfile
+	rm $CONTAINER_APP_DIR/README.md
+	rm $CONTAINER_APP_DIR/docker-compose.yml
 else
-    echo "检测到headscale配置文件已存在"
+    echo "检测到flask存在已有数据"
 fi
 
 cd /app
-rm config.yaml
+
 chmod u+x headscale
 
 # 执行传递进来的启动命令

@@ -20,6 +20,7 @@ RUN apt-get install net-tools -y
 RUN apt-get install iputils-ping -y
 RUN apt-get install python3 -y
 RUN apt-get install pip -y
+RUN apt-get install wget -y
 
 
 # 安装flask
@@ -34,6 +35,9 @@ RUN pip3 install flask_login
 RUN pip3 install requests
 RUN pip3 install apscheduler
 
+# 下载headscale
+
+RUN wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64
 
 
 CMD ["sh", "-c", "./init.sh './headscale serve & python3 app.py'"]
