@@ -1,5 +1,5 @@
 #!/command/with-contenv bash
-TOKEN_FILE = "${BASE_PATH}/adminui/token"
+TOKEN_FILE=$(cat "${BASE_PATH}/adminui/token")
 if [ -s "$TOKEN_FILE" ]; then
  BEARER_TOKEN=$(${BASE_PATH}/headscale/headscale apikey create)
  echo $BEARER_TOKEN > $TOKEN_FILE
