@@ -14,8 +14,11 @@ RUN apk update && \
         tzdata \
         python3 \
         py3-pip \
-        wget && \
-    pip3 install --no-cache-dir \
+        wget 
+
+
+RUN python3 -m venv /venv
+RUN /venv/bin/pip install --no-cache-dir \
         flask \
         sqlalchemy \
         flask_sqlalchemy \
