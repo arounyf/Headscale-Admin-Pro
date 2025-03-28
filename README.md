@@ -14,8 +14,8 @@
 官方qq群： 892467054
 # 时间线
 2024年6月我接触到了tailscale,后在个人博客上发布了derper与headscale的搭建教程   
-2024年9月8日headscale-Admin首个版本正式开源发布
-2025年3月26日headscale-Admin首个版本正式开源发布
+2024年9月8日headscale-Admin首个版本正式开源发布   
+2025年3月26日Headscale-Admin-Pro正式开源发布   
 
 # 使用docker部署
 ```shell
