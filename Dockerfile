@@ -17,8 +17,7 @@ RUN apk update && \
         wget \
         gcc python3-dev musl-dev linux-headers
 
-RUN python3 -m venv /venv
-RUN /venv/bin/pip install --no-cache-dir \
+RUN pip3 install --no-cache-dir --break-system-packages \
         flask \
         sqlalchemy \
         flask_sqlalchemy \
