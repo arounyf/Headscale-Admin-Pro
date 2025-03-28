@@ -1,9 +1,7 @@
 FROM alpine:latest
 
 ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
-    S6_OVERLAY_VERSION="3.2.0.2" \
-    USERNAME="" \
-    PASSWORD=""
+    S6_OVERLAY_VERSION="3.2.0.2"
 
 COPY --chmod=755 ./rootfs /
 
