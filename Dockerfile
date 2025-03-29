@@ -5,7 +5,10 @@ ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
 
 COPY --chmod=755 ./rootfs /
 
-ENV FLASK_APP=/app/app.py
+ENV FLASK_ENV=production \
+FLASK_DEBUG=0
+
+WORKDIR /app
 
 RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev musl-dev linux-headers python3 py3-pip wget bash && \
     ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
