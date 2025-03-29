@@ -1,7 +1,8 @@
 FROM ubuntu:22.04
 
 ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
-    S6_OVERLAY_VERSION="3.2.0.2"
+    S6_OVERLAY_VERSION="3.2.0.2" \
+    FLASK_APP=/app/app.py 
 
 COPY --chmod=755 ./rootfs /
 
@@ -10,13 +11,8 @@ COPY --chmod=755 ./rootfs /
 WORKDIR /app
 
 
-# 更新包管理器并安装必要的工具
-RUN apt-get update && apt-get install tzdata
-RUN apt-get install net-tools iputils-ping python3 pip wget -y
-
-
-# 安装flask
-RUN  pip3 install flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
+RUN apt-get update && apt-get install tzdata net-tools iputils-ping python3 pip wget -y && \
+    pip3 install flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
 
 
 
