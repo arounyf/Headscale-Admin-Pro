@@ -11,7 +11,8 @@ COPY --chmod=755 ./rootfs /
 WORKDIR /app
 
 
-RUN apt-get update && apt-get install tzdata net-tools iputils-ping python3 pip wget -y && \
+RUN apt-get update && apt-get install tzdata
+RUN apt-get install net-tools iputils-ping python3 pip wget -y && \
     pip3 install flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
 
 
