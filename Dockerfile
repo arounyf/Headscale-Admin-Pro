@@ -1,19 +1,28 @@
-FROM alpine:latest
+FROM ubuntu:22.04
 
 ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
     S6_OVERLAY_VERSION="3.2.0.2"
 
 COPY --chmod=755 ./rootfs /
 
-ENV FLASK_APP=/app/app.py \
-    FLASK_ENV=production \
-    FLASK_DEBUG=0
+
 
 WORKDIR /app
 
-RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev musl-dev linux-headers python3 py3-pip wget bash && \
-    ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    pip3 install --no-cache-dir --break-system-packages psutil flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
+
+# 更新包管理器并安装必要的工具
+RUN apt-get update 
+RUN apt-get install tzdata
+RUN apt-get install net-tools -y
+RUN apt-get install iputils-ping -y
+RUN apt-get install python3 -y
+RUN apt-get install pip -y
+RUN apt-get install wget -y
+
+
+# 安装flask
+RUN  pip3 install --break-system-packages flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
+
 
 
 RUN cd ${BASE_PATH}/headscale && \
