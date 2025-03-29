@@ -11,17 +11,12 @@ WORKDIR /app
 
 
 # 更新包管理器并安装必要的工具
-RUN apt-get update 
-RUN apt-get install tzdata
-RUN apt-get install net-tools -y
-RUN apt-get install iputils-ping -y
-RUN apt-get install python3 -y
-RUN apt-get install pip -y
-RUN apt-get install wget -y
+RUN apt-get update && apt-get install tzdata
+RUN apt-get install net-tools iputils-ping python3 pip wget -y
 
 
 # 安装flask
-RUN  pip3 install --break-system-packages flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
+RUN  pip3 install flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
 
 
 
