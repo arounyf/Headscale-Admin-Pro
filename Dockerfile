@@ -5,8 +5,9 @@ ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
 
 COPY --chmod=755 ./rootfs /
 
-ENV FLASK_ENV=production \
-FLASK_DEBUG=0
+ENV FLASK_APP=/app/app.py \
+    FLASK_ENV=production \
+    FLASK_DEBUG=0
 
 WORKDIR /app
 
