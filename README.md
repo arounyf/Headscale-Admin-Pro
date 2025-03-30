@@ -21,7 +21,7 @@
 ```shell
 mkdir ~/hs-admin
 cd ~/hs-admin
-wget https://github.com/arounyf/Headscale-Admin-Pro/blob/main/docker-compose.yml
+wget https://raw.githubusercontent.com/arounyf/Headscale-Admin-Pro/refs/heads/main/docker-compose.yml
 docker-compose up -d
 ```
 

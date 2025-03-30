@@ -13,11 +13,7 @@ class RegisterForm(wtforms.Form):
     username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
     password = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='密码格式错误')])
     confirmPassword = wtforms.StringField(validators=[EqualTo('password',message='密码输入不一致')])
-    phone = wtforms.StringField(validators=[
-        DataRequired(),
-        length(11, 11),
-        Regexp(r'(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}', 0, '手机号码不合法')
-    ])
+    phone = wtforms.StringField(validators=[DataRequired(),length(11, 11),Regexp(r'(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}', 0, '手机号码不合法')])
     vercode = wtforms.StringField(validators=[Length(min=4, max=4, message='验证码格式错误')])
     captcha_uuid = wtforms.StringField(validators=[Length(min=36, max=36, message='UUID错误')])
 
