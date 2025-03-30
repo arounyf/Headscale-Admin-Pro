@@ -13,7 +13,7 @@ WORKDIR /app
 
 RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev musl-dev linux-headers python3 py3-pip wget bash && \
     ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    pip3 install --no-cache-dir --break-system-packages psutil flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler
+    pip3 install --no-cache-dir --break-system-packages psutil flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler Flask-Migrate
 
 
 RUN cd ${BASE_PATH}/headscale && \

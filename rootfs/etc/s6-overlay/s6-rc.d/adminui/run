@@ -1,4 +1,5 @@
 #!/command/with-contenv bash
+export FLASK_APP=/app/app.py
 TOKEN_FILE_PATH="${BASE_PATH}/adminui/token"
 TOKEN_CONTENT=$(cat "$TOKEN_FILE_PATH" 2>/dev/null)
 if [ -z "$TOKEN_CONTENT" ]; then
