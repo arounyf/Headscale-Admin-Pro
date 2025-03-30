@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 CONTAINER_DB_DIR="/var/lib/headscale"
 mkdir -p $CONTAINER_DB_DIR
