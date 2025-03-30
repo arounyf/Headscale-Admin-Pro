@@ -1,28 +1,29 @@
 #!/command/with-contenv bash
-export FLASK_APP=/app/app.py
-TOKEN_FILE_PATH="${BASE_PATH}/adminui/token"
-TOKEN_CONTENT=$(cat "$TOKEN_FILE_PATH" 2>/dev/null)
-if [ -z "$TOKEN_CONTENT" ]; then
-    BEARER_TOKEN=$("${BASE_PATH}/headscale/headscale" apikey create)
-    echo "$BEARER_TOKEN" > "$TOKEN_FILE_PATH"
-else
-    BEARER_TOKEN="$TOKEN_CONTENT"
-fi
-APP_PY_PATH="/app/config.py"
-TOKEN_VALUE="$BEARER_TOKEN"
-sed -i '/^BEARER_TOKEN/d' "$APP_PY_PATH"
-echo "BEARER_TOKEN='$TOKEN_VALUE'" >> "$APP_PY_PATH"
+#export FLASK_APP=/app/app.py
+#TOKEN_FILE_PATH="${BASE_PATH}/adminui/token"
+#TOKEN_CONTENT=$(cat "$TOKEN_FILE_PATH" 2>/dev/null)
+#if [ -z "$TOKEN_CONTENT" ]; then
+#    BEARER_TOKEN=$("${BASE_PATH}/headscale/headscale" apikey create)
+#    echo "$BEARER_TOKEN" > "$TOKEN_FILE_PATH"
+#else
+#    BEARER_TOKEN="$TOKEN_CONTENT"
+#fi
+#APP_PY_PATH="/app/config.py"
+#TOKEN_VALUE="$BEARER_TOKEN"
+#sed -i '/^BEARER_TOKEN/d' "$APP_PY_PATH"
+#echo "BEARER_TOKEN='$TOKEN_VALUE'" >> "$APP_PY_PATH"
 
 
-CONTAINER_DB_DIR="/var/lib/headscale"
-mkdir -p $CONTAINER_DB_DIR
-if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
-    echo "Initializing database..."
-    python3 -m flask db init
-    python3 -m flask db migrate
-    python3 -m flask db upgrade
-else
+#CONTAINER_DB_DIR="/var/lib/headscale"
+#mkdir -p $CONTAINER_DB_DIR
+#if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
+#    echo "Initializing database..."
+#    python3 -m flask db init
+#    python3 -m flask db migrate
+#    python3 -m flask db upgrade
+#else
     echo "Database already initialized."
-fi
+#fi
+echo $FLASK_APP
 
-python3 /app/app.py
+#python3 /app/app.py
