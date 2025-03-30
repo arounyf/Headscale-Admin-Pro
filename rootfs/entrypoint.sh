@@ -2,7 +2,7 @@
 set -e
 CONTAINER_DB_DIR="/var/lib/headscale"
 mkdir -p $CONTAINER_DB_DIR
-if [ ! -f "$CONTAINER_DB_DIR/db.sqlite" ]; then
+if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
     echo "Initializing database..."
     python3 -m flask db init
     python3 -m flask db migrate
