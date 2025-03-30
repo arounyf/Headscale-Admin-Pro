@@ -23,5 +23,5 @@ if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
     python3 -m flask db migrate
     python3 -m flask db upgrade
 fi
-
+python3 -m flask db upgrade
 python3 /app/app.py
