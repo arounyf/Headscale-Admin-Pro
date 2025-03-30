@@ -11,4 +11,17 @@ APP_PY_PATH="/app/config.py"
 TOKEN_VALUE="$BEARER_TOKEN"
 sed -i '/^BEARER_TOKEN/d' "$APP_PY_PATH"
 echo "BEARER_TOKEN='$TOKEN_VALUE'" >> "$APP_PY_PATH"
+
+
+CONTAINER_DB_DIR="/var/lib/headscale"
+mkdir -p $CONTAINER_DB_DIR
+if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
+    echo "Initializing database..."
+    python3 -m flask db init
+    python3 -m flask db migrate
+    python3 -m flask db upgrade
+else
+    echo "Database already initialized."
+fi
+
 python3 /app/app.py
