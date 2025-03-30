@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+export FLASK_APP=/app/app.py
 CONTAINER_DB_DIR="/var/lib/headscale"
 mkdir -p $CONTAINER_DB_DIR
 if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
