@@ -5,18 +5,13 @@ from sqlalchemy import Index
 
 from exts import db
 
-
-
-
-
 # ORM模型映射三部曲：
 # 1、 python3 -m flask db init:只需要执行一次
 # 2、python3 -m flask db migrate:识别ORM模型的改变，生成迁移脚本
 # 3、python3 -m flask db upgrade:运行迁移脚本，同步到数据库中
 
 
-
-class UserModel(db.Model,UserMixin):
+class UserModel(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     created_at = db.Column(db.DateTime)
@@ -30,23 +25,17 @@ class UserModel(db.Model,UserMixin):
     profile_pic_url = db.Column(db.Text)
 
     password = db.Column(db.Text)
-    expire  = db.Column(db.DateTime)
-    cellphone  = db.Column(db.Text)
+    expire = db.Column(db.DateTime)
+    cellphone = db.Column(db.Text)
     role = db.Column(db.Text)
-    enable  = db.Column(db.Text)
+    enable = db.Column(db.Text)
 
-
-    # 创建唯一索引 idx_name_no_provider_identifier
-    # 注意：SQLAlchemy 没有直接支持部分索引（WHERE 子句）的原生方式
-    # 对于 SQLite，可以使用 SQL 语句手动创建部分索引
+    # 创建唯一索引
     Index('idx_name_no_provider_identifier', name, unique=True)
-    # 创建唯一索引 idx_name_provider_identifier
     Index('idx_name_provider_identifier', name, provider_identifier, unique=True)
-    # 创建唯一索引 idx_provider_identifier
-    # 同样，部分索引需要手动处理
     Index('idx_provider_identifier', provider_identifier, unique=True)
-    # 创建索引 idx_users_deleted_at
     Index('idx_users_deleted_at', deleted_at)
+
 
 class ApiKeys(db.Model):
     __tablename__ = 'api_keys'
@@ -60,12 +49,14 @@ class ApiKeys(db.Model):
         Index('idx_api_keys_prefix', 'prefix', unique=True),
     )
 
+
 class Migrations(db.Model):
     __tablename__ = 'migrations'  # 表名
 
     # 列定义
     id = db.Column(db.Text, primary_key=True)  # 主键
-# 定义 PreAuthKeys 模型
+
+
 class PreAuthKeysModel(db.Model):
     __tablename__ = 'pre_auth_keys'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -77,7 +68,6 @@ class PreAuthKeysModel(db.Model):
     tags = db.Column(db.Text)
     created_at = db.Column(db.DateTime)
     expiration = db.Column(db.DateTime)
-    # 定义外键约束的名称
     __table_args__ = (
         db.ForeignKeyConstraint(
             ['user_id'],
@@ -86,7 +76,6 @@ class PreAuthKeysModel(db.Model):
             ondelete='SET NULL'
         ),
     )
-
 
 
 class NodeModel(db.Model):
@@ -110,7 +99,6 @@ class NodeModel(db.Model):
     created_at = db.Column(db.DateTime)
     updated_at = db.Column(db.DateTime)
     deleted_at = db.Column(db.DateTime)
-    # 显式指定外键约束名称
     __table_args__ = (
         db.ForeignKeyConstraint(
             ['user_id'],
@@ -123,9 +111,7 @@ class NodeModel(db.Model):
             ['pre_auth_keys.id'],
             name='fk_nodes_auth_key'
         ),
-
     )
-    # 建立关系
     user = db.relationship('UserModel', backref=db.backref('NodeModel', cascade='all, delete-orphan'))
     auth_key = db.relationship('PreAuthKeysModel', backref=db.backref('NodeModel', lazy='dynamic'))
 
@@ -137,12 +123,11 @@ class Policies(db.Model):
     updated_at = db.Column(db.DateTime)
     deleted_at = db.Column(db.DateTime)
     data = db.Column(db.Text)
-    # 创建索引 idx_policies_deleted_at
     __table_args__ = (
         Index('idx_policies_deleted_at', 'deleted_at'),
     )
 
-# 定义 Routes 模型
+
 class RouteModel(db.Model):
     __tablename__ = 'routes'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -154,7 +139,6 @@ class RouteModel(db.Model):
     advertised = db.Column(db.Numeric)
     enabled = db.Column(db.Numeric)
     is_primary = db.Column(db.Numeric)
-    # 定义外键约束的名称
     __table_args__ = (
         db.ForeignKeyConstraint(
             ['node_id'],
@@ -162,7 +146,6 @@ class RouteModel(db.Model):
             name='fk_nodes_routes',
             ondelete='CASCADE'
         ),
-        # 定义索引
         db.Index('idx_routes_deleted_at', 'deleted_at')
     )
 
@@ -172,12 +155,9 @@ class ACLModel(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     acl = db.Column(db.Text)
     user_id = db.Column(db.Text)
-
-    # 创建索引 idx_acl_user_id
     __table_args__ = (
         Index('idx_acl_user_id', 'user_id'),
     )
-
 
 
 class LogModel(db.Model):
@@ -185,9 +165,7 @@ class LogModel(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Text)
     content = db.Column(db.Text)
-    created_at =db.Column(db.DateTime)
-
-    # 创建索引 idx_log_user_id
+    created_at = db.Column(db.DateTime)
     __table_args__ = (
         Index('idx_log_user_id', 'user_id'),
     )
