@@ -2,6 +2,9 @@ FROM alpine:latest
 
 ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
     S6_OVERLAY_VERSION="3.2.0.2" \
+    SERVER_HOST="http://127.0.0.1:8080" \
+    TAILSCALE_UP_URL="http://192.168.6.5:8080" \
+    SERVER_NET="eth0" \
     FLASK_APP=/app/app.py 
 
 COPY --chmod=755 ./rootfs /
