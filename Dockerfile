@@ -7,21 +7,12 @@ ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
     SERVER_NET="eth0" \
     FLASK_APP=/app/app.py 
 
-
+COPY --chmod=755 ./rootfs /
 
 RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev musl-dev linux-headers python3 py3-pip wget bash && \
     ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     pip3 install --no-cache-dir --break-system-packages psutil flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler && \
-    mkdir -p /app /etc/headscale
-    
-COPY --chmod=755 ./rootfs /
-RUN ls -la /
-COPY --chmod=755 ./app /app
-RUN ls -la /app
-COPY --chmod=755 ./headscale /etc/headscale
-RUN ls -la /etc/headscale
-
-RUN cd ${BASE_PATH}/headscale && \
+    cd ${BASE_PATH}/headscale && \
     wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 && \
     chmod +x headscale
 
