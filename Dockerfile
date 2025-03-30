@@ -15,8 +15,11 @@ RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev mu
     mkdir -p /app /etc/headscale
     
 COPY --chmod=755 ./rootfs /
+RUN ls -la /
 COPY --chmod=755 ./app /app
-COPY --chmod=755 ./headscale /etc/headscale    
+RUN ls -la /app
+COPY --chmod=755 ./headscale /etc/headscale
+RUN ls -la /etc/headscale
 
 RUN cd ${BASE_PATH}/headscale && \
     wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 && \
@@ -27,8 +30,7 @@ RUN wget -O /tmp/s6-overlay-noarch.tar.xz https://github.com/just-containers/s6-
     rm -f /tmp/s6-overlay-noarch.tar.xz && \
     wget -O /tmp/s6-overlay-x86_64.tar.xz https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz && \
     tar -C / -Jxf /tmp/s6-overlay-x86_64.tar.xz && \
-    rm -f /tmp/s6-overlay-x86_64.tar.xz && \
-    ln -sf /run /var/run
+    rm -f /tmp/s6-overlay-x86_64.tar.xz
 
 HEALTHCHECK --interval=10s --timeout=5s CMD /healthcheck.sh
 
