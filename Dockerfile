@@ -30,4 +30,5 @@ RUN wget -O /tmp/s6-overlay-noarch.tar.xz https://github.com/just-containers/s6-
 
 HEALTHCHECK --interval=10s --timeout=5s CMD /healthcheck.sh
 
-ENTRYPOINT ["/init"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/init"]
