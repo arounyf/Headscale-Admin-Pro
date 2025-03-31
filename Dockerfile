@@ -14,7 +14,7 @@ ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
     FLASK_APP=/app/app.py 
 
 COPY --chmod=755 ./rootfs /
-COPY --from=builder /usr/bin/caddy ${BASE_PATH}/caddy
+COPY --from=builder /usr/bin/caddy ${BASE_PATH}/caddy/caddy
 
 RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev musl-dev linux-headers python3 py3-pip wget bash && \
     ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
