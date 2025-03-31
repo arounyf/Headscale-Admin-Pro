@@ -1,6 +1,7 @@
 from datetime import timedelta
 import os
 from sqlalchemy import event
+import html
 
 SQLALCHEMY_DATABASE_URI = 'sqlite:////var/lib/headscale/db.sqlite'
 SECRET_KEY = 'SFhkrGKQL2yB9F' # respose解码
@@ -9,9 +10,9 @@ SECRET_KEY = 'SFhkrGKQL2yB9F' # respose解码
 
 BEARER_TOKEN = ''
 PERMANENT_SESSION_LIFETIME = timedelta(seconds=3600)
-SERVER_HOST = os.getenv('SERVER_HOST', 'http://127.0.0.1:8080')
-TAILSCALE_UP_URL = os.getenv('TAILSCALE_UP_URL', 'http://192.168.6.5:8080')
-SERVER_NET = os.getenv('SERVER_NET', 'eth0')
+SERVER_HOST = html.unescape(os.getenv('SERVER_HOST', 'http://127.0.0.1:8080'))
+TAILSCALE_UP_URL = html.unescape(os.getenv('TAILSCALE_UP_URL', 'http://192.168.6.5:8080'))
+SERVER_NET = html.unescape(os.getenv('SERVER_NET', 'eth0'))
 
 
 
