@@ -2,4 +2,4 @@
 CADDY_PATH="${BASE_PATH}/caddy"
 exec \
     /command/s6-notifyoncheck -d -n 300 -w 1000 -c "nc -z localhost 5000" \
-    "${CADDY_PATH}/caddy" run --config /etc/Caddyfile
+    "${CADDY_PATH}/caddy" run --config /etc/caddy/Caddyfile
