@@ -4,6 +4,9 @@ services:
     container_name: hs-admin  
     network_mode: host
     restart: unless-stopped
+    volumes:  
+      - ./config:/etc/headscale
+      - ./data:/var/lib/headscale
     environment:
       - SERVER_HOST="http://127.0.0.1:8080"
       - TAILSCALE_UP_URL="http://192.168.6.5:8080"

@@ -19,7 +19,7 @@ def get_info():
 @bp.route('/data_usage', methods=['GET'])
 @login_required
 def data_usage():
-    with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data.json'), 'r') as file:
+    with open(os.getcwd()+'/data.json', 'r') as file:
         content = file.read()
         json_data = json.loads(content)
 
