@@ -43,7 +43,7 @@ docker-compose up -d
     
 说明   
 
-- 注册admin账户即为系统管理员账户   
+- 默认管理员admin 默认密码999888
 
 
 # 功能
