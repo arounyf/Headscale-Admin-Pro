@@ -25,3 +25,14 @@ if [ -z "$(ls -A $CADDY_DIR 2>/dev/null)" ]; then
 else
     echo "检测到Caddyfile已存在"
 fi
+
+
+UUID_FILE="/root/.local/share/caddy/instance.uuid"
+mkdir -p "$(dirname "$UUID_FILE")"
+if [ ! -f "$UUID_FILE" ]; then
+  uuid=$(cat /proc/sys/kernel/random/uuid)
+  echo $uuid | tee "$UUID_FILE" > /dev/null
+  echo "自动创建 UUID at $UUID_FILE"
+else
+  echo "Instance UUID 文件已经存在于 $UUID_FILE"
+fi
