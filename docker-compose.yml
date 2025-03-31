@@ -1,6 +1,7 @@
 services:  
   php:  
-    build: .
+    #build: .
+    image: registry.cn-hangzhou.aliyuncs.com/dubux/hs-admin:latest
     container_name: hs-admin  
     network_mode: host
     restart: unless-stopped
