@@ -8,8 +8,6 @@ FROM alpine:latest
 
 ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
     S6_OVERLAY_VERSION="3.2.0.2" \
-    SERVER_HOST="http://127.0.0.1:8080" \
-    TAILSCALE_UP_URL="http://192.168.6.5:8080" \
     SERVER_NET="eth0" \
     FLASK_APP=/app/app.py 
 
@@ -18,7 +16,7 @@ COPY --from=builder /usr/bin/caddy ${BASE_PATH}/caddy/caddy
 
 RUN apk update && apk add --no-cache tzdata net-tools iputils gcc python3-dev musl-dev linux-headers python3 py3-pip wget bash && \
     ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    pip3 install --no-cache-dir --break-system-packages psutil flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler && \
+    pip3 install --no-cache-dir --break-system-packages pyyaml psutil flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler && \
     cd ${BASE_PATH}/headscale && \
     wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 && \
     chmod +x headscale

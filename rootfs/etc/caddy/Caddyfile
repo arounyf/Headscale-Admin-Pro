@@ -33,6 +33,32 @@
     handle_path /.well-known/acme-challenge/* {
         file_server
     }
+
+    handle_path /admin* {
+        reverse_proxy 127.0.0.1:5000 {
+            transport http {
+                versions h11 h2
+            }
+            header_up Host {host}
+            header_up X-Real-IP {remote_addr}
+            header_up X-Forwarded-For {remote_addr}
+            header_up X-Forwarded-Proto {scheme}
+            uri_replace /admin /admin
+        }
+    }
+
+    handle_path /register* {
+        reverse_proxy 127.0.0.1:5000 {
+            transport http {
+                versions h11 h2
+            }
+            header_up Host {host}
+            header_up X-Real-IP {remote_addr}
+            header_up X-Forwarded-For {remote_addr}
+            header_up X-Forwarded-Proto {scheme}
+            uri_replace /register /register
+        }
+    }
 	
     reverse_proxy 127.0.0.1:8080 {
             transport http {
