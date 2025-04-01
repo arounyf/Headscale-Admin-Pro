@@ -21,25 +21,17 @@
 ```shell
 mkdir ~/hs-admin
 cd ~/hs-admin
-wget https://github.com/arounyf/Headscale-Admin-Pro/blob/main/docker-compose.yml
+wget https://raw.githubusercontent.com/chenxudong2020/Headscale-Admin-Pro/refs/heads/test/docker-compose.yml
 docker-compose up -d
 ```
 
-1、修改配置文件1 ~/hs-admin/app/config.py
 
-
-说明
-- BEARER_TOKEN创建命令： `docker exec -it hs-admin  /app/headscale apikey create`
-- TAILSCALE_UP_URL： headscale server url
-- SERVER_NET：宿主机网卡名，流量统计使用
-其它基本无需更改
+1、修改配置文件 ~/hs-admin/config/config.yaml   
    
-1、修改配置文件2 ~/hs-admin/config/config.yaml   
-   
-此为headscale配置文件   
+此为headscale配置文件   找到配置server_url: http://192.168.6.5:81 修改192.168.6.5改成 你的域名或者公网ip
 
 
-3、访问 http://ip:5000   
+2、访问 http://ip:5000   
     
 说明   
 
