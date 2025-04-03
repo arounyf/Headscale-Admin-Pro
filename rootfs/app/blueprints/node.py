@@ -5,7 +5,7 @@ import requests
 
 from login_setup import role_required
 from models import UserModel,NodeModel
-from flask import Blueprint, request, session, make_response, g, redirect, url_for, jsonify, \
+from flask import Blueprint, render_template,request, session, make_response, g, redirect, url_for, jsonify, \
     current_app
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
@@ -81,11 +81,18 @@ def getNodes():
 
 
 
-@bp.route('/register', methods=['GET','POST'])
+@bp.route('/register',methods=['GET', 'POST'])
+@bp.route('/register/<nodekey>', methods=['GET'])
 @login_required
-def register():
+def register(nodekey=None):
 
-    nodekey = request.form.get('nodekey')
+      # 判断 nodekey 的来源
+    if nodekey:
+        source = "url"
+    else:
+        nodekey = request.form.get('nodekey')
+        source = "form" if nodekey else None
+
     user_name = current_user.name
 
 
@@ -98,16 +105,28 @@ def register():
     url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
     response = requests.post(url, headers=headers)
 
-    # 额外字段
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-    }
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    res_json['data'] = str(response.text)
-
-    return res_json
+    # 检查请求是否成功
+    if response.status_code == 200:
+        if source == "url":
+            # 如果 nodekey 是从 URL 获取的，跳转到 admin/node.html
+            return render_template('admin/node.html')
+        else:
+            # 如果 nodekey 是从表单获取的，返回 JSON 响应
+            res_json = {
+                'code': '0',
+                'data': str(response.text),
+                'msg': '获取成功',
+            }
+            return jsonify(res_json)
+    else:
+        # 如果失败，返回错误信息
+        res_json = {
+            'code': '1',
+            'data': str(response.text),
+            'msg': '注册失败',
+        }
+        return jsonify(res_json), 400
+    
 
 
 @bp.route('/delete', methods=['GET','POST'])
