@@ -31,28 +31,13 @@
     }
 
     handle_path /admin* {
-        reverse_proxy /admin* 127.0.0.1:5000 {
-            transport http {
-                versions h11 h2
-            }
-            header_up Host {host}
-            header_up X-Real-IP {remote_addr}
-            header_up X-Forwarded-For {remote_addr}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+        redir http://127.0.0.1:80{uri} permanent
+   }
 
-    handle_path /register* {
-        reverse_proxy /register* 127.0.0.1:5000 {
-            transport http {
-                versions h11 h2
-            }
-            header_up Host {host}
-            header_up X-Real-IP {remote_addr}
-            header_up X-Forwarded-For {remote_addr}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+   handle_path /register* {
+       redir http://127.0.0.1:80/register{uri} permanent
+   }
+
 
     reverse_proxy 127.0.0.1:8080 {
         transport http {
