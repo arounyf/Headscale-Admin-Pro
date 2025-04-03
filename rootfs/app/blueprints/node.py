@@ -1,6 +1,7 @@
 import json
 from flask_login import current_user, login_required
 from sqlalchemy import func
+from app.blueprints.admin import admin
 import requests
 
 from login_setup import role_required
@@ -80,7 +81,6 @@ def getNodes():
     return res_json
 
 
-
 @bp.route('/register',methods=['GET', 'POST'])
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 @login_required
@@ -109,7 +109,7 @@ def register(nodekey=None):
     if response.status_code == 200:
         if source == "url":
             # 如果 nodekey 是从 URL 获取的，跳转到 admin/node.html
-            return render_template('admin/node.html')
+            return admin()
         else:
             # 如果 nodekey 是从表单获取的，返回 JSON 响应
             res_json = {
