@@ -5,6 +5,7 @@ from blueprints.auth import bp as auth_bp
 from blueprints.admin import bp as admin_bp
 from blueprints.user import bp as user_bp
 from blueprints.node import bp as node_bp
+from blueprints.node import bp_node as node_bp_node
 from blueprints.system import bp as system_bp
 from blueprints.route import bp as route_bp
 from blueprints.acl import bp as acl_bp
@@ -36,6 +37,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(node_bp)
+app.register_blueprint(node_bp_node)
 app.register_blueprint(system_bp)
 app.register_blueprint(route_bp)
 app.register_blueprint(acl_bp)

@@ -9,7 +9,7 @@ from flask import Blueprint, render_template,request, session, make_response, g,
     current_app
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
-
+bp_node = Blueprint("bp_node", __name__)
 
 
 @bp.route('/getNodes')
@@ -82,7 +82,7 @@ def getNodes():
 
 
 @bp.route('/register',methods=['GET', 'POST'])
-@bp.route('/register/<nodekey>', methods=['GET'])
+@bp_node.route('/register/<nodekey>', methods=['GET'])
 @login_required
 def register(nodekey=None):
 
