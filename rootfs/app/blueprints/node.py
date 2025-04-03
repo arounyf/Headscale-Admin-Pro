@@ -109,7 +109,7 @@ def register(nodekey=None):
     if response.status_code == 200:
         if source == "url":
             # 如果 nodekey 是从 URL 获取的，跳转到 admin/node.html
-            return admin()
+            return admin(default_page="node")
         else:
             # 如果 nodekey 是从表单获取的，返回 JSON 响应
             res_json = {

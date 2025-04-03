@@ -13,7 +13,7 @@ bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 @bp.route('/')
 @login_required
-def admin():
+def admin(default_page=None):
     # 定义每个菜单项及其对应的可访问角色
 
     menu_items = {
@@ -28,13 +28,16 @@ def admin():
         'log': {'html': '<dd data-name="console"><a lay-href="log">日志</a></dd>', 'roles': ['manager', 'user']}
     }
 
-
+    # 获取当前用户角色
     role = current_user.role
     print(role)
-    if(role == "manager"):
-        default_page = "console"
-    else:
-        default_page = "node"
+
+    # 如果没有传递 default_page 参数，则根据角色设置默认值
+    if not default_page:
+        if role == "manager":
+            default_page = "console"
+        else:
+            default_page = "node"
     menu_html = "".join(item['html'] for item in menu_items.values() if role in item['roles'])
 
     return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
