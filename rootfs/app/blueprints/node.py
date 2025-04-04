@@ -90,12 +90,10 @@ def register_node(nodekey=None):
         headers = {
         'Authorization': f'Bearer {bearer_token}'
         }
-         # 延迟导入 admin
-        from blueprints.admin import admin
         user_name = current_user.name
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
         response = requests.post(url, headers=headers)
-        return admin(default_page="node")
+        return redirect(url_for('admin.node'))
 
 
 @bp.route('/register',methods=['GET', 'POST'])
