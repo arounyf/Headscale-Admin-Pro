@@ -85,8 +85,8 @@ def getNodes():
 @login_required
 def register(nodekey=None):
     # 延迟导入 admin
-    from app.blueprints.admin import admin
-    
+    from blueprints.admin import admin
+
       # 判断 nodekey 的来源
     if nodekey:
         source = "url"
