@@ -1,5 +1,5 @@
 from flask import Flask,  render_template
-import config
+import config, os
 from exts import db, enable_sqlite_foreign_keys
 from blueprints.auth import bp as auth_bp
 from blueprints.admin import bp as admin_bp
@@ -68,4 +68,4 @@ def page_not_found(e):
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000,debug=True)
+    app.run(host="0.0.0.0", port=5000,debug=False)
