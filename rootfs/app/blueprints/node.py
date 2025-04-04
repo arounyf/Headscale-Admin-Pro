@@ -1,7 +1,6 @@
 import json
 from flask_login import current_user, login_required
 from sqlalchemy import func
-from app.blueprints.admin import admin
 import requests
 
 from login_setup import role_required
@@ -85,7 +84,9 @@ def getNodes():
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 @login_required
 def register(nodekey=None):
-
+    # 延迟导入 admin
+    from app.blueprints.admin import admin
+    
       # 判断 nodekey 的来源
     if nodekey:
         source = "url"
