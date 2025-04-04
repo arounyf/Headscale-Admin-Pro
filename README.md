@@ -1,15 +1,15 @@
-在原版基础上做了如下更改：
-1.无需设置apikey自动设置
-2.无需设置任何环境变量 headscale_up_url 自动从headscale配置文件config.yaml读取
-3.实现双子域名如果登录后台的情况下自动添加节点，再也无需复制nodekey去后台添加
-4.支持s6-overlay重构自动进程管理
-5.改用alpine为底层容器，容器构建速度90s速度快，构建完成大约400M
-6.同步手机号校验修改代码
-启动之后需要修改headscale配置文件的server_url
-caddy换成双子域名可体验网页自动添加 修改完成后执行重启 docker restart hs-admin
-
+在原版基础上做了如下更改：</br>
+1.无需设置apikey自动设置 </br>
+2.无需设置任何环境变量 headscale_up_url 自动从headscale配置文件config.yaml读取</br>
+3.实现双子域名如果登录后台的情况下自动添加节点，再也无需复制nodekey去后台添加</br>
+4.支持s6-overlay重构自动进程管理</br>
+5.改用alpine为底层容器，容器构建速度90s速度快，构建完成大约400M</br>
+6.同步手机号校验修改代码</br>
+启动之后需要修改headscale配置文件的server_url</br>
+caddy换成双子域名可体验网页自动添加 修改完成后执行重启 docker restart hs-admin</br>
+</br>
 ----------特别实现了ocid类似效果添加节点-----------------------------------------------------------------
- 
+</br> 
 
 # 使用docker部署
 1. 安装
