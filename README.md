@@ -1,37 +1,89 @@
+在原版基础上做了如下更改：
+1.无需设置apikey自动设置
+2.无需设置任何环境变量 headscale_up_url 自动从headscale配置文件config.yaml读取
+3.实现双子域名如果登录后台的情况下自动添加节点，再也无需复制nodekey去后台添加
+4.支持s6-overlay重构自动进程管理
+5.改用alpine为底层容器，容器构建速度90s速度快，构建完成大约400M
+6.同步手机号校验修改代码
+启动之后需要修改headscale配置文件的server_url
+caddy换成双子域名可体验网页自动添加 修改完成后执行重启 docker restart hs-admin
 
-# 介绍
-[![GitHub repo size](https://img.shields.io/github/repo-size/arounyf/Headscale-Admin-Pro)](https://github.com/arounyf/headscale-Admin)
-[![Docker Image Size](https://img.shields.io/docker/image-size/runyf/hs-admin)](https://hub.docker.com/r/runyf/hs-admin)
-[![docker pulls](https://img.shields.io/docker/pulls/runyf/hs-admin.svg?color=brightgreen)](https://hub.docker.com/r/runyf/hs-admin)
-[![platfrom](https://img.shields.io/badge/platform-amd64%20%7C%20arm64-brightgreen)](https://hub.docker.com/r/runyf/hs-admin/tags)
-
-重点升级：   
-1、基于本人发布的headscale-Admin使用python进行了后端重构   
-2、容器内置headscale、实现快速搭建   
-3、容器内置流量监测、无需额外安装插件   
-4、基于headscale新版本0.25.0进行开发和测试   
-
-官方qq群： 892467054
-# 时间线
-2024年6月我接触到了tailscale,后在个人博客上发布了derper与headscale的搭建教程   
-2024年9月8日headscale-Admin首个版本正式开源发布   
-2025年3月26日Headscale-Admin-Pro正式开源发布   
+----------特别实现了ocid类似效果添加节点-----------------------------------------------------------------
+ 
 
 # 使用docker部署
+1. 安装
 ```shell
 mkdir ~/hs-admin
 cd ~/hs-admin
-wget https://raw.githubusercontent.com/chenxudong2020/Headscale-Admin-Pro/refs/heads/test/docker-compose.yml
+wget https://raw.githubusercontent.com/chenxudong2020/Headscale-Admin-Pro/refs/heads/urls/docker-compose.yml
 docker-compose up -d
 ```
 
+2. 修改配置文件 然后重启重启 
+准备工作：主域名托管到cf 同时登录cf添加域名管理API key并复制保存 同时添加www 和 tailscale子域名并解析到VPS
+然后对caddy的Caddy文件修改
+``` {
+    admin off
+    auto_https disable_redirects
+    servers {
+        protocols h1 h2
+    }
+}
 
-1、修改配置文件 ~/hs-admin/config/config.yaml   
-   
-此为headscale配置文件   找到配置server_url: http://192.168.6.5:81 修改192.168.6.5改成 你的域名或者公网ip
+www.主域名:443 {
+    tls {
+		dns cloudflare CF域名管理key
+	}
+	encode gzip
+    handle_path /.well-known/acme-challenge/* {
+        file_server
+    }
 
+    reverse_proxy 127.0.0.1:5000 {
+        transport http {
+            versions h11 h2
+        }
+        header_up Host {host}
+        header_up X-Real-IP {remote_addr}
+        header_up X-Forwarded-For {remote_addr}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
 
-2、访问 http://ip:5000   
+tailscale.主域名:443 {
+     tls {
+		dns cloudflare CF域名管理key
+	}
+	encode gzip
+
+    handle_path /.well-known/acme-challenge/* {
+        file_server
+    }
+
+    handle_path /admin* {
+         redir https://www.dubu.host{uri} permanent
+    }
+
+    handle_path /register* {
+        redir https://www.dubu.host/register{uri} permanent
+    }
+
+    reverse_proxy 127.0.0.1:8080 {
+        transport http {
+            versions h11 h2
+        }
+        header_up Host {host}
+        header_up X-Real-IP {remote_addr}
+        header_up X-Forwarded-For {remote_addr}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+```
+
+修改headscale config.yaml server_url为 https://tailscale.主域名
+
+3、访问 https://www.主域名
     
 说明   
 
