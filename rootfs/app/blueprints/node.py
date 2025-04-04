@@ -82,17 +82,18 @@ def getNodes():
 
 @bp.route('/register',methods=['GET', 'POST'])
 @bp_node.route('/register/<nodekey>', methods=['GET'])
-@login_required
+#@login_required
 def register(nodekey=None):
     # 延迟导入 admin
     from blueprints.admin import admin
 
+    if not current_user.is_authenticated:
+       next_page = url_for('node.register', nodekey=nodekey) if nodekey else url_for('node.register')
+       return redirect(url_for('auth.login', next=next_page))
+
       # 判断 nodekey 的来源
     if nodekey:
         source = "url"
-        if not current_user.is_authenticated:
-             next_page = url_for('node.register', nodekey=nodekey)
-             return redirect(url_for('auth.login', next=next_page))
     else:
         nodekey = request.form.get('nodekey')
         source = "form" if nodekey else None
