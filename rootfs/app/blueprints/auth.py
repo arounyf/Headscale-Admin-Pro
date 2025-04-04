@@ -8,9 +8,15 @@ from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
 from sqlalchemy import  text
-from app.blueprints.urls import next_url
 bp = Blueprint("auth", __name__, url_prefix='/')
 
+
+def next_url(default_endpoint='/'):
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login', next=request.url))
+    else:
+       next_url = request.args.get('next') or url_for(default_endpoint)
+       return redirect(next_url)
 
 
 @bp.route('/')
