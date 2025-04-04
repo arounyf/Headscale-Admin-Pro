@@ -85,7 +85,10 @@ def get_data_record():
     recv_speed = str(json_data_now["recv_speed"])
     sent_speed = str(json_data_now["sent_speed"])
 
-    with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data.json'), 'r') as file:
+     # 使用相对路径获取 data.json 文件
+    data_file_path = os.path.join(os.path.dirname(__file__), 'data.json')
+
+    with open(data_file_path, 'r') as file:
         content = file.read()
         json_data_local = json.loads(content)
 
@@ -98,7 +101,7 @@ def get_data_record():
         json_data_local["sent"]["y"] = sent_speed
         json_data_local["recv"]["y"] = recv_speed
 
-    with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data.json'), 'w') as file:
+    with open(data_file_path, 'w') as file:
         json.dump(json_data_local, file, indent=4)
 
     return json_data_local
