@@ -9,5 +9,6 @@ services:
       - ./config:/etc/headscale
       - ./data:/var/lib/headscale
       - ./caddy:/etc/caddy
+      - ./caddy_data:/etc/caddy_data
     environment:
       - SERVER_NET="eth0"

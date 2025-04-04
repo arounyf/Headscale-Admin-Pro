@@ -36,3 +36,4 @@ if [ ! -f "$UUID_FILE" ]; then
 else
   echo "Instance UUID 文件已经存在于 $UUID_FILE"
 fi
+ln -sf /root/.local/share/caddy /etc/caddy_data
