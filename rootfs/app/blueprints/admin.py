@@ -17,15 +17,15 @@ def admin(default_page=None):
     # 定义每个菜单项及其对应的可访问角色
 
     menu_items = {
-        'console': {'html': '<dd data-name="console"><a lay-href="console">控制台</a></dd>', 'roles': ['manager']},
-        'user': {'html': '<dd data-name="user"><a lay-href="user">用户</a></dd>', 'roles': ['manager']},
-        'node': {'html': '<dd data-name="node"><a lay-href="node">节点</a></dd>', 'roles': ['manager', 'user']},
-        'route': {'html': '<dd data-name="route"><a lay-href="route">路由</a></dd>', 'roles': ['manager', 'user']},
-        'deploy': {'html': '<dd data-name="deploy"><a lay-href="deploy">指令</a></dd>', 'roles': ['manager', 'user']},
-        'help': {'html': '<dd data-name="help"><a lay-href="help">文档</a></dd>', 'roles': ['manager', 'user']},
-        'acl': {'html': '<dd data-name="acl"><a lay-href="acl">ACL</a></dd>', 'roles': ['manager']},
-        'preauthkey': {'html': '<dd data-name="preauthkey"><a lay-href="preauthkey">密钥</a></dd>', 'roles': ['manager', 'user']},
-        'log': {'html': '<dd data-name="log"><a lay-href="log">日志</a></dd>', 'roles': ['manager', 'user']}
+        'console': {'html': '<dd data-name="console" class="layui-this"><a lay-href="console">控制台</a></dd>', 'roles': ['manager']},
+        'user': {'html': '<dd data-name="console"><a lay-href="user">用户</a></dd>', 'roles': ['manager']},
+        'node': {'html': '<dd data-name="console"><a lay-href="node">节点</a></dd>', 'roles': ['manager', 'user']},
+        'route': {'html': '<dd data-name="console"><a lay-href="route">路由</a></dd>', 'roles': ['manager', 'user']},
+        'deploy': {'html': '<dd data-name="console"><a lay-href="deploy">指令</a></dd>', 'roles': ['manager', 'user']},
+        'help': {'html': '<dd data-name="console"><a lay-href="help">文档</a></dd>', 'roles': ['manager', 'user']},
+        'acl': {'html': '<dd data-name="console"><a lay-href="acl">ACL</a></dd>', 'roles': ['manager']},
+        'preauthkey': {'html': '<dd data-name="console"><a lay-href="preauthkey">密钥</a></dd>', 'roles': ['manager', 'user']},
+        'log': {'html': '<dd data-name="console"><a lay-href="log">日志</a></dd>', 'roles': ['manager', 'user']}
     }
 
     # 获取当前用户角色
@@ -37,10 +37,9 @@ def admin(default_page=None):
         if role == "manager":
             default_page = "console"
         else:
-            default_page = "console"
+            default_page = "node"
     # 动态生成菜单 HTML，设置 class="layui-this" 给 default_page
-    menu_html = "".join(item['html'].replace('<dd ', f'<dd class="{"" if key != default_page else "layui-this "}').replace('data-name="console"', f'data-name="{key}"') 
-                   for key, item in menu_items.items() if role in item['roles'])
+    menu_html = "".join(item['html'] for item in menu_items.values() if role in item['roles'])
 
     return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
 
