@@ -38,8 +38,6 @@ def admin(default_page=None):
             default = "node"
     else:
         default = default_page         
-    # 动态生成菜单 HTML，设置 class="layui-this" 给 default_page
-    # 动态生成菜单 HTML，并为 default_page 的 dd 标签加上 class="layui-this"
     menu_html = ""
     for key, item in menu_items.items():
         if role in item['roles']:
@@ -49,7 +47,7 @@ def admin(default_page=None):
             else:
                 modified_html = item['html']
             menu_html += modified_html
-    return render_template('admin/index.html', menu_html=menu_html,default_page=default)
+    return render_template('admin/index.html', menu_html=menu_html,default_page="node")
 
 
 
