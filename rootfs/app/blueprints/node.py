@@ -82,7 +82,7 @@ def getNodes():
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 def register_node(nodekey=None):
     if not current_user.is_authenticated:
-       next_page = url_for('node.register', nodekey=nodekey) if nodekey else url_for('node.register')
+       next_page = url_for('node.register_node', nodekey=nodekey) if nodekey else url_for('node.register')
        return redirect(url_for('auth.login', next=next_page))
     else:
         server_host = current_app.config['SERVER_HOST']
