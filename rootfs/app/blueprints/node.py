@@ -93,7 +93,7 @@ def register_node(nodekey=None):
         user_name = current_user.name
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
         response = requests.post(url, headers=headers)
-        return redirect(url_for('admin.node'))
+        return redirect(url_for('admin.admin', default_page='node'))
 
 
 @bp.route('/register',methods=['GET', 'POST'])
