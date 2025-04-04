@@ -46,9 +46,9 @@ def admin(default_page=None):
             else:
                 modified_html = item['html']
             menu_html += modified_html
-    console.log("---------------------------------")
-    console.log(default_page)
-    console.log(menu_html)
+    print("---------------------------------")
+    print(default_page)
+    print(menu_html)
     return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
 
 
