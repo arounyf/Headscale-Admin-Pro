@@ -13,7 +13,7 @@ bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 @bp.route('/')
 @login_required
-def admin(default_page=None):
+def admin():
     # 定义每个菜单项及其对应的可访问角色
 
     menu_items = {
@@ -30,6 +30,8 @@ def admin(default_page=None):
 
     # 获取当前用户角色
     role = current_user.role
+    # 从查询参数获取 default_page
+    default_page = request.args.get('default_page', None)  
     # 如果没有传递 default_page 参数，则根据角色设置默认值
     if not default_page:
         if role == "manager":
@@ -42,12 +44,12 @@ def admin(default_page=None):
     for key, item in menu_items.items():
         if role in item['roles']:
             if key == default:
-                # 添加 layui-this 类到指定的 default_page
+                # 添加 layui-this 类到指定的 default
                 modified_html = item['html'].replace('<dd ', '<dd class="layui-this ')
             else:
                 modified_html = item['html']
             menu_html += modified_html
-    return render_template('admin/index.html', menu_html=menu_html,default_page="node")
+    return render_template('admin/index.html', menu_html=menu_html,default_page=default)
 
 
 
