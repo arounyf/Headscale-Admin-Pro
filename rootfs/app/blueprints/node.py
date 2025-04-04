@@ -91,8 +91,8 @@ def register(nodekey=None):
     if nodekey:
         source = "url"
         if not current_user.is_authenticated:
-            next_page = request.args.get('next', '')
-            render_template('auth/login.html', next=next_page)
+            next_page = url_for('node.register', nodekey=nodekey) if nodekey else url_for('node.register')
+            return redirect(url_for('auth.login', next=next_page))
     else:
         nodekey = request.form.get('nodekey')
         source = "form" if nodekey else None

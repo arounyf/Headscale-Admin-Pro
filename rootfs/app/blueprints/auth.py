@@ -11,14 +11,6 @@ from sqlalchemy import  text
 bp = Blueprint("auth", __name__, url_prefix='/')
 
 
-def next_url(default_endpoint='/'):
-    if not current_user.is_authenticated:
-        return redirect(url_for('auth.login', next=request.url))
-    else:
-       next_url = request.args.get('next') or url_for(default_endpoint)
-       return redirect(next_url)
-
-
 @bp.route('/')
 def index():
     return render_template('index.html')
@@ -96,7 +88,12 @@ def login():
     if request.method == 'GET':
         # 如果用户已经登录，调用 next_url 方法
         if current_user.is_authenticated:
-            return next_url(default_endpoint='admin.admin')
+            # 获取 URL 中的 next 参数
+            next_page = request.args.get('next')
+            # 如果 next 参数存在但为空，或者不存在，跳转到 admin.admin
+            if not next_page:
+                return redirect(url_for('admin.admin'))
+            return redirect(next_page)
         else:
             # 渲染登录页面，并将 next 参数传递给模板
             next_page = request.args.get('next', '')
@@ -113,6 +110,11 @@ def login():
             print("登录成功")
             session.permanent = True
             record_log(user.id, "登录成功")
+
+            # 登录成功后，获取 next 参数并跳转
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))
