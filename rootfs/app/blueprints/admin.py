@@ -34,10 +34,7 @@ def admin(default_page=None):
 
     # 如果没有传递 default_page 参数，则根据角色设置默认值
     if not default_page:
-        if role == "manager":
-            default_page = "console"
-        else:
-            default_page = "node"
+        default_page = "console" if role == "manager" else "node"
     # 动态生成菜单 HTML，设置 class="layui-this" 给 default_page
     # 动态生成菜单 HTML，并为 default_page 的 dd 标签加上 class="layui-this"
     menu_html = ""
@@ -49,7 +46,9 @@ def admin(default_page=None):
             else:
                 modified_html = item['html']
             menu_html += modified_html
-
+    console.log("---------------------------------")
+    console.log(default_page)
+    console.log(menu_html)
     return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
 
 
