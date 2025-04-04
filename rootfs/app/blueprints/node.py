@@ -82,7 +82,7 @@ def getNodes():
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 def register_node(nodekey=None):
     if not current_user.is_authenticated:
-       next_page = url_for('node.register_node', nodekey=nodekey) if nodekey else url_for('node.register')
+       next_page = request.path
        return redirect(url_for('auth.login', next=next_page))
     else:
         server_host = current_app.config['SERVER_HOST']
@@ -95,11 +95,7 @@ def register_node(nodekey=None):
         user_name = current_user.name
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
         response = requests.post(url, headers=headers)
-        if response.status_code == 200:
-            return admin(default_page="node")
-        else:
-            message = str(response.text)
-            return render_template('auth/error.html',message=message)
+        return admin(default_page="node")
 
 
 @bp.route('/register',methods=['GET', 'POST'])
