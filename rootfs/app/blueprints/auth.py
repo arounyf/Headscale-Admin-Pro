@@ -86,18 +86,11 @@ def reg():
 def login():
 
     if request.method == 'GET':
-        # 如果用户已经登录，调用 next_url 方法
         if current_user.is_authenticated:
-            # 获取 URL 中的 next 参数
-            next_page = request.args.get('next')
-            # 如果 next 参数存在但为空，或者不存在，跳转到 admin.admin
-            if not next_page:
-                return redirect(url_for('admin.admin'))
-            return redirect(next_page)
+            return redirect(url_for('admin.admin'))
         else:
-            # 渲染登录页面，并将 next 参数传递给模板
             next_page = request.args.get('next', '')
-            return render_template('auth/login.html', next=next_page)
+            return redirect(url_for('auth.login', next=next_page))
     else:
         form = LoginForm(request.form)
 

@@ -76,7 +76,7 @@ h2{margin-top:100px;margin-bottom:50px;text-align:center;font-weight:300;font-si
 <script>
 
 function generateUUID(){
-    {#alert("123")#}
+    
     var d = new Date().getTime();
     var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       var r = (d + Math.random()*16)%16 | 0;
@@ -103,6 +103,7 @@ layui.use(function(){
 
   //取到get参数
   const search = new URLSearchParams(location.search)
+  const next = search.get('next'); // 获取 next 参数
   $('input[name="username"]').val(search.get('username'));
 
 
@@ -121,7 +122,8 @@ layui.use(function(){
         if(res.code == 0){
           layer.msg('登录成功', {icon: 6});
           setTimeout(function() {
-              location.href="admin"
+              // 如果 next 参数存在，跳转到 next；否则跳转到 admin
+              location.href = next || "admin";
           }, 1000);
         }else{
           layer.msg(res.msg, {icon: 7});
