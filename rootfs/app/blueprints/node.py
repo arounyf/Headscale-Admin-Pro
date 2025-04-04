@@ -79,62 +79,53 @@ def getNodes():
 
     return res_json
 
-
-@bp.route('/register',methods=['GET', 'POST'])
 @bp_node.route('/register/<nodekey>', methods=['GET'])
-#@login_required
-def register(nodekey=None):
-    # 延迟导入 admin
-    from blueprints.admin import admin
-
+def register_node(nodekey=None):
     if not current_user.is_authenticated:
        next_page = url_for('node.register', nodekey=nodekey) if nodekey else url_for('node.register')
        return redirect(url_for('auth.login', next=next_page))
-
-      # 判断 nodekey 的来源
-    if nodekey:
-        source = "url"
     else:
-        nodekey = request.form.get('nodekey')
-        source = "form" if nodekey else None
-
-    user_name = current_user.name
-
-
-
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
+        server_host = current_app.config['SERVER_HOST']
+        bearer_token = current_app.config['BEARER_TOKEN']
+        headers = {
         'Authorization': f'Bearer {bearer_token}'
-    }
-    url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
-    response = requests.post(url, headers=headers)
-
-    # 检查请求是否成功
-    if response.status_code == 200:
-        if source == "url":
-            # 如果 nodekey 是从 URL 获取的，跳转到 admin/node.html
+        }
+         # 延迟导入 admin
+        from blueprints.admin import admin
+        user_name = current_user.name
+        url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
+        response = requests.post(url, headers=headers)
+        if response.status_code == 200:
             return admin(default_page="node")
         else:
-            # 如果 nodekey 是从表单获取的，返回 JSON 响应
-            res_json = {
-                'code': '0',
-                'data': str(response.text),
-                'msg': '获取成功',
-            }
-            return jsonify(res_json)
-    else:
-        if source == "url":
             message = str(response.text)
             return render_template('auth/error.html',message=message)
-        else:
-            # 如果失败，返回错误信息
-            res_json = {
-                'code': '1',
-                'data': str(response.text),
-                'msg': '注册失败',
-            }
-            return jsonify(res_json), 400
+
+
+@bp.route('/register',methods=['GET', 'POST'])
+@login_required
+def register():
+     nodekey = request.form.get('nodekey')
+     user_name = current_user.name
+
+     server_host = current_app.config['SERVER_HOST']
+     bearer_token = current_app.config['BEARER_TOKEN']
+     headers = {
+        'Authorization': f'Bearer {bearer_token}'
+     }
+     url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
+     response = requests.post(url, headers=headers)
+
+     # 额外字段
+     res_json = {
+        'code': '',
+        'data': '',
+        'msg': '',
+     }
+     res_json['code'], res_json['msg'] = '0', '获取成功'
+     res_json['data'] = str(response.text)
+
+     return res_json
     
 
 

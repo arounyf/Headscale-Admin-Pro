@@ -46,6 +46,7 @@ h2{margin-top:100px;margin-bottom:50px;text-align:center;font-weight:300;font-si
               <i class="layui-icon layui-icon-vercode"></i>
             </div>
             <input type="text" name="vercode" value="" lay-verify="required" placeholder="验证码" lay-reqtext="请填写验证码" autocomplete="off" class="layui-input" lay-affix="clear">
+            <input type="hidden" name="next" value="{{ next }}">
           </div>
         </div>
         <div class="layui-col-xs5">
@@ -103,7 +104,6 @@ layui.use(function(){
 
   //取到get参数
   const search = new URLSearchParams(location.search)
-  const next = search.get('next'); // 获取 next 参数
   $('input[name="username"]').val(search.get('username'));
 
 
@@ -122,6 +122,7 @@ layui.use(function(){
         if(res.code == 0){
           layer.msg('登录成功', {icon: 6});
           setTimeout(function() {
+              next = field.next; // 获取next参数
               // 如果 next 参数存在，跳转到 next；否则跳转到 admin
               location.href = next || "admin";
           }, 1000);

@@ -90,7 +90,7 @@ def login():
             return redirect(url_for('admin.admin'))
         else:
             next_page = request.args.get('next', '')
-            return redirect(url_for('auth.login', next=next_page))
+            return render_template('auth/login.html',next=next_page)
     else:
         form = LoginForm(request.form)
 
