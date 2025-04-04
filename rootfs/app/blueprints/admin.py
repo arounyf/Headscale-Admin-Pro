@@ -39,10 +39,8 @@ def admin(default_page=None):
         else:
             default_page = "console"
     # 动态生成菜单 HTML，设置 class="layui-this" 给 default_page
-    menu_html = "".join(
-        f'<dd data-name="{key}" class="{"layui-this" if key == default_page else ""}"><a lay-href="{key}">{item["html"].split(">")[1]}</a></dd>'
-        for key, item in menu_items.items() if role in item['roles']
-    )
+    menu_html = "".join(item['html'].replace('<dd ', f'<dd class="{"" if key != default_page else "layui-this "}').replace('data-name="console"', f'data-name="{key}"') 
+                   for key, item in menu_items.items() if role in item['roles'])
 
     return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
 
