@@ -20,7 +20,7 @@ wget https://raw.githubusercontent.com/chenxudong2020/Headscale-Admin-Pro/refs/h
 docker-compose up -d
 ```
 
-2. 修改配置文件 然后重启重启 
+2. 修改配置文件 然后重启重启</br> 
 准备工作：主域名托管到cf 同时登录cf添加域名管理API key并复制保存 同时添加www 和 tailscale子域名并解析到VPS
 然后对caddy的Caddy文件修改
 ``` {
