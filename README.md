@@ -22,7 +22,7 @@ docker-compose up -d
 
 2. 修改配置文件 然后重启重启</br> 
 准备工作：主域名托管到cf 同时登录cf添加域名管理API key并复制保存 同时添加www 和 tailscale子域名并解析到VPS
-然后对caddy的Caddy文件修改
+然后对caddy的Caddy文件修改 替换下面的主域名和CF域名管理key为你真实的主域名和key
 ``` {
     admin off
     auto_https disable_redirects
@@ -62,11 +62,11 @@ tailscale.主域名:443 {
     }
 
     handle_path /admin* {
-         redir https://www.dubu.host{uri} permanent
+         redir https://www.主域名{uri} permanent
     }
 
     handle_path /register* {
-        redir https://www.dubu.host/register{uri} permanent
+        redir https://www.主域名/register{uri} permanent
     }
 
     reverse_proxy 127.0.0.1:8080 {
