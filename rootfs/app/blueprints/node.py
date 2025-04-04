@@ -90,6 +90,9 @@ def register(nodekey=None):
       # 判断 nodekey 的来源
     if nodekey:
         source = "url"
+        if not current_user.is_authenticated:
+            next_page = request.args.get('next', '')
+            render_template('auth/login.html', next=next_page)
     else:
         nodekey = request.form.get('nodekey')
         source = "form" if nodekey else None
@@ -120,13 +123,17 @@ def register(nodekey=None):
             }
             return jsonify(res_json)
     else:
-        # 如果失败，返回错误信息
-        res_json = {
-            'code': '1',
-            'data': str(response.text),
-            'msg': '注册失败',
-        }
-        return jsonify(res_json), 400
+        if source == "url":
+            message = str(response.text)
+            return render_template('auth/error.html',message=message)
+        else:
+            # 如果失败，返回错误信息
+            res_json = {
+                'code': '1',
+                'data': str(response.text),
+                'msg': '注册失败',
+            }
+            return jsonify(res_json), 400
     
 
 
