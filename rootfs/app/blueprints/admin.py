@@ -30,26 +30,26 @@ def admin(default_page=None):
 
     # 获取当前用户角色
     role = current_user.role
-    print(role)
-
     # 如果没有传递 default_page 参数，则根据角色设置默认值
     if not default_page:
-        default_page = "console" if role == "manager" else "node"
+        if role == "manager":
+            default = "console"
+        else:
+            default = "node"
+    else:
+        default = default_page         
     # 动态生成菜单 HTML，设置 class="layui-this" 给 default_page
     # 动态生成菜单 HTML，并为 default_page 的 dd 标签加上 class="layui-this"
     menu_html = ""
     for key, item in menu_items.items():
         if role in item['roles']:
-            if key == default_page:
+            if key == default:
                 # 添加 layui-this 类到指定的 default_page
                 modified_html = item['html'].replace('<dd ', '<dd class="layui-this ')
             else:
                 modified_html = item['html']
             menu_html += modified_html
-    print("---------------------------------")
-    print(default_page)
-    print(menu_html)
-    return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
+    return render_template('admin/index.html', menu_html=menu_html,default_page=default)
 
 
 
