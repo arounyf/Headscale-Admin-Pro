@@ -8,6 +8,7 @@ from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
 from sqlalchemy import  text
+from app.blueprints.urls import next_url
 bp = Blueprint("auth", __name__, url_prefix='/')
 
 
@@ -87,11 +88,13 @@ def reg():
 def login():
 
     if request.method == 'GET':
-        # 如果用户已经登录，重定向到 admin 页面
+        # 如果用户已经登录，调用 next_url 方法
         if current_user.is_authenticated:
-            return redirect(url_for('admin.admin'))
+            return next_url(default_endpoint='admin.admin')
         else:
-            return render_template('auth/login.html')
+            # 渲染登录页面，并将 next 参数传递给模板
+            next_page = request.args.get('next', '')
+            return render_template('auth/login.html', next=next_page)
     else:
         form = LoginForm(request.form)
 

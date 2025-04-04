@@ -120,7 +120,7 @@ layui.use(function(){
       success:function(res){
         if(res.code == 0){
           layer.msg('登录成功', {icon: 6});
-          setInterval(function() {
+          setTimeout(function() {
               location.href="admin"
           }, 1000);
         }else{
