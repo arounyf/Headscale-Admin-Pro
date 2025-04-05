@@ -92,8 +92,15 @@ def register_node(nodekey=None):
         }
         user_name = current_user.name
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
-        response = requests.post(url, headers=headers)
-        return redirect(url_for('admin.admin', default_page='node'))
+        try:
+            response = requests.post(url, headers=headers)
+            if response.status_code == 200:
+                message = "添加节点成功！" 
+            else:
+                message = "后台服务调用异常，请稍后再试！"
+        except Exception as e:
+          message = "后台服务异常，请稍后再试！"
+        return redirect(url_for('admin.node', message=message))
 
 
 @bp.route('/register',methods=['GET', 'POST'])

@@ -27,7 +27,7 @@
               <div class="layui-btn-container">
               <button class="layui-btn layui-btn-sm" lay-event="addNode">添加设备</button>
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                
+                <input type="hidden" name="message" value="{{ message }}">
                 <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">
                   多行
                 </button>
@@ -69,7 +69,25 @@
     var util = layui.util;
     var $ = layui.$;
     
-
+    
+   // 如果message不为空则倒计时弹窗框
+   var message = $('input[name="message"]').val();
+    if (message) {
+        layer.alert(message, {
+        time: 5*1000,
+        success: function(layero, index){
+          var timeNum = this.time/1000, setText = function(start){
+            layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
+          };
+          setText(!0);
+          this.timer = setInterval(setText, 1000);
+          if(timeNum <= 0) clearInterval(this.timer);
+        }
+        ,end: function(){
+          clearInterval(this.timer);
+        }
+      });
+    }
 
     
     // 创建渲染实例
