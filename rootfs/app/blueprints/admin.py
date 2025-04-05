@@ -74,7 +74,8 @@ def user():
 @login_required
 @bp.route('/node')
 def node():
-    return render_template('admin/node.html')
+    message = request.args.get('message', '')
+    return render_template('admin/node.html',message=message)
 
 @login_required
 @bp.route('/route')
