@@ -79,11 +79,6 @@ def getNodes():
 
     return res_json
 
-@bp_node.route('/node',methods=['GET'])
-@login_required
-def node():
-     return render_template('admin/node.html')
-
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 def register_node(nodekey=None):
     if not current_user.is_authenticated:
@@ -97,8 +92,8 @@ def register_node(nodekey=None):
         }
         user_name = current_user.name
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
-        requests.post(url, headers=headers)
-        return render_template('admin/node.html')
+        response = requests.post(url, headers=headers)
+        return redirect(url_for('admin.admin', default_page='node'))
 
 
 @bp.route('/register',methods=['GET', 'POST'])
