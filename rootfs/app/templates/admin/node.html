@@ -27,7 +27,7 @@
               <div class="layui-btn-container">
               <button class="layui-btn layui-btn-sm" lay-event="addNode">添加设备</button>
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                <input type="hidden" name="message" value="{{ message }}">
+                <input type="hidden" name="message" value="{{ message if message else '' }}">
                 <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">
                   多行
                 </button>
