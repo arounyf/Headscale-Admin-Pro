@@ -70,26 +70,28 @@ def user():
 
 
 
-
-@login_required
 @bp.route('/node')
+@login_required
 def node():
     message = request.args.get('message', '')
     return render_template('admin/node.html', message=message)
 
-@login_required
+
 @bp.route('/route')
+@login_required
 def route():
     return render_template('admin/route.html')
 
-@login_required
+
 @bp.route('/deploy')
+@login_required
 def deploy():
     tailscale_up_url = current_app.config['TAILSCALE_UP_URL']
     return render_template('admin/deploy.html',tailscale_up_url = tailscale_up_url)
 
-@login_required
+
 @bp.route('/help')
+@login_required
 def help():
     return render_template('admin/help.html')
 

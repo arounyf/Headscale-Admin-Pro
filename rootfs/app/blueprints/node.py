@@ -79,6 +79,7 @@ def getNodes():
 
     return res_json
 
+# 开放此路由如果添加节点则跳转登录后再跳转回来逻辑
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 def register_node(nodekey=None):
     if not current_user.is_authenticated:

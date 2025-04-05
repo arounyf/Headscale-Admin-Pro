@@ -1,5 +1,5 @@
 
-name: build_hs-admin_all
+name: build_hs-admin_amd64
 
 on:
   schedule:
@@ -39,4 +39,4 @@ jobs:
         id : Push_Docker_Images
         run : |
            imageName=hs-admin
-           docker buildx build --platform linux/amd64,linux/arm64 -t registry.cn-hangzhou.aliyuncs.com/dubux/$imageName:latest --push .
+           docker build -t registry.cn-hangzhou.aliyuncs.com/dubux/$imageName:latest --no-cache --push .

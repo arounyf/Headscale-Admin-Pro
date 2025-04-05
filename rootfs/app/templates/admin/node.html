@@ -72,7 +72,26 @@
     var $ = layui.$;
     
     
-   
+    $(document).ready(function() {
+        var message = $('input[name="message"]').val();
+        console.log(message)
+          if (message) {
+              layer.alert(message, {
+              time: 5*1000,
+              success: function(layero, index){
+                var timeNum = this.time/1000, setText = function(start){
+                  layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
+                };
+                setText(!0);
+                this.timer = setInterval(setText, 1000);
+                if(timeNum <= 0) clearInterval(this.timer);
+              }
+              ,end: function(){
+                clearInterval(this.timer);
+              }
+            });
+          }
+    });
 
     
     // 创建渲染实例
@@ -110,25 +129,6 @@
         console.log(res, msg)
       },
       done: function(res, curr, count) {
-        // 如果message不为空则倒计时弹窗框
-        var message = $('input[name="message"]').val();
-        console.log(message)
-          if (message) {
-              layer.alert(message, {
-              time: 5*1000,
-              success: function(layero, index){
-                var timeNum = this.time/1000, setText = function(start){
-                  layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
-                };
-                setText(!0);
-                this.timer = setInterval(setText, 1000);
-                if(timeNum <= 0) clearInterval(this.timer);
-              }
-              ,end: function(){
-                clearInterval(this.timer);
-              }
-            });
-          }
       }
     });
 
