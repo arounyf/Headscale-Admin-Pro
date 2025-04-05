@@ -100,7 +100,7 @@ def register_node(nodekey=None):
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
         response = requests.post(url, headers=headers)
         if response.status_code == 200:
-           message = response.text.message 
+           message = "添加节点成功！" 
         else:
            message = "后台服务异常，请稍后再试！"
         return render_template('admin/node.html',message=message)
