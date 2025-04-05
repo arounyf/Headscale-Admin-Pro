@@ -27,7 +27,7 @@
               <div class="layui-btn-container">
               <button class="layui-btn layui-btn-sm" lay-event="addNode">添加设备</button>
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                
+                <input type="hidden" name="message" value="{{ message }}">
                 <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">
                   多行
                 </button>
@@ -69,7 +69,24 @@
     var util = layui.util;
     var $ = layui.$;
     
-
+    // 如果message不为空则倒计时弹窗框
+    var message = $('input[name="message"]').val();
+    if (message) {
+        layer.alert(message, {
+        time: 5*1000,
+        success: function(layero, index){
+          var timeNum = this.time/1000, setText = function(start){
+            layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
+          };
+          setText(!0);
+          this.timer = setInterval(setText, 1000);
+          if(timeNum <= 0) clearInterval(this.timer);
+        }
+        ,end: function(){
+          clearInterval(this.timer);
+        }
+      });
+    }
 
     
     // 创建渲染实例
@@ -88,15 +105,15 @@
       ,page: true
       ,cols: [[
             {type: 'checkbox', fixed: 'left'}
-            ,{field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
-            ,{field:'userName', width:180, title: '用户名', sort: true, edit: 'text',totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-            ,{field:'name', width:180, title: '节点名', edit: 'text'}
-            ,{field:'ip', width: 160, title: 'ip地址'}
-            ,{field:'createTime', title:'创建时间', width: 180, sort: true}
-            ,{field:'lastTime', title:'最近连接', width: 180, sort: true,templet:'#TPL-lastTime'}
-            ,{field:'Client', title:'客户端', width: 90}
-            ,{field:'OS', title:'操作系统', width: 220}
-            ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
+            ,{field:'id', fixed: 'left', title: 'ID', sort: true, totalRowText: '合计：'}
+            ,{field:'userName',title: '用户名', sort: true, edit: 'text',totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
+            ,{field:'name', title: '节点名', edit: 'text'}
+            ,{field:'ip', title: 'ip地址'}
+            ,{field:'createTime', title:'创建时间', sort: true}
+            ,{field:'lastTime', title:'最近连接', sort: true,templet:'#TPL-lastTime'}
+            ,{field:'Client', title:'客户端'}
+            ,{field:'OS', title:'操作系统'}
+            ,{fixed: 'right', title:'操作',minWidth: 70, toolbar: '#barDemo'}
         ]]
       ,error: function(res, msg){
         console.log(res, msg)

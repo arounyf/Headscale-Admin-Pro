@@ -79,6 +79,12 @@ def getNodes():
 
     return res_json
 
+@bp_node.route('/node',methods=['GET'])
+@login_required
+def node():
+     message = request.args.get('message', None)  
+     return render_template('admin/node.html',message=message)
+
 @bp_node.route('/register/<nodekey>', methods=['GET'])
 def register_node(nodekey=None):
     if not current_user.is_authenticated:
@@ -93,7 +99,11 @@ def register_node(nodekey=None):
         user_name = current_user.name
         url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
         response = requests.post(url, headers=headers)
-        return redirect(url_for('admin.admin', default_page='node'))
+        if response.status_code == 200:
+           message = response.text.message 
+        else:
+           message = "后台服务异常，请稍后再试！"
+        return render_template('admin/node.html',message=message)
 
 
 @bp.route('/register',methods=['GET', 'POST'])
