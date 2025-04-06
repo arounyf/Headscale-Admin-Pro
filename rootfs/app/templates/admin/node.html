@@ -150,7 +150,7 @@
 
       if (field == "name"){
         $.ajax({
-        url:'/api/rename',
+        url:'/api/node/rename',
         type: 'post',
         dataType: 'json',
         data: {machine_id: obj.data.id,machine_name: obj.value},
