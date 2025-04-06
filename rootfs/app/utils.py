@@ -6,7 +6,8 @@ import psutil
 from exts import db
 from datetime import datetime
 import subprocess
-
+from flask import current_app
+import requests 
 
 
 def record_log(user_id, log_content):
@@ -111,14 +112,40 @@ def get_data_record():
 
 def reload_headscale():
     res_json = {'code': '', 'data': '', 'msg': ''}
-    # kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)
-    try:
-        # 执行 重载ACL 命令
-        #result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
-        reload_command = "ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1"
-        result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
-        
-        res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',result.stdout
-    except subprocess.CalledProcessError as e:
-        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
+    acl_data=fecth_headscale()
+    result=set_headscale(acl_data)
+    if result:
+       res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',acl_data
+    else:
+       res_json['code'], res_json['msg'] ,res_json['data']= '1', '执行失败',acl_data
     return res_json
+    
+
+#设置acl规则
+def set_headscale(acl): 
+        server_host = current_app.config['SERVER_HOST']
+        bearer_token = current_app.config['BEARER_TOKEN']
+        headers = {
+        'Authorization': f'Bearer {bearer_token}'
+        }
+        url = f'{server_host}/api/v1/policy'
+        try:
+            response = requests.put(url, data=acl,headers=headers)
+            response_data = response.json()
+            return response_data.get('data', {}).get('isSuccess')
+        except Exception as e:
+            return False
+#获取acl规则
+def fecth_headscale(): 
+        server_host = current_app.config['SERVER_HOST']
+        bearer_token = current_app.config['BEARER_TOKEN']
+        headers = {
+        'Authorization': f'Bearer {bearer_token}'
+        }
+        url = f'{server_host}/api/v1/policy'
+        try:
+            response = requests.get(url, headers=headers)
+            response_data = response.json()
+            return response_data.get('data', {}).get('policy')
+        except Exception as e:
+            return None          

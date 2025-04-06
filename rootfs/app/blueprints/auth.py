@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from utils import record_log, reload_headscale
+from utils import record_log, reload_headscale,set_headscale,fecth_headscale
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
@@ -53,18 +53,23 @@ def reg():
                 role = "manager"
             else:
                 role = "user"
-            user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,role=role)
-            db.session.add(user)
-            db.session.commit()
+            try:    
+                user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,role=role)
+                db.session.add(user)
+                db.session.commit()
 
-            #acl操作
-            newAcl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
-            print(newAcl)
-            new_acl = ACLModel(acl=newAcl, user_id=user.id)
-            db.session.add(new_acl)
-            db.session.commit()
+                #acl操作
+                newAcl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
+                print(newAcl)
+                new_acl = ACLModel(acl=newAcl, user_id=user.id)
+                db.session.add(new_acl)
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                res_json['code'],res_json['msg'] = '1','注册失败,请稍后再试！'
+                return res_json
 
-            res_json['data'] = reload_headscale()
+            res_json['data'] = set_headscale(newAcl)
             
             res_json['code'],res_json['msg'] = '0','注册成功'
 

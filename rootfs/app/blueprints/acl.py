@@ -4,7 +4,7 @@ from exts import db
 from login_setup import role_required
 from models import UserModel,  ACLModel
 from flask import Blueprint,  request
-from utils import reload_headscale
+from utils import reload_headscale,fecth_headscale,set_headscale
 
 bp = Blueprint("acl", __name__, url_prefix='/api/acl')
 
@@ -115,25 +115,17 @@ def rewrite_acl():
 @login_required
 @role_required("manager")
 def read_acl():
-    acl_path = "/etc/headscale/acl.hujson"
-    try:
-        with open(acl_path, 'r') as f:
-            acl_data = json.load(f)
+    acl_data=fecth_headscale()
+    if acl_data is None:
+        res_json['code'], res_json['msg'] = '1', '获取失败'
+        return res_json
 
-    except FileNotFoundError:
-        res_json['code'], res_json['msg'] = '1', f"错误: 文件 {acl_path} 未找到。"
-    except json.JSONDecodeError:
-        res_json['code'], res_json['msg'] = '2', f"错误: 无法解析 {acl_path} 中的 JSON 数据。"
-    except Exception as e:
-        res_json['code'], res_json['msg'] = '3', f"发生未知错误: {str(e)}"
-
-
-    print(acl_data.get('acls', []))
+    print(acl_data)
 
     html_content = "<table border='1' style='margin:10px;'>"
     html_content += "<tr><th>Action</th><th>Source</th><th>Destination</th></tr>"
 
-    for item in acl_data.get('acls', []):
+    for item in acl_data:
         action = item['action']
         src = ', '.join(item['src'])
         dst = ', '.join(item['dst'])
