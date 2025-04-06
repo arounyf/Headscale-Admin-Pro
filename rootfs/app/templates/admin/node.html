@@ -70,11 +70,10 @@
     var laydate = layui.laydate;
     var util = layui.util;
     var $ = layui.$;
-    
+    var device = layui.device();
     
     $(document).ready(function() {
         var message = $('input[name="message"]').val();
-        console.log(message)
           if (message) {
               layer.alert(message, {
               time: 5*1000,
@@ -113,7 +112,11 @@
          field: 'createTime', //排序字段，对应 cols 设定的各字段名
          type: 'desc' //排序方式  asc: 升序、desc: 降序、null: 默认排序
       },
-       cols: [[
+       cols: device.mobile? [[
+            {field: 'id', title: 'ID', minWidth: 20},
+            {field: 'name', title: '节点名', minWidth: 100},
+            {field: 'ip', title: 'IP 地址', minWidth: 120}
+       ]]:[[
             {type: 'checkbox', fixed: 'left'}
             ,{field:'id', fixed: 'left', width:20, title: 'ID', sort: true, totalRowText: '合计：'}
             ,{field:'userName', title: '用户名', sort: true, edit: 'text',totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
@@ -123,7 +126,7 @@
             ,{field:'lastTime', title:'最近连接', sort: true,templet:'#TPL-lastTime'}
             ,{field:'Client', title:'客户端'}
             ,{field:'OS', title:'操作系统'}
-            ,{fixed: 'right', title:'操作', minWidth: 70, toolbar: '#barDemo'}
+            ,{fixed: 'right', title:'操作', minWidth: 60, toolbar: '#barDemo'}
         ]]
       ,error: function(res, msg){
         console.log(res, msg)
