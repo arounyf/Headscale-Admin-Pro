@@ -120,12 +120,12 @@ def read_acl():
         res_json['code'], res_json['msg'] = '1', '获取失败'
         return res_json
 
-    print(acl_data)
+    print(acl_data.get('acls',{}))
 
     html_content = "<table border='1' style='margin:10px;'>"
     html_content += "<tr><th>Action</th><th>Source</th><th>Destination</th></tr>"
 
-    for item in acl_data:
+    for item in acl_data.get('acls',{}):
         action = item['action']
         src = ', '.join(item['src'])
         dst = ', '.join(item['dst'])

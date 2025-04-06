@@ -113,6 +113,7 @@ def get_data_record():
 def reload_headscale():
     res_json = {'code': '', 'data': '', 'msg': ''}
     acl_data=fecth_headscale()
+    acl_data=acl_data.get('acls',{})
     result=set_headscale(acl_data)
     if result:
        res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',acl_data
@@ -145,7 +146,8 @@ def fecth_headscale():
         url = f'{server_host}/api/v1/policy'
         try:
             response = requests.get(url, headers=headers)
-            response_data = response.json()
-            return response_data.get('data', {}).get('policy')
+            response_data = json.loads(response.text)
+            policy = json.loads(response_data.get('policy', '{}'))
+            return policy
         except Exception as e:
             return None          
