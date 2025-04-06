@@ -111,18 +111,21 @@ def get_data_record():
 
 
 def reload_headscale():
-    res_json = {'code': '', 'data': '', 'msg': ''}
-    acl_data=fecth_headscale()
-    acl_data=acl_data.get('acls',{})
-    result=set_headscale(acl_data)
-    if result:
-       res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',acl_data
-    else:
-       res_json['code'], res_json['msg'] ,res_json['data']= '1', '执行失败',acl_data
-    return res_json
+   res_json = {'code': '', 'data': '', 'msg': ''}
+   try:
+        # 执行 重载ACL 命令
+        #result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
+        reload_command = "ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1"
+        result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
+        
+        res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',result.stdout
+   except subprocess.CalledProcessError as e:
+        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
+   return res_json
     
 
-#设置acl规则
+#设置acl规则 
+# acl本地文件的格式时候无法使用 只有policy配置成db的时候才能通过此api更新
 def set_headscale(acl): 
         server_host = current_app.config['SERVER_HOST']
         bearer_token = current_app.config['BEARER_TOKEN']

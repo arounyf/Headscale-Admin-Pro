@@ -69,7 +69,7 @@ def reg():
                 res_json['code'],res_json['msg'] = '1','注册失败,请稍后再试！'
                 return res_json
 
-            res_json['data'] = set_headscale(newAcl)
+            res_json['data'] = reload_headscale()
             
             res_json['code'],res_json['msg'] = '0','注册成功'
 
