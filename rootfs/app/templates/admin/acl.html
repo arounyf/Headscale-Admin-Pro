@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
+  <title>ACL</title>
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -47,7 +47,7 @@
     ,form = layui.form
     ,$ = layui.$;
     var dropdown = layui.dropdown;
-
+    var device = layui.device();
 
 
 
@@ -67,7 +67,11 @@
       ,cellMinWidth: 80
       ,totalRow: true // 开启合计行
       ,page: true
-      ,cols: [[
+      ,cols: device.mobile?[[
+           {field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'},
+           {field:'userName', title:'用户名',totalRow: '{{= d.TOTAL_ROW.count   }} 😊'},
+           {field:'acl', title:'ACL',edit: 'text'}
+      ]]:[[
         {type: 'checkbox'}
         ,{field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
         ,{field:'userName', title:'用户名',width:180,totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
