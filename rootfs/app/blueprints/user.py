@@ -28,6 +28,7 @@ def getUsers():
         UserModel.cellphone,
         func.strftime('%Y-%m-%d %H:%M:%S', UserModel.expire, ).label('expire'),
         UserModel.enable,
+        UserModel.role
         # 可以添加其他需要的字段
     )
 
