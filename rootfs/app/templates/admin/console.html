@@ -289,8 +289,7 @@
         type: 'get',
         dataType: 'json',
         success:function(res){
-          // console.log(res)
-
+  
           if(res.cpu_usage > 50){
             $('#cpu').addClass('layui-bg-red');
           }else{

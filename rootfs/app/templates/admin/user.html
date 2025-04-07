@@ -92,7 +92,7 @@
     var laydate = layui.laydate;
     var util = layui.util;
     var $ = layui.$;
-
+    var device = layui.device();
 
     
     // 创建渲染实例
@@ -109,7 +109,32 @@
       ,cellMinWidth: 80
       ,totalRow: true // 开启合计行
       ,page: true
-      ,cols: [[
+      ,cols:  device.mobile?[[
+              {field:'id', fixed: 'left', minWidth:20, title: 'ID', sort: true, totalRowText: '合计：'},
+              {field:'userName', title: '用户名', sort: true, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'},
+              {field:'expire', title:'到期时间',edit: 'text',templet: '#TPL-expire'},
+              {fixed: 'right', title:'操作', minWidth: 140, toolbar: '#barDemo'}
+      ]]:[[
+        {type: 'checkbox', fixed: 'left'}
+        ,{field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
+        ,{field:'userName', width:150, title: '用户名', sort: true, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
+        ,{field:'createTime', title:'注册时间', width: 180,templet: function(d){
+            var ago = util.timeAgo(d.createTime);
+            return ago;
+          }
+        }
+        ,{field:'cellphone', title:'手机号码', width: 180, sort: true}
+        ,{field:'role', title:'角色', width: 180, sort: true,templet: function(d){
+            if (d.role == "manager"){
+              return "超级管理员"
+            }else{
+              return "普通用户"
+            }
+           
+          }
+        }
+        ,{fixed: 'right', title:'操作', width: 140, minWidth: 140, toolbar: '#barDemo'}
+      ]]:[[
         {type: 'checkbox', fixed: 'left'}
         ,{field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
         ,{field:'userName', width:150, title: '用户名', sort: true, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
