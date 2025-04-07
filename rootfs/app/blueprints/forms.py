@@ -69,6 +69,11 @@ class LoginForm(wtforms.Form):
         if not user:
             raise wtforms.ValidationError("用户不存在！")
         else:
+            #如果用户存在 则验证是否启用 user.enable是1表示启用 0表示未启用
+            if not user.enable:
+                raise wtforms.ValidationError("用户未启用！")
+            if user.enable != "1":
+                raise wtforms.ValidationError("用户未启用！")
             password = self.password.data
             print(password)
             if not check_password_hash(user.password, password):

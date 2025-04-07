@@ -43,6 +43,7 @@ def getUsers():
         'userName': user.name,
         'createTime':user.created_at,
         'cellphone':user.cellphone,
+        'role':user.role,
         'expire':user.expire,
         'enable':user.enable,
     } for user in users]
@@ -89,7 +90,6 @@ def user_enable():
 
     print(user_id)
     user = UserModel.query.filter_by(id=user_id).first()
-
     res_json['code']= '0'
     if (enable == "true"):
         user.enable = 1
