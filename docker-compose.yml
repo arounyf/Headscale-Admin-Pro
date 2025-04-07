@@ -1,13 +1,14 @@
 services:  
   php:  
-    image: runyf/hs-admin:v2.0
-    # image: hs-admin
+    #build: .
+    image: registry.cn-hangzhou.aliyuncs.com/dubux/hs-admin:latest
     container_name: hs-admin  
     network_mode: host
-    restart: unless-stopped  
+    restart: unless-stopped
     volumes:  
-      - ~/hs-admin/app:/app
-      - ~/hs-admin/config:/etc/headscale
-      - ~/hs-admin/data:/var/lib/headscale
+      - ./config:/etc/headscale
+      - ./data:/var/lib/headscale
+      - ./caddy:/etc/caddy
+      - ./caddy_data:/root/.local/share/caddy
     environment:
-      - TZ=Asia/Shanghai
+      - SERVER_NET="eth0"
