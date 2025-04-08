@@ -1,4 +1,4 @@
-FROM caddy:2.7.6-builder AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/dubux/hs-admin AS builder
 
 RUN xcaddy build \
     --with github.com/caddy-dns/cloudflare \
@@ -12,7 +12,7 @@ ENV BASE_PATH="/etc/s6-overlay/s6-rc.d" \
     FLASK_APP=/app/app.py 
 
 COPY --chmod=755 ./rootfs /
-COPY --from=builder /usr/bin/caddy ${BASE_PATH}/caddy/caddy
+COPY --from=builder ${BASE_PATH}/caddy/caddy ${BASE_PATH}/caddy/caddy
 
 ARG ARCH="amd64"
 
