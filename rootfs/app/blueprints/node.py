@@ -206,7 +206,7 @@ def delete():
 
 @bp.route('/new_owner', methods=['GET','POST'])
 @login_required
-@role_required("admin")
+@role_required("manager")
 def new_owner():
 
     node_id = request.form.get('nodeId')

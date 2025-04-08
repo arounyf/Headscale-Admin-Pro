@@ -42,7 +42,7 @@ def role_required(role):
             if not current_user.is_authenticated:
                 return login_manager.unauthorized()
             if current_user.role != role:
-                return 'You do not have permission to access this page.', 403
+                return '你无权访问此页面.', 403
             return fn(*args, **kwargs)
         return decorated_view
     return wrapper

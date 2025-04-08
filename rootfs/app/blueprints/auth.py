@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from utils import record_log, reload_headscale,set_headscale,fecth_headscale
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
-from models import UserModel, ACLModel
+from models import UserModel, ACLModel,ConfigModel
 from flask import Blueprint, render_template, request, session,  redirect, url_for
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
@@ -43,8 +43,9 @@ def reg():
             username = form.username.data
             password = generate_password_hash(form.password.data)
             phone_number = form.phone.data
-            # 新注册用户默认禁用,管理员启用才能登录
-            enable=0
+            # 新注册用户从配置中取值,管理员启用才能登录
+            config = ConfigModel.query.first()
+            enable = config.acceptnewlogin if config else 0
             create_time = datetime.now()
             expire = create_time + timedelta(days=15) # 新用户注册默认15天后到期
 
@@ -130,7 +131,7 @@ def login():
 def logout():
     # session.clear()
     logout_user()
-    res_json['code'], res_json['msg'] = '0', 'logout success'
+    res_json['code'], res_json['msg'] = '0', '注销成功'
     return res_json
 
 

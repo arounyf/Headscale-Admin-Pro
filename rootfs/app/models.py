@@ -159,6 +159,14 @@ class ACLModel(db.Model):
         Index('idx_acl_user_id', 'user_id'),
     )
 
+# 系统配置表
+class ConfigModel(db.Model):
+    __tablename__ = 'config'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    acceptreg = db.Column(db.Text)
+    acceptlogin = db.Column(db.Text)
+    acceptnewlogin = db.Column(db.Text)
+
 
 class LogModel(db.Model):
     __tablename__ = 'log'

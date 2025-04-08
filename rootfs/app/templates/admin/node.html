@@ -114,12 +114,12 @@
       },
        cols: device.mobile? [[
             {field: 'id', title: 'ID', minWidth: 20},
-            {field: 'name', title: '节点名', minWidth: 100},
+            {field: 'name', title: '节点名', edit: 'text',minWidth: 100},
             {field: 'ip', title: 'IP 地址', minWidth: 120}
        ]]:[[
             {type: 'checkbox', fixed: 'left'}
             ,{field:'id', fixed: 'left', width:20, title: 'ID', sort: true, totalRowText: '合计：'}
-            ,{field:'userName', title: '用户名', sort: true, edit: 'text',totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
+            ,{field:'userName', title: '用户名', edit: 'text',sort: true,totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
             ,{field:'name', title: '节点名', edit: 'text'}
             ,{field:'ip', title: 'ip地址'}
             ,{field:'createTime', title:'创建时间', width: 180, sort: true}
@@ -129,7 +129,7 @@
             ,{fixed: 'right', title:'操作', minWidth: 60, toolbar: '#barDemo'}
         ]]
       ,error: function(res, msg){
-        console.log(res, msg)
+        
       },
       done: function(res, curr, count) {
       }
@@ -176,7 +176,6 @@
         dataType: 'json',
         data: {nodeId: data.id,userName: value},
         success:function(res){
-            // console.log(res.code)
             if(res.code == 0){
               layer.msg(res.msg, {icon: 6});
             }else{

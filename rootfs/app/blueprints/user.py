@@ -92,6 +92,10 @@ def user_enable():
     print(user_id)
     user = UserModel.query.filter_by(id=user_id).first()
     res_json['code']= '0'
+    if (user.role == 'manager'):
+        res_json['code'] = '1'
+        res_json['msg'] = ('管理员用户不可操作自己')
+        return res_json
     if (enable == "true"):
         user.enable = 1
         res_json['msg'] = ('启用成功')
