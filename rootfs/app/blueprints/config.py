@@ -22,7 +22,7 @@ def getConfig():
            ConfigModel.acceptreg,
            ConfigModel.acceptnewlogin
       )
-      config = query.fisrt()
+      config = query.first()
       if config:
            #对数据进行格式化
            config_data = {
