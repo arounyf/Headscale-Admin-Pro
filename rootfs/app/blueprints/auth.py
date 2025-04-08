@@ -97,7 +97,13 @@ def login():
             return redirect(url_for('admin.admin'))
         else:
             next_page = request.args.get('next', '')
-            return render_template('auth/login.html',next=next_page)
+            # 查询配置表是否允许新用户注册
+            config = ConfigModel.query.first()
+            # 默认不允许新用户注册
+            acceptreg = '0'
+            if config:
+                acceptreg =config.acceptreg    
+            return render_template('auth/login.html',next=next_page,acceptreg=acceptreg)
     else:
         form = LoginForm(request.form)
 

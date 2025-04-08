@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms.validators import  length, DataRequired, Regexp, Length, EqualTo
 from sqlalchemy import  text
 from exts import db
-from models import UserModel
+from models import UserModel, ConfigModel
 
 
 class RegisterForm(wtforms.Form):
@@ -33,7 +33,17 @@ class RegisterForm(wtforms.Form):
         if user:
             raise wtforms.ValidationError("该用户已注册！")
 
-
+    def validate(self):
+        # 检查是否允许注册
+        config = ConfigModel.query.first()
+        # 数据库未配置则默认不允许注册
+        if config:
+            acceptreg = config.acceptnewlogin
+        else:
+            acceptreg = '0'
+        if acceptreg == '0':
+            raise wtforms.ValidationError("当前系统禁止注册新用户！")
+        return super().validate()
 
 
 class LoginForm(wtforms.Form):
