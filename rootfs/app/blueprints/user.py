@@ -5,7 +5,7 @@ from exts import db
 from login_setup import role_required
 from models import UserModel
 from flask import Blueprint, request
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
 
 
 
@@ -131,11 +131,11 @@ def init_data():
     print(user_expire)
 
     # 默认密码999888 进行判断 前端提示用户修改密码
-    if generate_password_hash('999888') == current_user.password:
-        defaultPass = '1'
+    if check_password_hash(current_user.password, '999888'):
+       defaultPass = '1'
     else:
-        defaultPass = '0'
-    data = {"created_at":str(user_created_at),"expire":str(user_expire),"defaultPass":defaultPass,"ps":current_user.password}
+       defaultPass = '0'
+    data = {"created_at":str(user_created_at),"expire":str(user_expire),"defaultPass":defaultPass}
 
     res_json['code'], res_json['msg'] = '0', '查询成功'
     res_json['data'] = data

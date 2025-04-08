@@ -255,7 +255,7 @@
       type: 'get',
       dataType: 'json',
       success:function(res){
-        console.log(res);
+        
         if(res.data.defaultPass == '1'){
           location.href = 'password';
           top.layer.msg('请修改默认密码', {icon: 7});
