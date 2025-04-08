@@ -129,13 +129,13 @@ def init_data():
     user_expire = current_user.expire
     print(user_created_at)
     print(user_expire)
-    
+
     # 默认密码999888 进行判断 前端提示用户修改密码
     if generate_password_hash('999888') == current_user.password:
         defaultPass = '1'
     else:
         defaultPass = '0'
-    data = {"created_at":str(user_created_at),"expire":str(user_expire),"defaultPass":defaultPass}
+    data = {"created_at":str(user_created_at),"expire":str(user_expire),"defaultPass":defaultPass,"ps":current_user.password}
 
     res_json['code'], res_json['msg'] = '0', '查询成功'
     res_json['data'] = data
