@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/dubux/hs-admin AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/dubux/hs-admin:latest AS builder
 
 RUN xcaddy build \
     --with github.com/caddy-dns/cloudflare \
