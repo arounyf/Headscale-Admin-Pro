@@ -13,7 +13,13 @@ bp = Blueprint("auth", __name__, url_prefix='/')
 
 @bp.route('/')
 def index():
-    return render_template('index.html')
+    # 查询配置表是否允许新用户注册
+    config = ConfigModel.query.first()
+    # 默认不允许新用户注册
+    acceptreg = '0'
+    if config:
+        acceptreg =config.acceptreg    
+    return render_template('index.html',acceptreg=acceptreg)
 
 
 @bp.route('/get_captcha')
