@@ -42,7 +42,8 @@ class RegisterForm(wtforms.Form):
         else:
             acceptreg = '0'
         if acceptreg == '0':
-            raise wtforms.ValidationError("当前系统禁止注册新用户！")
+             self.errors['acceptreg'] = ["当前系统禁止注册新用户！"]
+             return False
         return super().validate()
 
 
