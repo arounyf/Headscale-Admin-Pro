@@ -28,23 +28,18 @@ class RegisterForm(wtforms.Form):
 
 
     def validate_username(self,field):
-        user = UserModel.query.filter_by(name=field.data).first()
-        print(user)
-        if user:
-            raise wtforms.ValidationError("该用户已注册！")
-
-    def validate(self):
-        # 检查是否允许注册
+         # 检查是否允许注册
         config = ConfigModel.query.first()
         # 数据库未配置则默认不允许注册
         if config:
             acceptreg = config.acceptnewlogin
         else:
             acceptreg = '0'
-        if acceptreg == '0':
-             self.errors['acceptreg'] = ["当前系统禁止注册新用户！"]
-             return False
-        return super().validate()
+        if acceptreg == '0':    
+            raise wtforms.ValidationError("当前系统禁止注册新用户！")    
+        user = UserModel.query.filter_by(name=field.data).first()
+        if user:
+            raise wtforms.ValidationError("该用户已注册！")
 
 
 class LoginForm(wtforms.Form):
@@ -72,9 +67,6 @@ class LoginForm(wtforms.Form):
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
                 raise wtforms.ValidationError("不支持从CLI创建的用户！")
-                user = UserModel.query.filter_by(name=field.data).first()
-
-
 
         self.user = user  # 存储查询到的用户对象
         if not user:
