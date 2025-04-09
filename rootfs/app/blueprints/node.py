@@ -20,7 +20,7 @@ def getNodes():
     # print(session)
     page = request.args.get('page', default=1, type=int)  # 默认第 1 页
     per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
-    return DatabaseManager(db).getNodePagination(current_user,page,per_page).to_dict()
+    return DatabaseManager(db).getNodePagination(current_user=current_user,page=page,per_page=per_page).to_dict()
 
 # 重命名节点
 @bp.route('/rename', methods=['POST'])

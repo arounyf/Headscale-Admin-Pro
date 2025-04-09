@@ -39,7 +39,7 @@ def re_acl():
             data=[],
             totalRow={}
         ).to_dict()
-    DatabaseManager(db).re_acl(acl_id,new_acl)
+    DatabaseManager(db).re_acl(acl_id=acl_id,new_acl=new_acl)
     return ResponseResult(
             code="0",
             msg="更新成功",

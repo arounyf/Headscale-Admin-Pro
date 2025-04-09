@@ -151,7 +151,7 @@ class DatabaseManager:
         return UserModel.query.filter_by(name=name).first()
         
     # 分页获取日志列表
-    def getLogPagination(current_user,page=1,per_page=10):
+    def getLogPagination(self,current_user,page=1,per_page=10):
         query = LogModel.query.with_entities(
         LogModel.id,
         LogModel.content,
@@ -174,7 +174,7 @@ class DatabaseManager:
             totalRow={"count": len(log_list)}  # 当前页的记录数
         )
     
-    def getNodePagination(current_user,page=1,per_page=10):
+    def getNodePagination(self,current_user,page=1,per_page=10):
         query = NodeModel.query.with_entities(
             NodeModel.id.label('id'),
             UserModel.name.label('userName'),
@@ -221,7 +221,7 @@ class DatabaseManager:
     
 
 
-    def getPreAuthKeyPagination(current_user,page=1,per_page=10):
+    def getPreAuthKeyPagination(self,current_user,page=1,per_page=10):
         query = PreAuthKeysModel.query.with_entities(
             PreAuthKeysModel.id,
             PreAuthKeysModel.key,
@@ -246,7 +246,7 @@ class DatabaseManager:
             totalRow={"count": len(pagination.items)}  # 当前页的记录数
         )
     
-    def getRoutePagination(current_user,page=1,per_page=10):
+    def getRoutePagination(self,current_user,page=1,per_page=10):
         query = RouteModel.query.with_entities(
             RouteModel.id,
             UserModel.name,
@@ -278,7 +278,7 @@ class DatabaseManager:
         )
     
 
-    def getUserPagination(page=1, per_page=10):
+    def getUserPagination(self,page=1, per_page=10):
         # 使用 func.strftime 格式化时间字段
         query = UserModel.query.with_entities(
             UserModel.id,

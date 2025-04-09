@@ -25,4 +25,4 @@ def updateConfig():
     acceptlogin = request.form.get('acceptlogin')
     acceptreg = request.form.get('acceptreg')
     acceptnewlogin= request.form.get('acceptnewlogin')
-    return DatabaseManager(db).updateConfig(acceptlogin,acceptreg,acceptnewlogin).dist() 
+    return DatabaseManager(db).updateConfig(acceptlogin=acceptlogin,acceptreg=acceptreg,acceptnewlogin=acceptnewlogin).dist() 

@@ -62,7 +62,7 @@ def reg():
                 user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,role=role,enable=enable)
                 newAcl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
                 new_acl = ACLModel(acl=newAcl, user_id=user.id)
-                DatabaseManager(db).register_user(user,new_acl)
+                DatabaseManager(db).register_user(user=user,new_acl=new_acl)
             except Exception as e:
                 return ResponseResult(
                             code="1",
@@ -160,7 +160,7 @@ def password():
     form = PasswdForm(request.form)
     if form.validate():
         new_password = form.new_password.data
-        DatabaseManager(db).password(new_password,current_user)
+        DatabaseManager(db).password(new_password=new_password,current_user=current_user)
         logout_user()
         return ResponseResult(
                             code="0",
