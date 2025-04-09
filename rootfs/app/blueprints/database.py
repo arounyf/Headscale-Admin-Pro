@@ -5,6 +5,7 @@ from models import UserModel, ACLModel,ConfigModel,LogModel,PreAuthKeysModel,Nod
 from typing import Any, List, Dict,Union
 from werkzeug.security import generate_password_hash
 from sqlalchemy import func
+from types import SimpleNamespace
 
 @dataclass
 class ResponseResult:
@@ -52,16 +53,13 @@ class DatabaseManager:
 
 
     def getConfig(self):
-         # 查询配置表是否允许新用户注册
-        config = ConfigModel.query.first() 
-        # 如果 config 不存在，返回所有属性为 "0" 的默认值
+        config = ConfigModel.query.first()
         if not config:
-               return {key: "0" for key in ConfigModel.__table__.columns.keys()}
-        # 遍历 config 的所有属性，如果属性值为空，则赋值为 "0"
-        return {
+            return SimpleNamespace(**{key: "0" for key in ConfigModel.__table__.columns.keys()})
+        return SimpleNamespace(**{
             key: (getattr(config, key) or "0")
             for key in ConfigModel.__table__.columns.keys()
-          }
+        })
     
     def addModel(self,model):
         # 检查是否是 SQLAlchemy 模型实例
