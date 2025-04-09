@@ -109,7 +109,7 @@ def read_acl():
             count=0,
             data=html_content,
             totalRow={}
-        ).to_dict  
+        )
 
 
 

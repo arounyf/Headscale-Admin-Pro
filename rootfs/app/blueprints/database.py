@@ -14,7 +14,9 @@ class ResponseResult:
 
     def to_dict(self):
         return asdict(self)
-
+    
+    def __json__(self):
+        return self.to_dict() 
 
 
 # 数据库操作层
