@@ -3,7 +3,7 @@ import functools
 
 from flask import redirect, url_for, render_template
 from flask_login import LoginManager, current_user
-from .database import DatabaseManager
+from database import DatabaseManager
 from exts import db
 
 

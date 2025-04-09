@@ -8,7 +8,7 @@ from datetime import datetime
 import subprocess
 from flask import current_app
 import requests 
-from .database import DatabaseManager
+from database import DatabaseManager
 
 
 def record_log(user_id, log_content):
