@@ -10,7 +10,6 @@ from .database import DatabaseManager,ResponseResult
 bp = Blueprint("acl", __name__, url_prefix='/api/acl')
 
 
-res_json = {'code': '', 'data': '', 'msg': ''}
 
 
 @bp.route('/getACL')
@@ -39,7 +38,7 @@ def re_acl():
             count=0,
             data=[],
             totalRow={}
-        ).to_dict
+        ).to_dict()
     DatabaseManager(db).re_acl(acl_id,new_acl)
     return ResponseResult(
             code="0",
@@ -47,7 +46,7 @@ def re_acl():
             count=0,
             data=[],
             totalRow={}
-        ).to_dict
+        ).to_dict()
 
 
 @bp.route('/rewrite_acl', methods=['GET','POST'])
@@ -70,14 +69,14 @@ def rewrite_acl():
             count=0,
             data=str(e),
             totalRow={}
-        )
+        ).to_dict()
     return ResponseResult(
             code="0",
             msg="写入成功",
             count=0,
             data=acl_data,
             totalRow={}
-        )
+        ).to_dict()
 
 
 @bp.route('/read_acl', methods=['GET','POST'])
@@ -92,7 +91,7 @@ def read_acl():
             count=0,
             data="",
             totalRow={}
-        ) 
+        ).to_dict() 
     html_content = "<table border='1' style='margin:10px;'>"
     html_content += "<tr><th>Action</th><th>Source</th><th>Destination</th></tr>"
     for item in acl_data.get('acls',{}):
@@ -109,7 +108,7 @@ def read_acl():
             count=0,
             data=html_content,
             totalRow={}
-        )
+        ).to_dict()
 
 
 
