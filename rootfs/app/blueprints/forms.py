@@ -6,8 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms.validators import  length, DataRequired, Regexp, Length, EqualTo
 from sqlalchemy import  text
 from exts import db
-from models import UserModel, ConfigModel
-
+from .database import DatabaseManager
 
 class RegisterForm(wtforms.Form):
     username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
@@ -29,7 +28,7 @@ class RegisterForm(wtforms.Form):
 
     def validate_username(self,field):
          # 检查是否允许注册
-        config = ConfigModel.query.first()
+        config = DatabaseManager(db).getConfig()
         # 数据库未配置则默认不允许注册
         if config:
             acceptreg = config.acceptnewlogin
@@ -37,7 +36,7 @@ class RegisterForm(wtforms.Form):
             acceptreg = '0'
         if acceptreg == '0':    
             raise wtforms.ValidationError("当前系统禁止注册新用户！")    
-        user = UserModel.query.filter_by(name=field.data).first()
+        user = DatabaseManager(db).getUserByName(name=field.data)
         if user:
             raise wtforms.ValidationError("该用户已注册！")
 
@@ -63,7 +62,7 @@ class LoginForm(wtforms.Form):
         # 目前发现使用headscale user create创建的时间存在9位微秒
 
         try:
-            user = UserModel.query.filter_by(name=field.data).first()
+            user = DatabaseManager(db).getUserByName(ame=field.data)
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
                 raise wtforms.ValidationError("不支持从CLI创建的用户！")

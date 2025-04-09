@@ -71,7 +71,7 @@ def page_not_found(e):
 # 自定义500错误处理器
 @app.errorhandler(500)
 def page_error(e):
-    return render_template('auth/error.html',message="500")
+    return render_template('auth/error.html', message="500"), 500
 
 
 if __name__ == '__main__':
