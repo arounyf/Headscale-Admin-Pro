@@ -39,7 +39,7 @@ def re_acl():
             count=0,
             data=[],
             totalRow={}
-        )
+        ).to_dict
     DatabaseManager(db).re_acl(acl_id,new_acl)
     return ResponseResult(
             code="0",
@@ -47,7 +47,7 @@ def re_acl():
             count=0,
             data=[],
             totalRow={}
-        )
+        ).to_dict
 
 
 @bp.route('/rewrite_acl', methods=['GET','POST'])
@@ -70,14 +70,14 @@ def rewrite_acl():
             count=0,
             data=str(e),
             totalRow={}
-        ) 
+        ).to_dict 
     return ResponseResult(
             code="0",
             msg="写入成功",
             count=0,
             data=acl_data,
             totalRow={}
-        ) 
+        ).to_dict  
 
 
 @bp.route('/read_acl', methods=['GET','POST'])
@@ -109,7 +109,7 @@ def read_acl():
             count=0,
             data=html_content,
             totalRow={}
-        ) 
+        ).to_dict  
 
 
 
