@@ -62,7 +62,7 @@ class LoginForm(wtforms.Form):
         # 目前发现使用headscale user create创建的时间存在9位微秒
 
         try:
-            user = DatabaseManager(db).getUserByName(ame=field.data)
+            user = DatabaseManager(db).getUserByName(name=field.data)
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
                 raise wtforms.ValidationError("不支持从CLI创建的用户！")
