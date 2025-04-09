@@ -15,7 +15,7 @@ bp = Blueprint("config", __name__, url_prefix='/api/config')
 @login_required
 @role_required("manager")
 def getConfig():
-      return DatabaseManager.getSysConfig().dist()
+      return DatabaseManager(db).getSysConfig().dist()
 
 @bp.route('/updateConfig', methods=['POST'])
 @login_required

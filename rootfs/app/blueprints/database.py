@@ -180,7 +180,7 @@ class DatabaseManager:
             UserModel.name.label('userName'),
             NodeModel.given_name.label('name'),
             NodeModel.user_id,
-            NodeModel.ipv4.lable('ip'),
+            NodeModel.ipv4.label('ip'),
             NodeModel.host_info,
             func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.last_seen,'localtime').label('lastTime'),
             func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.expiry,'localtime').label('expiry'),
@@ -250,7 +250,7 @@ class DatabaseManager:
         query = RouteModel.query.with_entities(
             RouteModel.id,
             UserModel.name,
-            NodeModel.given_name.lablel('NodeName'),
+            NodeModel.given_name.label('NodeName'),
             RouteModel.prefix.label('route'),
             RouteModel.enabled.label('enable'),
             func.strftime('%Y-%m-%d %H:%M:%S', RouteModel.created_at,'localtime').label('createTime')
