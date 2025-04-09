@@ -29,7 +29,7 @@ def getUsers():
 def re_expire():
     user_id = request.form.get('user_id')
     new_expire = datetime.strptime(request.form.get('new_expire'), '%Y-%m-%d %H:%M:%S')
-    return DatabaseManager(db).updateUserExpire(user_id, new_expire).to_dict()
+    return DatabaseManager(db).updateUserExpire(user_id=user_id, new_expire=new_expire).to_dict()
 
 
 @bp.route('/user_enable',methods=['GET','POST'])
@@ -38,7 +38,7 @@ def re_expire():
 def user_enable():
     user_id = request.form.get('user_id')
     enable = request.form.get('enable')
-    return DatabaseManager(db).userEnable(user_id, enable).to_dict()
+    return DatabaseManager(db).userEnable(user_id=user_id, enable=enable).to_dict()
 
 
 @bp.route('/delUser',methods=['GET','POST'])
@@ -46,7 +46,7 @@ def user_enable():
 @role_required("manager")
 def delUser():
     user_id = request.form.get('user_id')
-    return DatabaseManager(db).delUser(user_id).to_dict()
+    return DatabaseManager(db).delUser(user_id=user_id).to_dict()
 
 @bp.route('/init_data',methods=['GET'])
 @login_required

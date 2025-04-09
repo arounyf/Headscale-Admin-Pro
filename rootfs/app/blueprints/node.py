@@ -38,7 +38,7 @@ def rename():
         'Authorization': f'Bearer {bearer_token}'
     }
     # 判断节点是否存在
-    node = DatabaseManager(db).getNodeById(machine_id)
+    node = DatabaseManager(db).getNodeById(machine_id=machine_id)
     if not node:
         return ResponseResult(
             code="1",

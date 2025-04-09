@@ -147,7 +147,7 @@ class DatabaseManager:
                 totalRow={}
             )
 
-    def getUserByName(name):
+    def getUserByName(self,name):
         return UserModel.query.filter_by(name=name).first()
         
     # 分页获取日志列表
@@ -216,7 +216,7 @@ class DatabaseManager:
             totalRow={"count": len(nodes)}  # 当前页的记录数
         )
     
-    def getNodeById(machine_id):
+    def getNodeById(self,machine_id):
         return NodeModel.query.filter_by(id=machine_id).first()
     
 
@@ -300,7 +300,7 @@ class DatabaseManager:
             totalRow={"count": len(users)}  # 当前页的记录数
         )
     
-    def reExpire(user_id,new_expire):
+    def updateUserExpire(self,user_id,new_expire):
         user=UserModel.query.filter_by(id=user_id).first()
         user.expire = new_expire
         db.session.commit()
@@ -312,7 +312,7 @@ class DatabaseManager:
             totalRow={}
         )
     
-    def userEnable(user_id,enable):
+    def userEnable(self,user_id,enable):
         user = UserModel.query.filter_by(id=user_id).first()
         if (user.role == 'manager'):
             code = '1'
@@ -334,7 +334,7 @@ class DatabaseManager:
             totalRow={}
         )
     
-    def delUser(user_id):
+    def delUser(self,user_id):
         user = UserModel.query.filter_by(id=user_id).first()
         db.session.delete(user)
         db.session.commit()
