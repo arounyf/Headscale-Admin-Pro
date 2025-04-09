@@ -5,7 +5,7 @@ from login_setup import role_required
 from models import ACLModel
 from flask import Blueprint,  request
 from utils import reload_headscale,fecth_headscale,set_headscale
-from database import DatabaseManager,ResponseResult
+from .database import DatabaseManager,ResponseResult
 
 bp = Blueprint("acl", __name__, url_prefix='/api/acl')
 
