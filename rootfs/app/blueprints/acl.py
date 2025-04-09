@@ -70,14 +70,14 @@ def rewrite_acl():
             count=0,
             data=str(e),
             totalRow={}
-        ).to_dict 
+        )
     return ResponseResult(
             code="0",
             msg="写入成功",
             count=0,
             data=acl_data,
             totalRow={}
-        ).to_dict  
+        )
 
 
 @bp.route('/read_acl', methods=['GET','POST'])

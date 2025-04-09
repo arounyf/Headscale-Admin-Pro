@@ -15,8 +15,9 @@ class ResponseResult:
     def to_dict(self):
         return asdict(self)
     
-    def __json__(self):
-        return self.to_dict() 
+    def __call__(self):
+        # 直接返回字典格式，Flask 会自动转换为 JSON
+        return self.to_dict()
 
 
 # 数据库操作层
