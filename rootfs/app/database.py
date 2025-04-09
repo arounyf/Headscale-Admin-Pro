@@ -1,11 +1,12 @@
 import json
 from dataclasses import dataclass, asdict
 from exts import db
-from models import UserModel, ACLModel,ConfigModel,LogModel,PreAuthKeysModel,NodeModel,RouteModel
+from models import UserModel, ACLModel,ConfigModel,LogModel,PreAuthKeysModel,NodeModel,RouteModel,LogModel
 from typing import Any, List, Dict,Union
 from werkzeug.security import generate_password_hash
 from sqlalchemy import func
 from types import SimpleNamespace
+from datetime import datetime
 
 @dataclass
 class ResponseResult:
@@ -22,7 +23,6 @@ class ResponseResult:
 
 
 # 数据库操作层 不要引入视图操作层的内容
-# 该类负责与数据库进行交互，执行CRUD操作
 class DatabaseManager:
     def __init__(self, db):
         self.db = db
@@ -315,8 +315,13 @@ class DatabaseManager:
     def userEnable(self,user_id,enable):
         user = UserModel.query.filter_by(id=user_id).first()
         if (user.role == 'manager'):
-            code = '1'
-            msg = ('管理员用户不可操作自己')
+            return ResponseResult(
+            code='1',
+            msg='管理员用户不可操作自己',
+            count=0,
+            data=[],
+            totalRow={}
+        )
         if (enable == "true"):
             code='0'
             user.enable = 1
@@ -345,3 +350,36 @@ class DatabaseManager:
             data=[],
             totalRow={}
         )
+    
+
+    # 系统初始化加载
+    def userLoader(self,username):
+        try:
+            # 根据用户名查询数据库中的用户
+            user = UserModel.query.filter_by(id=username).first()
+            if user:
+                return user
+            return None
+        except Exception as e:
+            print(f"Error loading user: {e}")
+            return None
+        
+    # 记录日志
+    def recordLog(self,user_id,log_content):
+        try:
+            # 创建日志记录实例
+            new_log = LogModel(
+                user_id=user_id,
+                content=log_content,
+                created_at=datetime.now()
+            )
+            # 将实例添加到数据库会话
+            db.session.add(new_log)
+            # 提交会话以保存更改
+            db.session.commit()
+            return True
+        except Exception as e:
+            # 若出现异常，回滚会话
+            db.session.rollback()
+            print(f"日志记录失败: {e}")
+            return False

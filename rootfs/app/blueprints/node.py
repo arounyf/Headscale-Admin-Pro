@@ -2,7 +2,7 @@ import json
 from flask_login import current_user, login_required
 from sqlalchemy import func
 import requests
-from .database import DatabaseManager,ResponseResult
+from ..database import DatabaseManager,ResponseResult
 from exts import db
 
 from login_setup import role_required

@@ -8,34 +8,11 @@ from datetime import datetime
 import subprocess
 from flask import current_app
 import requests 
+from .database import DatabaseManager
 
 
 def record_log(user_id, log_content):
-    from models import LogModel
-    """
-    记录日志到数据库
-    :param user_id: 用户 ID
-    :param log_content: 日志内容
-    :return: 成功返回 True，失败返回 False
-    """
-    try:
-        # 创建日志记录实例
-        new_log = LogModel(
-            user_id=user_id,
-            content=log_content,
-            created_at=datetime.now()
-        )
-        # 将实例添加到数据库会话
-        db.session.add(new_log)
-        # 提交会话以保存更改
-        db.session.commit()
-        return True
-    except Exception as e:
-        # 若出现异常，回滚会话
-        db.session.rollback()
-        print(f"日志记录失败: {e}")
-        return False
-
+    return DatabaseManager(db).recordLog(user_id=user_id, log_content=log_content)
 
 
 

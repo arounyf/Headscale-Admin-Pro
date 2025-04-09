@@ -4,7 +4,7 @@ from exts import db
 from login_setup import role_required
 from models import UserModel,  ConfigModel
 from flask import Blueprint,  request
-from .database import DatabaseManager,ResponseResult
+from ..database import DatabaseManager,ResponseResult
 
 bp = Blueprint("config", __name__, url_prefix='/api/config')
 

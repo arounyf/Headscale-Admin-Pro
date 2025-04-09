@@ -6,7 +6,7 @@ from login_setup import role_required
 from models import UserModel
 from flask import Blueprint, request
 from werkzeug.security import check_password_hash
-from .database import DatabaseManager,ResponseResult
+from ..database import DatabaseManager,ResponseResult
 from exts import db
 
 

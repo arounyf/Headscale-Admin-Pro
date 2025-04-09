@@ -243,11 +243,8 @@
     //事件-开关操作
     form.on('switch(test-table-sexDemo)', function(obj){
       var $ = layui.$;
-      var json = JSON.parse(decodeURIComponent($(this).data('json')));
-      //layer.tips(this.value + ' ' + this.name + '：'+ obj.elem.checked, obj.othis);
-      
+      var json = JSON.parse(decodeURIComponent($(this).data('json')));      
       json = table.clearCacheKey(json);
-      console.log(obj.elem.checked); 
 
       console.log("执行用户状态操作");
       $.ajax({
@@ -261,9 +258,15 @@
               layer.msg(res.msg, {icon: 6});
             }else{
               layer.msg(res.msg, {icon: 7});
-              obj.update();
+              obj.elem.checked = !obj.elem.checked; // 还原开关状态
+              form.render('checkbox'); // 重新渲染表单
             }
-        }
+        },
+        error: function() {
+        layer.msg("请求失败，请稍后再试！", { icon: 7 });
+        obj.elem.checked = !obj.elem.checked; // 还原开关状态
+        form.render('checkbox'); // 重新渲染表单
+       }
       });
       
     });
