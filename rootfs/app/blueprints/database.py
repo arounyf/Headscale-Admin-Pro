@@ -148,11 +148,7 @@ class DatabaseManager:
             )
 
     def getUserByName(name):
-        user = UserModel.query.filter_by(name=name).first()
-        if user:
-            return user
-        else:
-            raise ValueError("用户不存在！")
+        return UserModel.query.filter_by(name=name).first()
         
     # 分页获取日志列表
     def getLogPagination(current_user,page=1,per_page=10):
