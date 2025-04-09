@@ -120,6 +120,14 @@ def login():
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
+            else:
+                return ResponseResult(
+                            code="0",
+                            msg="登录成功",
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
         else:
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
