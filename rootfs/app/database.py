@@ -156,7 +156,7 @@ class DatabaseManager:
         LogModel.id,
         LogModel.content,
         UserModel.name,
-        func.strftime('%Y-%m-%d %H:%M:%S', LogModel.created_at,'localtime').label('create_time'),
+        func.strftime('%Y-%m-%d %H:%M:%S', LogModel.created_at,'localtime').label('create_time')
         # 可以添加其他需要的字段
     ) .join(UserModel, LogModel.user_id == UserModel.id) 
         # 判断用户角色
