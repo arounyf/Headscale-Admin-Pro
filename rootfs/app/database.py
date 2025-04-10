@@ -366,11 +366,10 @@ class DatabaseManager:
         
     # 记录日志
     def recordLog(self,user_id,log_content):
-        user_id_str = str(user_id)
         try:
             # 创建日志记录实例
             new_log = LogModel(
-                user_id=user_id_str,
+                user_id=user_id,
                 content=log_content,
                 created_at=datetime.now()
             )

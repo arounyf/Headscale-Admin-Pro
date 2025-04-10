@@ -171,7 +171,7 @@ class ConfigModel(db.Model):
 class LogModel(db.Model):
     __tablename__ = 'log'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
     __table_args__ = (
