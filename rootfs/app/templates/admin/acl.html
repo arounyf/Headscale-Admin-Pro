@@ -85,7 +85,7 @@
 
     table.on('tool(test-table-index)', function(obj){
       oldValue = obj.data['acl']
-        layer.prompt({title: '编辑ACL', 
+        layer.prompt({title: '编辑'+obj.data['userName']+'的ACL规则', 
         formType: 2,
         area: ['800px','600px'],
         value:oldValue
