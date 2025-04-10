@@ -64,7 +64,6 @@
         ,icon: 'layui-icon-tips'
       }]
       ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,lineStyle: 'height: 150px;'
       ,cellMinWidth: 80
       ,totalRow: true // 开启合计行
       ,page: true
@@ -85,7 +84,32 @@
     });
 
     table.on('tool(test-table-index)', function(obj){
-
+      oldValue = obj.data['acl']
+        layer.prompt({title: '编辑ACL', 
+        formType: 2,
+        area: ['800px','600px'],
+        value:oldValue
+        }, function(value, index, elem){
+            obj.update({
+                acl: value         
+              });
+             layer.close(index);
+              $.ajax({
+              url:'/api/acl/re_acl',
+              type: 'post',
+              dataType: 'json',
+              data: {aclId: obj.data['id'],newAcl: value},
+              success:function(res){
+                if(res.code == 0){
+                  layer.msg(res.msg, {icon: 6});
+                  obj.update({ acl: value });
+                }else{
+                  layer.msg(res.msg, {icon: 7});
+                  obj.update({ acl: oldValue });
+                }
+              }
+            });
+        });
     })
 
     // 工具栏事件
@@ -149,33 +173,7 @@
             }
           });
         break;
-        case 'aclEdit':
-        oldValue = obj.data['acl']
-        layer.prompt({title: '编辑ACL', 
-        formType: 2,
-        area: ['800px','600px'],
-        value:oldValue
-        }, function(value, index, elem){
-            obj.update({
-                acl: value         
-              });
-             layer.close(index);
-              $.ajax({
-              url:'/api/acl/re_acl',
-              type: 'post',
-              dataType: 'json',
-              data: {aclId: obj.data['id'],newAcl: value},
-              success:function(res){
-                if(res.code == 0){
-                  layer.msg(res.msg, {icon: 6});
-                  obj.update({ acl: value });
-                }else{
-                  layer.msg(res.msg, {icon: 7});
-                  obj.update({ acl: oldValue });
-                }
-              }
-            });
-        });
+        
         
 
       
