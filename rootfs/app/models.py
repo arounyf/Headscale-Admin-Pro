@@ -171,9 +171,9 @@ class ConfigModel(db.Model):
 class LogModel(db.Model):
     __tablename__ = 'log'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Text)
-    content = db.Column(db.Text)
-    created_at = db.Column(db.DateTime)
+    user_id = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
     __table_args__ = (
         Index('idx_log_user_id', 'user_id'),
     )
