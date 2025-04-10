@@ -76,7 +76,7 @@
         {type: 'checkbox'}
         ,{field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
         ,{field:'userName', title:'用户名',width:180,totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-        ,{field:'acl', title:'ACL',width:800,edit: 'text'}
+        ,{field:'acl', title:'ACL',width:800,edit: 'text',event:'aclEdit'}
     
       ]]
       ,error: function(res, msg){
@@ -147,6 +147,34 @@
             }
           });
         break;
+        case 'aclEdit':
+        oldValue = obj.data['acl']
+        layer.prompt({title: '编辑ACL', 
+        formType: 2,
+        area: ['800px','600px'],
+        value:oldValue
+        }, function(value, index, elem){
+            obj.update({
+                acl: value         
+              });
+             layer.close(index);
+              $.ajax({
+              url:'/api/acl/re_acl',
+              type: 'post',
+              dataType: 'json',
+              data: {aclId: obj.data['id'],newAcl: value},
+              success:function(res){
+                if(res.code == 0){
+                  layer.msg(res.msg, {icon: 6});
+                  obj.update({ acl: value });
+                }else{
+                  layer.msg(res.msg, {icon: 7});
+                  obj.update({ acl: oldValue });
+                }
+              }
+            });
+        });
+        
 
       
       };
