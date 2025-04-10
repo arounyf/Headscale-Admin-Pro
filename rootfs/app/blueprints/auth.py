@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta
-from utils import record_log, reload_headscale,set_headscale,fecth_headscale
+from utils import record_log, reload_headscale,rate_limit
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
-from models import UserModel, ACLModel,ConfigModel
+from models import UserModel, ACLModel
 from flask import Blueprint, render_template, request, session,  redirect, url_for
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
-from sqlalchemy import  text
 from database import DatabaseManager,ResponseResult
 bp = Blueprint("auth", __name__, url_prefix='/')
 
@@ -21,6 +20,7 @@ def index():
 
 
 @bp.route('/get_captcha')
+@rate_limit(limit=12, window=60) # 每分钟最多 12 次请求
 def get_captcha():
 
     code,content = get_captcha_code_and_content()
@@ -112,6 +112,14 @@ def login():
 
         if form.validate():
             user = form.user  # 获取表单中查询到的用户对象
+            if not user:
+                return ResponseResult(
+                    code="1",
+                    msg="用户不存在或验证失败",
+                    count=0,
+                    data=[],
+                    totalRow={}
+                ).to_dict()
             login_user(user)
             session.permanent = True
             record_log(user.id, "登录成功")

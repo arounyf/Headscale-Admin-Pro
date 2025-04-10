@@ -63,6 +63,8 @@ class LoginForm(wtforms.Form):
 
         try:
             user = DatabaseManager(db).getUserByName(name=field.data)
+            if not user:
+               raise wtforms.ValidationError("用户不存在！")
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
                 raise wtforms.ValidationError("不支持从CLI创建的用户！")
@@ -77,7 +79,6 @@ class LoginForm(wtforms.Form):
             if user.enable != "1":
                 raise wtforms.ValidationError("用户未启用，请联系管理员！")
             password = self.password.data
-            print(password)
             if not check_password_hash(user.password, password):
                 print(field.data)
                 raise wtforms.ValidationError("密码错误！")
