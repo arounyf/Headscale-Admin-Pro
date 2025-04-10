@@ -1,6 +1,6 @@
 from flask_login import login_required, current_user
 from flask import Blueprint,  request
-from ..database import DatabaseManager
+from database import DatabaseManager
 from exts import db
 bp = Blueprint("log", __name__, url_prefix='/api/log')
 

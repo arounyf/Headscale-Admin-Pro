@@ -4,7 +4,7 @@ import requests
 from flask import Blueprint, render_template, request, session, make_response, g, redirect, url_for, jsonify, \
     current_app
 
-from ..database import DatabaseManager,ResponseResult
+from database import DatabaseManager,ResponseResult
 from exts import db
 
 bp = Blueprint("preauthkey", __name__, url_prefix='/api/preauthkey')

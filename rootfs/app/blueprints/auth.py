@@ -8,7 +8,7 @@ from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
 from sqlalchemy import  text
-from ..database import DatabaseManager,ResponseResult
+from database import DatabaseManager,ResponseResult
 bp = Blueprint("auth", __name__, url_prefix='/')
 
 

@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms.validators import  length, DataRequired, Regexp, Length, EqualTo
 from sqlalchemy import  text
 from exts import db
-from ..database import DatabaseManager
+from database import DatabaseManager
 
 class RegisterForm(wtforms.Form):
     username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
