@@ -87,8 +87,9 @@
       oldValue = obj.data['acl']
         layer.prompt({title: '编辑'+obj.data['userName']+'的ACL规则', 
         formType: 2,
-        area: ['800px','600px'],
-        value:oldValue
+        area: ['800px','auto'],
+        value:oldValue,
+        scrollbar:false
         }, function(value, index, elem){
             obj.update({
                 acl: value         
