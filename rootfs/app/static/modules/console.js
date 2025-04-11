@@ -275,65 +275,7 @@ layui.define(function(exports){
     renderDataView(0);  
   });
 
-  //最新订单
-  layui.use('table', function(){
-    var $ = layui.$
-    ,table = layui.table;
-    
-    //今日热搜
-    table.render({
-      elem: '#LAY-index-topSearch'
-      ,url: layui.setter.paths.base + 'json/console/top-search.js' //模拟接口
-      ,page: true
-      ,cols: [[
-        {type: 'numbers', fixed: 'left'}
-        ,{field: 'keywords', title: '关键词', minWidth: 300, templet: '<div><a href="https://www.baidu.com/s?wd={{ d.keywords }}" target="_blank" class="layui-table-link">{{ d.keywords }}</div>'}
-        ,{field: 'frequency', title: '搜索次数', minWidth: 120, sort: true}
-        ,{field: 'userNums', title: '用户数', sort: true}
-      ]]
-      ,skin: 'line'
-    });
-    
-    //今日热贴
-    table.render({
-      elem: '#LAY-index-topCard'
-      ,url: layui.setter.paths.base + 'json/console/top-card.js' //模拟接口
-      ,page: true
-      ,cellMinWidth: 120
-      ,cols: [[
-        {type: 'numbers', fixed: 'left'}
-        ,{field: 'title', title: '标题', minWidth: 300, templet: '<div><a href="{{ d.href }}" target="_blank" class="layui-table-link">{{ d.title }}</div>'}
-        ,{field: 'username', title: '发帖者'}
-        ,{field: 'channel', title: '类别'}
-        ,{field: 'crt', title: '点击率', sort: true}
-      ]]
-      ,skin: 'line'
-    });
-
-    //项目进展
-    table.render({
-      elem: '#LAY-home-homepage-console'
-      ,url: layui.setter.paths.base + 'json/console/prograss.js' //模拟接口
-      ,cols: [[
-        {type: 'checkbox', fixed: 'left'}
-        ,{field: 'prograss', title: '任务'}
-        ,{field: 'time', title: '所需时间'}
-        ,{field: 'complete', title: '完成情况'
-          ,templet: function(d){
-            if(d.complete == '已完成'){
-              return '<del style="color: #16b777;">'+ d.complete +'</del>'
-            }else if(d.complete == '进行中'){
-              return '<span style="color: #FFB800;">'+ d.complete +'</span>'
-            }else{
-              return '<span style="color: #FF5722;">'+ d.complete +'</span>'
-            }
-          }
-        }
-      ]]
-      ,skin: 'line'
-    });
-
-  });
+   
   
   exports('console', {})
 });
