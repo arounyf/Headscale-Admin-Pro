@@ -20,7 +20,7 @@ def index():
 
 
 @bp.route('/get_captcha')
-@rate_limit(limit=12, window=60) # 每分钟最多 12 次请求
+@rate_limit(limit=30, window=60) # 每分钟最多 30 次请求
 def get_captcha():
 
     code,content = get_captcha_code_and_content()
