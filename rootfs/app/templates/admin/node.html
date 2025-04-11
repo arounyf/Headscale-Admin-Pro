@@ -75,20 +75,7 @@
     $(document).ready(function() {
         var message = $('input[name="message"]').val();
           if (message) {
-              layer.alert(message, {
-              time: 5*1000,
-              success: function(layero, index){
-                var timeNum = this.time/1000, setText = function(start){
-                  layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
-                };
-                setText(!0);
-                this.timer = setInterval(setText, 1000);
-                if(timeNum <= 0) clearInterval(this.timer);
-              }
-              ,end: function(){
-                clearInterval(this.timer);
-              }
-            });
+            layer.msg(message, {icon: 0}, function(){});
           }
     });
 
