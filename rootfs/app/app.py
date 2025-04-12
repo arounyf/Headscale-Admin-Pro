@@ -22,7 +22,7 @@ app.config.from_object(config)
 app.json.ensure_ascii = False  #让接口返回的中文不转码
 
 
-app.config['SQLALCHEMY_ECHO'] = True
+app.config['SQLALCHEMY_ECHO'] = False
 
 # 初始化 Flask-login
 init_login_manager(app)
@@ -76,4 +76,4 @@ def page_error(e):
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000,debug=True)
+    app.run(host="0.0.0.0", port=5000,debug=False)
