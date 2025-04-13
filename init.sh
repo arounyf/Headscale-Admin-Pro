@@ -17,6 +17,7 @@ CONTAINER_APP_DIR="/app"
 
 mkdir /app
 mkdir /etc/headscale
+mkdir /var/lib/headscale
 
 # 检查容器内的 headscale 目录是否为空
 if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
