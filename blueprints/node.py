@@ -172,3 +172,36 @@ def new_owner():
     res_json['data'] = str(response.text)
 
     return res_json
+
+
+@bp.route('/rename', methods=['POST'])
+@login_required
+def rename():
+
+    node_id = request.form.get('nodeId')
+    node_name = request.form.get('nodeName')
+
+    print(node_id)
+    print(node_name)
+
+    server_host = current_app.config['SERVER_HOST']
+    bearer_token = current_app.config['BEARER_TOKEN']
+    headers = {
+        'Authorization': f'Bearer {bearer_token}'
+    }
+
+    url = f'{server_host}/api/v1/node/{node_id}/rename/{node_name}'  # 替换为实际的目标 URL
+
+
+
+    response = requests.post(url, headers=headers)
+    # 额外字段
+    res_json = {
+        'code': '',
+        'data': '',
+        'msg': '',
+    }
+    res_json['code'], res_json['msg'] = '0', '更新成功'
+    res_json['data'] = str(response.text)
+
+    return res_json

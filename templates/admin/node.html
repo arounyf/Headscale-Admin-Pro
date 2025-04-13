@@ -118,10 +118,10 @@
 
       if (field == "name"){
         $.ajax({
-        url:'/api/rename',
+        url:'/api/node/rename',
         type: 'post',
         dataType: 'json',
-        data: {machine_id: obj.data.id,machine_name: obj.value},
+        data: {nodeId: obj.data.id,nodeName: obj.value},
         success:function(res){
             // console.log(res.code)
             if(res.code == 0){
