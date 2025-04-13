@@ -27,6 +27,7 @@ def getUsers():
         func.strftime('%Y-%m-%d %H:%M:%S', UserModel.created_at, ).label('created_at'),
         UserModel.cellphone,
         func.strftime('%Y-%m-%d %H:%M:%S', UserModel.expire, ).label('expire'),
+        UserModel.role,
         UserModel.enable,
         # 可以添加其他需要的字段
     )
@@ -44,6 +45,7 @@ def getUsers():
         'createTime':user.created_at,
         'cellphone':user.cellphone,
         'expire':user.expire,
+        'role':user.role,
         'enable':user.enable,
     } for user in users]
 
