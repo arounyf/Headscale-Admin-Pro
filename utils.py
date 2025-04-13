@@ -112,7 +112,7 @@ def reload_headscale():
     try:
         # 执行 重载ACL 命令
         #result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
-        reload_command = "ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1"
+        reload_command = "kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
         result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
         
         res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',result.stdout
