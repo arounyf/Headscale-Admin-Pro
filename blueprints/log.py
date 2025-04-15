@@ -21,7 +21,7 @@ def getLogs():
         LogModel.id,
         LogModel.content,
         UserModel.name,
-        func.strftime('%Y-%m-%d %H:%M:%S', PreAuthKeysModel.created_at,'localtime').label('created_at'),
+        func.strftime('%Y-%m-%d %H:%M:%S', LogModel.created_at,'localtime').label('created_at'),
         # 可以添加其他需要的字段
     ) .join(UserModel, LogModel.user_id == UserModel.id)
 
@@ -42,6 +42,8 @@ def getLogs():
 
     } for log in logs]
 
+    print("----------------------------------------------")
+    print(logs)
     # 接口返回json数据
     res_json = {
         'code': '0',
