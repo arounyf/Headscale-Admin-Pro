@@ -1,4 +1,4 @@
-config.py
+config.ini
 data.json
 __pycache__/
 blueprints/__pycache__/

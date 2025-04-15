@@ -1,5 +1,5 @@
 from flask import Flask,  render_template
-import config
+import config_loader
 from exts import db, enable_sqlite_foreign_keys
 from blueprints.auth import bp as auth_bp
 from blueprints.admin import bp as admin_bp
@@ -16,7 +16,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import  get_data_record
 
 app= Flask(__name__)
-app.config.from_object(config)
+app.config.from_object(config_loader)
 app.json.ensure_ascii = False  #让接口返回的中文不转码
 
 
