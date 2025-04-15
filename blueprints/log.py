@@ -42,8 +42,8 @@ def getLogs():
 
     } for log in logs]
 
-    print("----------------------------------------------")
-    print(logs)
+    # print("----------------------------------------------")
+    # print(logs)
     # 接口返回json数据
     res_json = {
         'code': '0',
