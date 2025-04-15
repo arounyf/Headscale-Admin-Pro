@@ -5,7 +5,8 @@ WORKDIR /init_data
 
 # 将当前目录下的内容复制到工作目录中
 COPY . /init_data
-RUN ls | grep sh && sleep 3
+RUN mv config.example.py config.py
+RUN mv data-example.json data.json
 RUN chmod u+x init.sh
 
 
