@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from utils import record_log, reload_headscale,rate_limit
-from flask_login import login_user, logout_user, current_user, login_required
+from flask_login import make_response,login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
 from flask import Blueprint, render_template, request, session,  redirect, url_for
@@ -25,7 +25,9 @@ def get_captcha():
 
     code,content = get_captcha_code_and_content()
     session['code'] = code
-    return content
+    response = make_response(content)
+    response.headers['Content-Type'] = 'image/png'
+    return response
 
 
 res_json = {'code': '', 'data': '', 'msg': ''}
