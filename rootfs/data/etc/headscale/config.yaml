@@ -12,6 +12,9 @@
 #
 server_url: http://192.168.6.5:81
 
+#redirect_url: http://192.168.6.5:500
+# redirect web console
+
 # Address to listen to / bind to on the server
 #
 # For production:
