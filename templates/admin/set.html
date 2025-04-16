@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>系统设置</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/layui/css/layui.css" media="all">
+  <link rel="stylesheet" href="/static/adminui/dist/css/admin.css" media="all">
+</head>
+<body>
+
+  <div class="layui-fluid">
+    <div class="layui-row layui-col-space15">
+      <div class="layui-col-md12">
+        <div class="layui-card">
+          <div class="layui-card-header">系统设置</div>
+          <div class="layui-card-body" pad15>
+            
+            <div class="layui-form" wid100 lay-filter="">
+              <div class="layui-form-item">
+                <label class="layui-form-label">apikey</label>
+                <div class="layui-input-block">
+                  <input type="text" name="sitename" value="{{ apikey }}" placeholder="you api key" class="layui-input">
+                </div>
+              </div>
+              <div class="layui-form-item">
+                <label class="layui-form-label">tailscale host</label>
+                <div class="layui-input-block">
+                  <input type="text" name="domain" lay-verify="url" placeholder="domain.com" value="{{ server_url }}" class="layui-input">
+                </div>
+              </div>
+              <div class="layui-form-item">
+                <label class="layui-form-label">网卡名</label>
+                <div class="layui-input-block">
+                  <input type="text" name="domain" lay-verify="required" placeholder="domain.com" value="{{ server_net }}" class="layui-input">
+                </div>
+              </div>
+
+              
+              <div class="layui-form-item layui-form-text">
+                <label class="layui-form-label">服务器分布代码</label>
+                <div class="layui-input-block">
+                  <textarea name="title" class="layui-textarea"  lay-verify="required"  placeholder="title">{{ region_html }}</textarea>
+                </div>
+              </div>
+
+
+              <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button class="layui-btn" lay-submit lay-filter="set_website">确认保存</button>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/layui/layui.js"></script>
+  <script>
+  layui.config({
+    base: '/static/' // 静态资源所在路径
+  }).use(['index', 'set']);
+  </script>
+<!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "43b4b1a48ab04f89a979a2c4f6be6118"}'></script><!-- Cloudflare Pages Analytics --></body>
+</html>

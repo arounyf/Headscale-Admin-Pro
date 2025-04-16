@@ -10,6 +10,8 @@ from blueprints.route import bp as route_bp
 from blueprints.acl import bp as acl_bp
 from blueprints.preauthkey import bp as preauthkey_bp
 from blueprints.log import bp as log_bp
+from blueprints.set import bp as set_bp
+
 from flask_migrate import Migrate
 from login_setup import init_login_manager
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -41,6 +43,7 @@ app.register_blueprint(route_bp)
 app.register_blueprint(acl_bp)
 app.register_blueprint(preauthkey_bp)
 app.register_blueprint(log_bp)
+app.register_blueprint(set_bp)
 
 
 #定义一个定时任务函数,每个一个小时记录一下流量使用情况
