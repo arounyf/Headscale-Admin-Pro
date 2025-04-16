@@ -1,5 +1,11 @@
 #!/command/with-contenv bash
 CADDY_PATH="${BASE_PATH}/caddy"
+CADDYFILE_PATH="/etc/caddy/Caddyfile"
+
+if [ ! -s "$CADDYFILE_PATH" ]; then
+    exit 1
+fi
+
 exec \
     /command/s6-notifyoncheck -d -n 300 -w 1000 -c "nc -z localhost 5000" \
     "${CADDY_PATH}/caddy" run --config /etc/caddy/Caddyfile
