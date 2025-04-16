@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 from utils import record_log, reload_headscale,rate_limit
-from flask_login import make_response,login_user, logout_user, current_user, login_required
+from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
-from flask import Blueprint, render_template, request, session,  redirect, url_for
+from flask import make_response,Blueprint, render_template, request, session,  redirect, url_for
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
