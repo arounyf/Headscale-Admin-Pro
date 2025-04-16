@@ -22,6 +22,7 @@ RUN apt-get install iputils-ping -y
 RUN apt-get install python3 -y
 RUN apt-get install pip -y
 RUN apt-get install wget -y
+RUN apt-get install -y iproute2
 
 
 # 安装flask
@@ -35,6 +36,8 @@ RUN pip3 install psutil
 RUN pip3 install flask_login
 RUN pip3 install requests
 RUN pip3 install apscheduler
+RUN pip3 install ruamel.yaml
+
 
 # 下载headscale
 
