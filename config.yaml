@@ -402,3 +402,9 @@ logtail:
 # default static port 41641. This option is intended as a workaround for some buggy
 # firewall devices. See https://tailscale.com/kb/1181/firewalls/ for more information.
 randomize_client_port: false
+
+
+
+apikey: vQ9Q4vK.yX14nC-qOVcRKJ56Z-v3HC_B2SGrAqun
+server_net: ens18
+region_html: <tr><td>1</td><td>四川</td><td>200 Mbps</td></tr><tr><td>2</td><td>浙江</td><td>200 Mbps</td></tr>
