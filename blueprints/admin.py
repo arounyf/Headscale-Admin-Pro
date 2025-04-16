@@ -1,7 +1,7 @@
 from flask_login import login_required, current_user
 from login_setup import role_required
 from flask import Blueprint, render_template,  current_app
-
+from utils import get_server_net
 bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 
@@ -108,8 +108,16 @@ def set():
     apikey = current_app.config['BEARER_TOKEN']
     server_url = current_app.config['SERVER_URL']
     server_net = current_app.config['SERVER_NET']
+
+    options_html = ""
+    for interface in get_server_net()["network_interfaces"]:
+        if interface == server_net:
+            options_html += f'<option value="{interface}" selected>{interface}</option>\n'
+        else:
+            options_html += f'<option value="{interface}">{interface}</option>\n'
+
     region_html = current_app.config['REGION_HTML']
-    return render_template('admin/set.html',apikey = apikey,server_url = server_url,server_net = server_net,region_html = region_html)
+    return render_template('admin/set.html',apikey = apikey,server_url = server_url,server_net = options_html,region_html = region_html)
 
 
 @login_required

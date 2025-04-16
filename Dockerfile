@@ -5,8 +5,8 @@ WORKDIR /init_data
 
 # 将当前目录下的内容复制到工作目录中
 COPY . /init_data
-RUN mv config.example.ini config.ini
 RUN mv data-example.json data.json
+RUN mv config-example.yaml config.yaml
 RUN chmod u+x init.sh
 
 
@@ -41,4 +41,4 @@ RUN pip3 install apscheduler
 RUN wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64
 
 
-CMD ["sh", "-c", "./init.sh './headscale serve & python3 app.py'"]
+CMD ["sh", "-c", "./init.sh 'headscale serve & python3 app.py'"]

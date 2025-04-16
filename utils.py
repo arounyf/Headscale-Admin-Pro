@@ -119,3 +119,25 @@ def reload_headscale():
     except subprocess.CalledProcessError as e:
         res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
     return res_json
+
+
+
+def get_server_net():
+    try:
+        # 执行系统命令获取网卡信息
+        result = subprocess.run(['ip', 'link', 'show'], capture_output=True, text=True, check=True)
+        output = result.stdout
+
+        # 解析输出结果，提取网卡名
+        interfaces = []
+        for line in output.split('\n'):
+            if line.strip().startswith('1:') or line.strip().startswith('2:'):
+                # 提取网卡名
+                interface = line.split(':')[1].strip()
+                interfaces.append(interface)
+
+        return {'network_interfaces': interfaces}
+    except subprocess.CalledProcessError as e:
+        return {'error': f'执行命令时出错: {e.stderr}'}, 500
+    except Exception as e:
+        return {'error': f'发生未知错误: {str(e)}'}, 500

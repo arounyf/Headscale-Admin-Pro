@@ -1,10 +1,13 @@
-import json
+import subprocess
+
 from flask_login import login_required
+
 from exts import db
 from login_setup import role_required
-from models import UserModel,  ACLModel
-from flask import Blueprint,  request
-from utils import reload_headscale
+from flask import Blueprint, request,current_app
+from ruamel.yaml import YAML
+
+from models import ApiKeys
 
 bp = Blueprint("set", __name__, url_prefix='/api/set')
 
@@ -12,49 +15,75 @@ bp = Blueprint("set", __name__, url_prefix='/api/set')
 res_json = {'code': '', 'data': '', 'msg': ''}
 
 
-@bp.route('/getset')
+@bp.route('/upset' , methods=['GET','POST'])
 @login_required
 @role_required("manager")
 def upset():
-    # print(session)
-    page = request.args.get('page', default=1, type=int)  # 默认第 1 页
-    per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
-    #
-    # 分页查询
-    # 分页查询
+    apikey = request.form.get('apiKey')
+    server_net = request.form.get('serverNet')
+    server_url = request.form.get('serverUrl')
+    region_html = request.form.get('regionHtml')
 
-    # 使用 func.strftime 格式化时间字段
-    query = ACLModel.query.with_entities(
-        ACLModel.id,
-        ACLModel.acl,
-        UserModel.name,
-        # 可以添加其他需要的字段
-    ) .join(UserModel, ACLModel.user_id == UserModel.id)
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    acls = pagination.items
-    #
-    # 数据格式化
-    acls_list = [{
-        'id': acl.id,
-        'acl': acl.acl,
-        'userName': acl.name,
+    # 创建 YAML 对象，设置保留注释
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    # 读取 YAML 配置文件
+    with open('/etc/headscale/config.yaml', 'r') as file:
+        config_yaml = yaml.load(file)
 
-    } for acl in acls]
+    # 修改配置项的值
+    config_yaml['apikey'] = apikey
+    config_yaml['server_url'] = server_url
+    config_yaml['server_net'] = server_net
+    config_yaml['region_html'] = region_html
 
-    # 接口返回json数据
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-        'count': pagination.total,
-        'totalRow': {
-            'count': len(acls)
-        }
-    }
+    current_app.config['BEARER_TOKEN'] = config_yaml['apikey']
+    current_app.config['SERVER_URL'] = config_yaml['server_url']
+    current_app.config['SERVER_NET'] = config_yaml['server_net']
+    current_app.config['REGION_HTML'] = config_yaml['region_html']
 
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    res_json['data'] = acls_list
+
+    # 将更新后的配置写回到文件
+    with open('/etc/headscale/config.yaml', 'w') as file:
+        yaml.dump(config_yaml, file)
+
+
+    res_json['code'], res_json['msg'] = '0', '修改成功'
+    res_json['data'] = ""
+
+
+    return res_json
+
+
+
+@bp.route('/get_apikey' , methods=['POST'])
+@login_required
+@role_required("manager")
+def get_apikey():
+    #获取之前先清理
+    try:
+        # 删除所有记录
+        num_rows_deleted = ApiKeys.query.delete()
+        # 提交事务
+        db.session.commit()
+        print(f"成功删除 {num_rows_deleted} 条记录")
+    except Exception as e:
+        # 回滚事务
+        db.session.rollback()
+        print(f"删除记录时出现错误: {e}")
+
+    try:
+        # 执行 重载ACL 命令
+        # result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
+        headscale_command = "headscale apikey create"
+        result = subprocess.run(headscale_command, shell=True, capture_output=True, text=True, check=True)
+
+        res_json['code'], res_json['msg'], res_json['data'] = '0', '执行成功', result.stdout
+    except subprocess.CalledProcessError as e:
+        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
+
 
 
     return res_json

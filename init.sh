@@ -56,8 +56,8 @@ else
 fi
 
 cd /app
-
-chmod u+x headscale
+mv headscale /usr/bin
+chmod u+x /usr/bin/headscale
 
 # 执行传递进来的启动命令
 eval $start_command
