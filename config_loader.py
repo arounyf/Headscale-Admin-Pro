@@ -1,8 +1,4 @@
 import configparser
-from datetime import timedelta
-
-from sqlalchemy import event
-
 
 # 读取配置文件
 config = configparser.ConfigParser()
