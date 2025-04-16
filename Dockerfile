@@ -6,7 +6,7 @@ WORKDIR /init_data
 # 将当前目录下的内容复制到工作目录中
 COPY . /init_data
 RUN mv data-example.json data.json
-RUN mv config-example.yaml config.yaml
+RUN mv config.example.yaml config.yaml
 RUN chmod u+x init.sh
 
 
