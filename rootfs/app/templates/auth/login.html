@@ -51,13 +51,16 @@ h2{margin-top:100px;margin-bottom:50px;text-align:center;font-weight:300;font-si
         </div>
         <div class="layui-col-xs5">
           <div style="margin-left: 10px;">
-            <img src=""  id="captchaImage">
+            <img src=""  id="captchaImage" alt="">
           </div>
         </div>
       </div>
     </div>
     <div class="layui-form-item">
-    <a href="#reg"  id="reg" style="float: left; margin-top: 7px;">注册账号</a>
+      <a href="#reg" id="reg" style="float: left; margin-top: 7px;" 
+      {% if acceptreg == "0" %} hidden {% endif %}>
+      注册账号
+     </a>
       <a href="#forget" id="forget" style="float: right; margin-top: 7px;">忘记密码？</a>
     </div>
     <div class="layui-form-item">

@@ -1,29 +1,33 @@
 from datetime import datetime, timedelta
-from utils import record_log, reload_headscale,set_headscale,fecth_headscale
+from utils import record_log, reload_headscale,rate_limit
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
-from flask import Blueprint, render_template, request, session,  redirect, url_for
+from flask import make_response,Blueprint, render_template, request, session,  redirect, url_for
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
-from sqlalchemy import  text
+from database import DatabaseManager,ResponseResult
 bp = Blueprint("auth", __name__, url_prefix='/')
 
 
 @bp.route('/')
 def index():
-    return render_template('index.html')
+    # 查询配置表是否允许新用户注册
+    config = DatabaseManager(db).getConfig()
+    # 默认不允许新用户注册
+    return render_template('index.html',acceptreg=config.acceptreg)
 
 
 @bp.route('/get_captcha')
+@rate_limit(limit=30, window=60) # 每分钟最多 30 次请求
 def get_captcha():
 
     code,content = get_captcha_code_and_content()
     session['code'] = code
-
-    print(request.endpoint)  #
-    return content
+    response = make_response(content)
+    response.headers['Content-Type'] = 'image/png'
+    return response
 
 
 res_json = {'code': '', 'data': '', 'msg': ''}
@@ -43,46 +47,51 @@ def reg():
             username = form.username.data
             password = generate_password_hash(form.password.data)
             phone_number = form.phone.data
-            # 新注册用户默认禁用,管理员启用才能登录
-            enable=0
+            # 新注册用户从配置中取值,管理员启用才能登录
+            config = DatabaseManager(db).getConfig()
+            enable = config.acceptnewlogin
             create_time = datetime.now()
-            expire = create_time + timedelta(days=15) # 新用户注册默认15天后到期
-
-            print(expire)
-            print(create_time.strftime("%Y-%m-%d %H:%M:%f"))
+             
             if (username == "admin"):
                 role = "manager"
+                # 管理员注册默认100年到期
+                expire = create_time + timedelta(days=36500)
             else:
                 role = "user"
+                # 新用户注册默认15天后到期
+                expire = create_time + timedelta(days=15)
             try:    
                 user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,role=role,enable=enable)
-                db.session.add(user)
-                db.session.commit()
-
-                #acl操作
                 newAcl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
-                print(newAcl)
                 new_acl = ACLModel(acl=newAcl, user_id=user.id)
-                db.session.add(new_acl)
-                db.session.commit()
+                DatabaseManager(db).register_user(user=user,new_acl=new_acl)
             except Exception as e:
-                db.session.rollback()
-                res_json['code'],res_json['msg'] = '1','注册失败,请稍后再试！'
-                return res_json
-
-            res_json['data'] = reload_headscale()
-            
-            res_json['code'],res_json['msg'] = '0','注册成功'
-
+                return ResponseResult(
+                            code="1",
+                            msg="注册失败,请稍后再试！",
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
+            return ResponseResult(
+                            code="0",
+                            msg="注册成功",
+                            count=0,
+                            data=reload_headscale(),
+                            totalRow={}
+                        ).to_dict()
 
 
         else:
-            # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
-
-            res_json['code'],res_json['msg'] = '1',str(first_value[0])
-        return res_json
+            return ResponseResult(
+                            code="1",
+                            msg=str(first_value[0]),
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
 
 
 
@@ -96,17 +105,24 @@ def login():
             return redirect(url_for('admin.admin'))
         else:
             next_page = request.args.get('next', '')
-            return render_template('auth/login.html',next=next_page)
+            # 查询配置表是否允许新用户注册
+            config = DatabaseManager(db).getConfig()
+            # 默认不允许新用户注册
+            return render_template('auth/login.html',next=next_page,acceptreg=config.acceptreg)
     else:
         form = LoginForm(request.form)
 
         if form.validate():
             user = form.user  # 获取表单中查询到的用户对象
+            if not user:
+                return ResponseResult(
+                    code="1",
+                    msg="用户不存在或验证失败",
+                    count=0,
+                    data=[],
+                    totalRow={}
+                ).to_dict()
             login_user(user)
-            res_json['code'], res_json['msg'] = '0', '登录成功'
-
-            print(session)
-            print("登录成功")
             session.permanent = True
             record_log(user.id, "登录成功")
 
@@ -114,24 +130,38 @@ def login():
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
+            else:
+                return ResponseResult(
+                            code="0",
+                            msg="登录成功",
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
         else:
-            # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
+            return ResponseResult(
+                            code="1",
+                            msg=str(first_value[0]),
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
 
-            # res_json['code'], res_json['msg'] = '1', '密码错误'
-            res_json['code'] = '1'
-            res_json['msg'] = str(first_value[0])
-        return res_json
 
 
 @bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    # session.clear()
     logout_user()
-    res_json['code'], res_json['msg'] = '0', 'logout success'
-    return res_json
+    return ResponseResult(
+                            code="0",
+                            msg='注销成功',
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
 
 
 @bp.route('/password', methods=['GET','POST'])
@@ -139,22 +169,26 @@ def logout():
 def password():
     form = PasswdForm(request.form)
     if form.validate():
-        # current_user.id
         new_password = form.new_password.data
-        user = UserModel.query.filter_by(id=current_user.id).first()
-        user.password = generate_password_hash(new_password)
-        db.session.commit()
-        res_json['code'], res_json['msg'] = '0', '修改成功'
+        DatabaseManager(db).password(new_password=new_password,current_user=current_user)
         logout_user()
+        return ResponseResult(
+                            code="0",
+                            msg='修改成功',
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
     else:
-        # return form.errors
         first_key = next(iter(form.errors.keys()))
         first_value = form.errors[first_key]
-
-        # res_json['code'], res_json['msg'] = '1', '密码错误'
-        res_json['code'] = '1'
-        res_json['msg'] = str(first_value[0])
-    return res_json
+        return ResponseResult(
+                            code="0",
+                            msg=str(first_value[0]),
+                            count=0,
+                            data=[],
+                            totalRow={}
+                        ).to_dict()
 
 
 

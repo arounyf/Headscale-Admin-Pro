@@ -3,7 +3,8 @@ import functools
 
 from flask import redirect, url_for, render_template
 from flask_login import LoginManager, current_user
-from models import UserModel
+from database import DatabaseManager
+from exts import db
 
 
 login_manager = LoginManager()
@@ -24,15 +25,7 @@ def unauthorized():
 
 @login_manager.user_loader
 def user_loader(username):
-    try:
-        # 根据用户名查询数据库中的用户
-        user = UserModel.query.filter_by(id=username).first()
-        if user:
-            return user
-        return None
-    except Exception as e:
-        print(f"Error loading user: {e}")
-        return None
+    return DatabaseManager(db).userLoader(username=username)
 
 
 def role_required(role):
@@ -42,7 +35,7 @@ def role_required(role):
             if not current_user.is_authenticated:
                 return login_manager.unauthorized()
             if current_user.role != role:
-                return 'You do not have permission to access this page.', 403
+                return '你无权访问此页面.', 403
             return fn(*args, **kwargs)
         return decorated_view
     return wrapper

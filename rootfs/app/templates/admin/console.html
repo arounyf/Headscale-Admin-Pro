@@ -223,7 +223,7 @@
     </div>
   </div>
 
-  <script src="/static/layui/layui.js?t=1"></script>
+  <script src="/static/layui/layui.js"></script>
   <script>
   layui.config({
     base: '/static/' // 静态资源所在路径
@@ -255,7 +255,8 @@
       type: 'get',
       dataType: 'json',
       success:function(res){
-        if(res.data.defaultPass == '0'){
+        
+        if(res.data.defaultPass == '1'){
           location.href = 'password';
           top.layer.msg('请修改默认密码', {icon: 7});
         }
@@ -283,35 +284,44 @@
       }
     });
 
-    setInterval(function(){
-      $.ajax({
-        url:'/api/system/info',
-        type: 'get',
-        dataType: 'json',
-        success:function(res){
-  
-          if(res.cpu_usage > 50){
-            $('#cpu').addClass('layui-bg-red');
-          }else{
-            $('#cpu').removeClass('layui-bg-red');
-          }
+     // 长轮询函数
+     function fetchSysInfo() {
+        $.ajax({
+            url: '/api/system/info', // 后端接口地址
+            type: 'get',
+            timeout: 10000, 
+            dataType: 'json',
+            success: function(res) {
+                // 更新页面内容
+                if(res.cpu_usage > 50){
+                    $('#cpu').addClass('layui-bg-red');
+                } else {
+                    $('#cpu').removeClass('layui-bg-red');
+                }
 
-          if(res.memory_usage_percent > 50){
-            $('#memory').addClass('layui-bg-red');
-          }else{
-            $('#memory').removeClass('layui-bg-red');
-          }
+                if(res.memory_usage_percent > 50){
+                    $('#memory').addClass('layui-bg-red');
+                } else {
+                    $('#memory').removeClass('layui-bg-red');
+                }
 
-          element.progress('cpu-filter-progress', res.cpu_usage+'%');
-          element.progress('memory-filter-progress', res.memory_usage_percent+'%');
-          $('#sent').text((res.sent_speed/1024).toFixed(2)+'M');
-          $('#recv').text((res.recv_speed/1024).toFixed(2)+'M');
+                element.progress('cpu-filter-progress', res.cpu_usage + '%');
+                element.progress('memory-filter-progress', res.memory_usage_percent + '%');
+                $('#sent').text((res.sent_speed / 1024).toFixed(2) + 'M');
+                $('#recv').text((res.recv_speed / 1024).toFixed(2) + 'M');
 
-        }
-      });
-
-    },2000)
-
+                // 在成功响应后立即发起下一个请求
+                fetchSysInfo();
+            },
+            error: function() {
+                console.error('获取系统信息失败');
+                // 如果请求失败，稍后重试
+                setTimeout(fetchSysInfo, 5000);
+            }
+        });
+    }
+    // 启动长轮询
+    fetchSysInfo();
 
   });
   </script>

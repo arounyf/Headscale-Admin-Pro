@@ -1,22 +1,18 @@
 from io import BytesIO
-from random import  choices
+from random import choices
 from captcha.image import ImageCaptcha
-from PIL import Image
+from typing import Tuple
 
-def gen_captcha(content="0123456789"):
+ 
+def get_captcha_code_and_content(content: str = "0123456789", length: int = 4) -> Tuple[str, bytes]:
     image = ImageCaptcha()
-    captcha_text = "".join(choices(content,k=4))
-    captcha_image = Image.open(image.generate(captcha_text))
-    return captcha_text,captcha_image
+    captcha_text = "".join(choices(content, k=length))
+    image_stream = BytesIO()
+    image.write(captcha_text, image_stream)  # 直接将图片写入 BytesIO
+    return captcha_text, image_stream.getvalue()
 
-def get_captcha_code_and_content():
-    code,image = gen_captcha()
-    out = BytesIO()
-    image.save(out,"png")
-    out.seek(0)
-    content = out.read()
-    return code,content
 
-if __name__=="__main__":
-    code,content = get_captcha_code_and_content()
-    print(code,content)
+if __name__ == "__main__":
+    code, content = get_captcha_code_and_content(content="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", length=6)
+    print(f"Captcha Code: {code}")
+    print(f"Captcha Content (binary): {content[:20]}...")

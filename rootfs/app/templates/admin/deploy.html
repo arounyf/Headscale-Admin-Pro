@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>入门文档</title>
+  <title>指令中心</title>
   <!-- 请勿在项目正式环境中引用该 layui.css 地址 -->
   <link href="/static/layui/css/layui.css" rel="stylesheet">
 </head>
@@ -52,7 +52,7 @@
 </div>
 
 <!-- 请勿在项目正式环境中引用该 layui.js 地址 -->
-<script src="//unpkg.com/layui@2.9.14/dist/layui.js"></script>  
+<script src="{{ url_for('static',filename='layui/layui.js') }}"></script>
 <script>
 layui.use(['form', 'laydate', 'util'], function(){
   var form = layui.form;

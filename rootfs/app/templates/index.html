@@ -49,7 +49,10 @@
 </ul>
 <h1 id="title">异地组网中心</h1>
 <div id="reg">
-    <button type="button" class="layui-btn layui-btn-lg reg">注册</button>
+  <button type="button" class="layui-btn layui-btn-lg reg" 
+  {% if acceptreg == "0" %} style="display: none;" {% endif %}>
+  注册
+  </button>
     <button type="button" class="layui-btn layui-btn-lg login">登录</button>
 </div>
 

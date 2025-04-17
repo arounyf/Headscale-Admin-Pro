@@ -24,6 +24,7 @@ def admin():
         'deploy': {'html': '<dd data-name="deploy"><a lay-href="deploy">指令</a></dd>', 'roles': ['manager', 'user']},
         'help': {'html': '<dd data-name="help"><a lay-href="help">文档</a></dd>', 'roles': ['manager', 'user']},
         'acl': {'html': '<dd data-name="acl"><a lay-href="acl">ACL</a></dd>', 'roles': ['manager']},
+        'config': {'html': '<dd data-name="config"><a lay-href="config">配置</a></dd>', 'roles': ['manager']},
         'preauthkey': {'html': '<dd data-name="preauthkey"><a lay-href="preauthkey">密钥</a></dd>', 'roles': ['manager', 'user']},
         'log': {'html': '<dd data-name="log"><a lay-href="log">日志</a></dd>', 'roles': ['manager', 'user']}
     }
@@ -94,6 +95,12 @@ def deploy():
 @login_required
 def help():
     return render_template('admin/help.html')
+
+@bp.route('/config')
+@login_required
+@role_required("manager")
+def config():
+    return render_template('admin/config.html')
 
 
 

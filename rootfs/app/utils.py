@@ -6,36 +6,15 @@ import psutil
 from exts import db
 from datetime import datetime
 import subprocess
-from flask import current_app
+from flask import current_app,request, jsonify
 import requests 
+from database import DatabaseManager
+from time import time
 
+request_timestamps = {}
 
 def record_log(user_id, log_content):
-    from models import LogModel
-    """
-    记录日志到数据库
-    :param user_id: 用户 ID
-    :param log_content: 日志内容
-    :return: 成功返回 True，失败返回 False
-    """
-    try:
-        # 创建日志记录实例
-        new_log = LogModel(
-            user_id=user_id,
-            content=log_content,
-            created_at=datetime.now()
-        )
-        # 将实例添加到数据库会话
-        db.session.add(new_log)
-        # 提交会话以保存更改
-        db.session.commit()
-        return True
-    except Exception as e:
-        # 若出现异常，回滚会话
-        db.session.rollback()
-        print(f"日志记录失败: {e}")
-        return False
-
+    return DatabaseManager(db).recordLog(user_id=user_id, log_content=log_content)
 
 
 
@@ -153,4 +132,23 @@ def fecth_headscale():
             policy = json.loads(response_data.get('policy', '{}'))
             return policy
         except Exception as e:
-            return None          
+            return None
+
+# 限制请求频率
+#:param limit: 时间窗口内的最大请求次数
+#:param window: 时间窗口（秒）
+def rate_limit(limit: int = 5, window: int = 60):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            user_ip = request.remote_addr
+            now = time()
+            if user_ip not in request_timestamps:
+                request_timestamps[user_ip] = []
+            # 移除过期的请求记录
+            request_timestamps[user_ip] = [t for t in request_timestamps[user_ip] if now - t < window]
+            if len(request_timestamps[user_ip]) >= limit:
+                return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+            request_timestamps[user_ip].append(now)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator                  

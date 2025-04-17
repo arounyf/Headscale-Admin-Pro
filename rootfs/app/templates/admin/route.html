@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
+  <title>路由中心</title>
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -78,10 +78,10 @@
       ]]:[[
             {type: 'checkbox'}
             ,{field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
-            ,{field:'name', title:'用户名',width:200, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-            ,{field:'NodeName', title:'节点',width:300}
-            ,{field:'route', title:'路由',width:180}
-            ,{field:'createTime', title: '创建时间', width:300, sort: true}
+            ,{field:'name', title:'用户名', totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
+            ,{field:'NodeName', title:'节点'}
+            ,{field:'route', title:'路由'}
+            ,{field:'createTime', title: '创建时间', width:100, sort: true}
             ,{field:'enable', title:'启用', width:160, templet: '#test-table-switchTpl', unresize: true}
         ]]
       ,error: function(res, msg){

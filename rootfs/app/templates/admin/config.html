@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>配置中心</title>
+  <!-- 请勿在项目正式环境中引用该 layui.css 地址 -->
+  <link href="/static/layui/css/layui.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="layui-bg-gray" style="padding: 16px;">
+  <div class="layui-row layui-col-space15">
+    <div class="layui-col-md12">
+      <div class="layui-card">
+    
+
+          <div class="layui-card-body">
+            <form class="layui-form" action="">
+              <div class="layui-form-item">
+              
+                <label class="layui-form-label">是否开启注册</label>
+                <div class="layui-input-block">
+                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptReg" title="ON|OFF">
+                </div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">普通用户是否禁止登录</label>
+                 <div class="layui-input-block">
+                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptLogin" title="ON|OFF">
+                 </div> 
+                </div>
+                
+                <div class="layui-form-item">
+                  <label class="layui-form-label">新注册用户是否允许登录</label>
+                   <div class="layui-input-block">
+                    <input type="checkbox" lay-skin="switch" lay-filter="AcceptNewLogin" title="ON|OFF">
+                   </div> 
+                  </div>   
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 请勿在项目正式环境中引用该 layui.js 地址 -->
+<script src="{{ url_for('static',filename='layui/layui.js') }}"></script>
+<script>
+layui.use(['form', 'laydate', 'util'], function(){
+  var form = layui.form;
+  var layer = layui.layer;
+  var laydate = layui.laydate;
+  var util = layui.util;
+  var $ = layui.$;
+
+  $.ajax({
+        url:'/api/config/getConfig',
+        type: 'post',
+        dataType: 'json',
+        data: {},
+        success:function(res){
+            if(res.code == 0){
+                if(res.data.acceptreg == 1){
+                  $('input[lay-filter="AcceptReg"]').prop('checked', true);
+                }else{
+                  $('input[lay-filter="AcceptReg"]').prop('checked', false);
+                }
+
+                if(res.data.acceptlogin == 1){
+                  $('input[lay-filter="AcceptLogin"]').prop('checked', true);
+                }else{
+                  $('input[lay-filter="AcceptLogin"]').prop('checked', false);
+                }
+
+                if(res.data.acceptnewlogin == 1){
+                  $('input[lay-filter="AcceptNewLogin"]').prop('checked', true);
+                }else{
+                  $('input[lay-filter="AcceptNewLogin"]').prop('checked', false);
+                }
+               
+            } 
+            form.render('checkbox');
+
+          }
+        });
+
+
+  function updateConfig(key, value) {
+    $.ajax({
+        url: '/api/config/updateConfig',
+        type: 'post',
+        dataType: 'json',
+        data: { [key]: value },
+        success: function(res) {
+            if (res.code == 0) {
+                layer.msg('操作成功', { icon: 6 });
+            } else {
+                layer.msg('操作失败', { icon: 7 });
+            }
+        }
+    });
+}
+
+   
+
+  // 是否开启注册
+  form.on('switch(AcceptReg)', function(data){
+    if(this.checked){
+      accept_reg = 1;
+    }else{
+      accept_reg = 0;
+    }
+    updateConfig('acceptreg', accept_reg);
+  });
+
+
+  // 是否禁用普通用户登录
+  form.on('switch(AcceptLogin)', function(data){
+    
+    if(this.checked){
+      accept_login = 1;
+    }else{
+      accept_login = 0;
+    }
+    updateConfig('acceptlogin', accept_login);
+  });
+
+
+  // 新注册用户是否允许登录
+  form.on('switch(AcceptNewLogin)', function(data){
+  if(this.checked){
+    accept_new_login=1;
+  }else{
+    accept_new_login=0;
+  }
+  updateConfig('acceptnewlogin', accept_new_login);
+  });
+});
+  
+  
+
+  
+ 
+</script>
+
+
+</body>
+</html>

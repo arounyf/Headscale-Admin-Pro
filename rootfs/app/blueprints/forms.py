@@ -6,8 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms.validators import  length, DataRequired, Regexp, Length, EqualTo
 from sqlalchemy import  text
 from exts import db
-from models import UserModel
-
+from database import DatabaseManager
 
 class RegisterForm(wtforms.Form):
     username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
@@ -28,12 +27,18 @@ class RegisterForm(wtforms.Form):
 
 
     def validate_username(self,field):
-        user = UserModel.query.filter_by(name=field.data).first()
-        print(user)
+         # 检查是否允许注册
+        config = DatabaseManager(db).getConfig()
+        # 数据库未配置则默认不允许注册
+        if config:
+            acceptreg = config.acceptnewlogin
+        else:
+            acceptreg = '0'
+        if acceptreg == '0':    
+            raise wtforms.ValidationError("当前系统禁止注册新用户！")    
+        user = DatabaseManager(db).getUserByName(name=field.data)
         if user:
             raise wtforms.ValidationError("该用户已注册！")
-
-
 
 
 class LoginForm(wtforms.Form):
@@ -57,13 +62,12 @@ class LoginForm(wtforms.Form):
         # 目前发现使用headscale user create创建的时间存在9位微秒
 
         try:
-            user = UserModel.query.filter_by(name=field.data).first()
+            user = DatabaseManager(db).getUserByName(name=field.data)
+            if not user:
+               raise wtforms.ValidationError("用户不存在！")
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
                 raise wtforms.ValidationError("不支持从CLI创建的用户！")
-                user = UserModel.query.filter_by(name=field.data).first()
-
-
 
         self.user = user  # 存储查询到的用户对象
         if not user:
@@ -71,11 +75,10 @@ class LoginForm(wtforms.Form):
         else:
             #如果用户存在 则验证是否启用 user.enable是1表示启用 0表示未启用
             if not user.enable:
-                raise wtforms.ValidationError("用户未启用！")
+                raise wtforms.ValidationError("用户未启用，请联系管理员！")
             if user.enable != "1":
-                raise wtforms.ValidationError("用户未启用！")
+                raise wtforms.ValidationError("用户未启用，请联系管理员！")
             password = self.password.data
-            print(password)
             if not check_password_hash(user.password, password):
                 print(field.data)
                 raise wtforms.ValidationError("密码错误！")
