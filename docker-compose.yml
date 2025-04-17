@@ -1,6 +1,6 @@
 services:  
-  php:  
-    image: runyf/hs-admin:v2.0
+  hs-admin:
+    image: runyf/hs-admin:v2.1
     # image: hs-admin
     container_name: hs-admin  
     network_mode: host
