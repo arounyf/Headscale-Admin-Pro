@@ -1,6 +1,8 @@
 from flask_login import login_required, current_user
 from sqlalchemy import func
 import requests
+
+from exts import db
 from models import UserModel,NodeModel,RouteModel
 from flask import Blueprint,  request, current_app
 
@@ -96,10 +98,21 @@ def route_enable():
         url = f'{server_host}/api/v1/routes/{route_id}/disable'  # 替换为实际的目标 URL
 
 
+    if current_user.role != 'admin':  # 如果不是管理员
+        # 通过 RouteModel 的 node_id 关联到 NodeModel，再判断 user_id 是否为当前用户
+        count = db.session.query(RouteModel).join(NodeModel).filter(
+            RouteModel.id == route_id,
+            NodeModel.user_id == current_user.id
+        ).count()
 
-    response = requests.post(url, headers=headers)
-
-    res_json['data'] = str(response.text)
+    if count > 0:
+        response = requests.delete(url, headers=headers)
+        if (response.text == "Unauthorized"):
+            res_json['code'], res_json['msg'] = '1', '认证失败'
+        else:
+            res_json['code'], res_json['msg'],res_json['data'] = '0', '删除成功',response.text
+    else:
+        res_json['code'], res_json['msg'] = '1', '非法请求'
 
     return res_json
 

@@ -129,15 +129,15 @@
           layer.close(index);
 
           $.ajax({
-            url:'/api/delKey',
+            url:'/api/preauthkey/delKey',
             type: 'post',
             dataType: 'json',
-            data: {key_id: obj.data.id},
+            data: {keyId: obj.data.id},
             success:function(res){
               if(res.code == 0){
-                layer.msg('删除成功', {icon: 6});
+                layer.msg(res.msg, {icon: 6});
               }else{
-                layer.msg('删除失败', {icon: 7});
+                layer.msg(res.msg, {icon: 7});
               }
               
             }

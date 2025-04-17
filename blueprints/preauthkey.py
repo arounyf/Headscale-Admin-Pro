@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from flask_login import current_user, login_required
 from sqlalchemy import func
 import requests
+
+from exts import db
 from models import UserModel, NodeModel, RouteModel, ACLModel, PreAuthKeysModel
 from flask import Blueprint, render_template, request, session, make_response, g, redirect, url_for, jsonify, \
     current_app
@@ -99,3 +101,21 @@ def addKey():
     res_json['data'] = response.text
 
     return res_json
+
+
+
+
+
+@bp.route('/delKey', methods=['GET','POST'])
+@login_required
+def delKey():
+    key_id = request.form.get('keyId')
+
+    # 直接使用 delete 方法结合条件删除记录
+    db.session.query(PreAuthKeysModel).filter(PreAuthKeysModel.id == key_id).delete()
+    db.session.commit()
+
+    res_json['code'], res_json['msg'] = '0', '删除成功'
+    return res_json
+
+

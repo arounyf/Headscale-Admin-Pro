@@ -13,7 +13,7 @@
 
   <div class="layui-fluid">
     <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
+      <div class="layui-col-md8">
         <div class="layui-card">
           <div class="layui-card-header">系统设置</div>
           <div class="layui-card-body" pad15>
@@ -24,7 +24,7 @@
               <div class="layui-form-item">
                   <label class="layui-form-label">apiKey</label>
 
-                  <div class="layui-input-inline" style="width:500px">
+                  <div class="layui-input-inline" style="width:395px">
                     <input type="password" name="apiKey" lay-verify="required" autocomplete="off"   value="{{ apikey }}" class="layui-input" lay-affix="eye">
                   </div>
                   <div class="layui-form-mid" style="padding: 0!important;">
@@ -76,10 +76,27 @@
                 </div>
               </div>
             </div>
-            
           </div>
         </div>
       </div>
+
+
+        <div class="layui-col-md4">
+            <div class="layui-card layui-form" lay-filter="component-form-element">
+          <div class="layui-card-header">headscale {{ version }}进程管理</div>
+          <div class="layui-card-body layui-row layui-col-space10">
+
+            <div class="layui-col-md12">
+              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="switch_up" {{ headscale_status }}><div class="layui-unselect layui-form-switch" lay-skin="switch"><div>关闭</div><i></i></div>
+            </div>
+
+          </div>
+        </div>
+        </div>
+
+
+
+
     </div>
   </div>
 
@@ -108,9 +125,30 @@ layui.use(function(){
             }
           }
        });
-    }
+    },
+
   });
 
+  // 指定开关事件
+  form.on('switch(switch_up)', function(data){
+
+
+    $.ajax({
+      url:'/api/set/start_headscale',
+      type: 'post',
+      data: {Switch:this.checked},
+      dataType: 'json',
+      success:function(res){
+        if(res.code == 0){
+          layer.msg(res.msg, {icon: 6});
+        }else{
+          layer.msg(res.msg, {icon: 7});
+        }
+
+      }
+    });
+
+  });
 
 
   // 提交事件

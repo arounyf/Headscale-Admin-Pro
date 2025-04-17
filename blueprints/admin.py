@@ -1,7 +1,8 @@
 from flask_login import login_required, current_user
 from login_setup import role_required
 from flask import Blueprint, render_template,  current_app
-from utils import get_server_net
+from utils import get_server_net, get_headscale_pid, get_headscale_version
+
 bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 
@@ -117,7 +118,15 @@ def set():
             options_html += f'<option value="{interface}">{interface}</option>\n'
 
     region_html = current_app.config['REGION_HTML']
-    return render_template('admin/set.html',apikey = apikey,server_url = server_url,server_net = options_html,region_html = region_html)
+
+
+    print(get_headscale_pid())
+    if get_headscale_pid():
+        headscale_status = "checked"
+    else:
+        headscale_status = ""
+
+    return render_template('admin/set.html',apikey = apikey,server_url = server_url,server_net = options_html,region_html = region_html,headscale_status = headscale_status,version = get_headscale_version())
 
 
 @login_required

@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 from flask_login import login_required
@@ -75,8 +76,6 @@ def get_apikey():
         print(f"删除记录时出现错误: {e}")
 
     try:
-        # 执行 重载ACL 命令
-        # result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
         headscale_command = "headscale apikey create"
         result = subprocess.run(headscale_command, shell=True, capture_output=True, text=True, check=True)
 
@@ -84,8 +83,38 @@ def get_apikey():
     except subprocess.CalledProcessError as e:
         res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
 
-
-
     return res_json
 
+
+
+@bp.route('/start_headscale', methods=['POST'])
+@login_required
+@role_required("manager")
+def start_headscale():
+
+
+    # 获取表单中的 Switch 参数
+    status = request.form.get('Switch')
+    res_json = {'code': '', 'data': '', 'msg': ''}
+    if status=="true":
+
+        # 定义日志文件路径
+        log_file_path = os.path.join('/var/lib/headscale', 'headscale.log')
+        # 以追加模式打开日志文件
+        try:
+            with open(log_file_path, 'a') as log_file:
+                # 启动 headscale serve 进程，并将标准输出和标准错误输出重定向到日志文件
+                subprocess.Popen(['headscale', 'serve'], stdout=log_file, stderr=log_file)
+            res_json['code'], res_json['msg'], res_json['data'] = '0', '启动成功',""
+        except Exception as e:
+            res_json = {'code': '1', 'msg': f'启动失败: {str(e)}', 'data': ''}
+    else:
+        try:
+            reload_command = "kill -9 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
+            result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
+            res_json['code'], res_json['msg'], res_json['data'] = '0', '停止成功', result.stdout
+        except subprocess.CalledProcessError as e:
+            res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
+
+    return res_json
 

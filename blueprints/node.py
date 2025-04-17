@@ -5,12 +5,16 @@ import requests
 
 from login_setup import role_required
 from models import UserModel,NodeModel
-from flask import Blueprint, request, session, make_response, g, redirect, url_for, jsonify, \
-    current_app
+from flask import Blueprint, request,current_app
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
 
-
+# 额外字段
+res_json = {
+    'code': '',
+    'data': '',
+    'msg': '',
+}
 
 @bp.route('/getNodes')
 @login_required
@@ -104,20 +108,25 @@ def register():
         'data': '',
         'msg': '',
     }
-    res_json['code'], res_json['msg'] = '0', '获取成功'
+
+    if (response.text == "Unauthorized"):
+        res_json['code'], res_json['msg'] = '1', '认证失败'
+    else:
+        res_json['code'], res_json['msg'] = '0', '添加成功'
+
     res_json['data'] = str(response.text)
 
     return res_json
 
 
-@bp.route('/delete', methods=['GET','POST'])
+@bp.route('/delete', methods=['POST'])
 @login_required
 def delete():
 
+    # node_id = request.args.get('NodeId')
     node_id = request.form.get('NodeId')
 
     print(node_id)
-
 
 
     server_host = current_app.config['SERVER_HOST']
@@ -127,15 +136,22 @@ def delete():
     }
     url = f'{server_host}/api/v1/node/{node_id}'  # 替换为实际的目标 URL
 
-    response = requests.delete(url, headers=headers)
-    # 额外字段
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-    }
-    res_json['code'], res_json['msg'] = '0', '删除成功'
-    res_json['data'] = str(response.text)
+
+
+    if current_user.role != 'admin':  # 如果不是管理员
+        count = NodeModel.query.filter(
+            NodeModel.id == node_id,
+            NodeModel.user_id == current_user.id
+        ).count()
+
+        if count > 0:
+            response = requests.delete(url, headers=headers)
+            if (response.text == "Unauthorized"):
+                res_json['code'], res_json['msg'] = '1', '认证失败'
+            else:
+                res_json['code'], res_json['msg'] = '0', '删除成功'
+        else:
+            res_json['code'], res_json['msg'] = '1', '非法请求'
 
     return res_json
 

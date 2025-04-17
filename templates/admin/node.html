@@ -183,12 +183,13 @@
               data: {nodekey: util.escape(value)},
               success:function(res){
                   console.log(res)
-                  if(res.code == 2){
-                    layer.msg('输入错误', {icon: 7});
-                  }else{
-                    layer.msg('添加成功', {icon: 6});
+                  if(res.code == 0){
+                    layer.msg(res.msg, {icon: 6});
                     table.reload('test-table-index',true);
+                  }else{
+                      layer.msg(res.msg, {icon: 7});
                   }
+
               }
             });
 
@@ -229,7 +230,7 @@
       // console.log(obj)
       if(obj.event === 'del'){
         layer.confirm('真的删除行么', function(index){
-          obj.del();
+
           layer.close(index);
 
           $.ajax({
@@ -238,7 +239,14 @@
             dataType: 'json',
             data: {NodeId: obj.data.id},
             success:function(res){
-              layer.msg('删除成功', {icon: 6});
+
+
+              if(res.code == 0){
+                layer.msg(res.msg, {icon: 6});
+                obj.del();
+              }else{
+                layer.msg(res.msg, {icon: 7});
+              }
             }
           });
           

@@ -141,3 +141,31 @@ def get_server_net():
         return {'error': f'执行命令时出错: {e.stderr}'}, 500
     except Exception as e:
         return {'error': f'发生未知错误: {str(e)}'}, 500
+
+
+def get_headscale_pid():
+    try:
+        # 执行获取 headscale 进程 PID 的命令
+        command = "ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+        pid = result.stdout.strip()
+        if pid:
+            return int(pid)
+        else:
+            print("未找到 headscale serve 进程的 PID。")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"执行命令时出现错误: {e.stderr}")
+        return False
+    except ValueError:
+        print("获取的 PID 无法转换为整数。")
+        return False
+
+def get_headscale_version():
+    try:
+        # 执行获取 headscale 进程 PID 的命令
+        command = "headscale version"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print({e.stderr})
