@@ -44,4 +44,4 @@ RUN pip3 install ruamel.yaml
 RUN wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64
 
 
-CMD ["sh", "-c", "./init.sh 'headscale serve & python3 app.py'"]
+CMD ["sh", "-c", "./init.sh 'python3 app.py'"]
