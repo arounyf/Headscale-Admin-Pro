@@ -10,9 +10,9 @@
 #
 # https://myheadscale.example.com:443
 #
-server_url: http://192.168.6.5:81
+server_url: http://192.168.6.5:8080
 
-#redirect_url: http://192.168.6.5:500
+redirect_url: http://192.168.6.5:5000
 # redirect web console
 
 # Address to listen to / bind to on the server
