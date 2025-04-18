@@ -45,12 +45,13 @@ fi
 # 检查容器内的 app 目录是否为空
 if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
 	echo "复制flask文件"
-    cp -r $INIT_DATA_APP_DIR/* $CONTAINER_APP_DIR
+  cp -r $INIT_DATA_APP_DIR/* $CONTAINER_APP_DIR
 	rm $CONTAINER_APP_DIR/config.yaml
 	rm $CONTAINER_APP_DIR/init.sh
 	rm $CONTAINER_APP_DIR/Dockerfile
 	rm $CONTAINER_APP_DIR/README.md
 	rm $CONTAINER_APP_DIR/docker-compose.yml
+	rm $CONTAINER_APP_DIR/nginx-example.conf
 else
     echo "检测到flask存在已有数据"
 fi
