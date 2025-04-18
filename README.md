@@ -9,7 +9,7 @@
 1、基于本人发布的headscale-Admin使用python进行了后端重构   
 2、容器内置headscale、实现快速搭建   
 3、容器内置流量监测、无需额外安装插件   
-4、基于headscale新版本0.25.0进行开发和测试   
+4、基于headscale最新新版本进行开发和测试   
 
 官方qq群： 892467054
 # 时间线
@@ -25,25 +25,15 @@ wget https://raw.githubusercontent.com/arounyf/Headscale-Admin-Pro/refs/heads/ma
 docker-compose up -d
 ```
 
-1、修改配置文件1 ~/hs-admin/app/config.py
-
-
-说明
-- BEARER_TOKEN创建命令： `docker exec -it hs-admin  /app/headscale apikey create`
-- TAILSCALE_UP_URL： headscale server url
-- SERVER_NET：宿主机网卡名，流量统计使用
-其它基本无需更改
    
-1、修改配置文件2 ~/hs-admin/config/config.yaml   
-   
-此为headscale配置文件   
+1、访问 http://ip:5000，注册admin账户即为系统管理员账户   
 
+2、进入后台设置网卡名、apikey并启动headscale   
 
 3、访问 http://ip:5000   
-    
-说明   
 
-- 注册admin账户即为系统管理员账户   
+4、配置nginx，配置示例 nginx-example.conf(可选)
+
 
 
 # 功能
@@ -59,9 +49,11 @@ docker-compose up -d
 - 角色管理
 - api和menu权限管理
 - 内置headscale
+- 内置配置在线修改
+- 一键添加节点
 
 
-# 兼容性
+# 兼容性测试
 headscale 0.25.0   
 headscale 0.25.1   
 
