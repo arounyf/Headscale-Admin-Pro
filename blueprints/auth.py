@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta
+
+import requests
+
 from utils import record_log, reload_headscale
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
-from flask import Blueprint, render_template, request, session,  redirect, url_for
+from flask import Blueprint, render_template, request, session, redirect, url_for, current_app
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
-from sqlalchemy import  text
+
 bp = Blueprint("auth", __name__, url_prefix='/')
 
 
@@ -28,6 +31,69 @@ def get_captcha():
 
 
 res_json = {'code': '', 'data': '', 'msg': ''}
+
+
+
+def register_node(registrationID):
+    server_host = current_app.config['SERVER_HOST']
+    bearer_token = current_app.config['BEARER_TOKEN']
+    headers = {
+        'Authorization': f'Bearer {bearer_token}'
+    }
+    url = f'{server_host}/api/v1/node/register?user={current_user.name}&key={registrationID}'
+    response = requests.post(url, headers=headers)
+
+    res_json = {
+        'code': '',
+        'data': '',
+        'msg': ''
+    }
+
+    if response.text == "Unauthorized":
+        res_json['code'], res_json['msg'] = '1', '认证失败'
+    else:
+        res_json['code'], res_json['msg'] = '0', '节点添加成功'
+        res_json['data'] = str(response.text)
+
+    return res_json
+
+@bp.route('/register/<registrationID>', methods=['GET', 'POST'])
+def register(registrationID):
+    res_json = {'code': '', 'data': '', 'msg': ''}
+    if request.method == 'GET':
+        # 如果用户已经登录，重定向到 admin 页面
+        if current_user.is_authenticated:
+            # 已登录，直接添加节点
+            register_node(registrationID)
+            return redirect(url_for('admin.node'))
+        else:
+            return render_template('auth/register.html', registrationID=registrationID)
+    else:
+        form = LoginForm(request.form)
+
+        if form.validate():
+            user = form.user  # 获取表单中查询到的用户对象
+            login_user(user)
+
+            print(session)
+            print("登录成功")
+            session.permanent = True
+
+
+            record_log(user.id, "节点添加成功")
+
+            # 登录成功后添加节点
+            return register_node(registrationID)
+        else:
+            # return form.errors
+            first_key = next(iter(form.errors.keys()))
+            first_value = form.errors[first_key]
+
+            # res_json['code'], res_json['msg'] = '1', '密码错误'
+            res_json['code'] = '1'
+            res_json['msg'] = str(first_value[0])
+        return res_json
+
 
 @bp.route('/reg', methods=['GET','POST'])
 def reg():
@@ -81,8 +147,6 @@ def reg():
 
 
 
-
-
 @bp.route('/login', methods=['GET','POST'])
 def login():
 
@@ -113,6 +177,8 @@ def login():
             res_json['code'] = '1'
             res_json['msg'] = str(first_value[0])
         return res_json
+
+
 
 
 @bp.route('/logout', methods=['POST'])

@@ -1,6 +1,7 @@
+
 from flask_login import login_required, current_user
 from login_setup import role_required
-from flask import Blueprint, render_template,  current_app
+from flask import Blueprint, render_template, current_app, request
 from utils import get_server_net, get_headscale_pid, get_headscale_version
 
 bp = Blueprint("admin", __name__, url_prefix='/admin')
@@ -16,7 +17,7 @@ def admin():
     menu_items = {
         'console': {'html': '<dd data-name="console" class="layui-this"><a lay-href="console"><i class="layui-icon layui-icon-console"></i>控制台</a></dd>', 'roles': ['manager']},
         'user': {'html': '<dd data-name="console"><a lay-href="user"><i class="layui-icon layui-icon-user"></i>用户</a></dd>', 'roles': ['manager']},
-        'node': {'html': '<dd data-name="console"><a lay-href="node"><i class="layui-icon layui-icon-location"></i>节点</a></dd>', 'roles': ['manager', 'user']},
+        'node': {'html': '<dd data-name="console"><a lay-href="node"><i class="layui-icon layui-icon-website"></i>节点</a></dd>', 'roles': ['manager', 'user']},
         'route': {'html': '<dd data-name="console"><a lay-href="route"><i class="layui-icon layui-icon-senior"></i>路由</a></dd>', 'roles': ['manager', 'user']},
         'deploy': {'html': '<dd data-name="console"><a lay-href="deploy"><i class="layui-icon layui-icon-chat"></i>指令</a></dd>', 'roles': ['manager', 'user']},
         'help': {'html': '<dd data-name="console"><a lay-href="help"><i class="layui-icon layui-icon-read"></i>文档</a></dd>', 'roles': ['manager', 'user']},
@@ -60,6 +61,7 @@ def user():
 @login_required
 @bp.route('/node')
 def node():
+    print(request.url)
     return render_template('admin/node.html')
 
 @login_required

@@ -97,7 +97,7 @@ def route_enable():
         res_json['msg'] = '关闭成功'
         url = f'{server_host}/api/v1/routes/{route_id}/disable'  # 替换为实际的目标 URL
 
-
+    res_json['code'], res_json['msg'], res_json['data'] = '0', '删除成功', ""
     if current_user.role != 'admin':  # 如果不是管理员
         # 通过 RouteModel 的 node_id 关联到 NodeModel，再判断 user_id 是否为当前用户
         count = db.session.query(RouteModel).join(NodeModel).filter(
@@ -105,14 +105,13 @@ def route_enable():
             NodeModel.user_id == current_user.id
         ).count()
 
-    if count > 0:
-        response = requests.delete(url, headers=headers)
-        if (response.text == "Unauthorized"):
-            res_json['code'], res_json['msg'] = '1', '认证失败'
+        if count > 0:
+            response = requests.delete(url, headers=headers)
+            if (response.text == "Unauthorized"):
+                res_json['code'], res_json['msg'] = '1', '认证失败'
         else:
-            res_json['code'], res_json['msg'],res_json['data'] = '0', '删除成功',response.text
+            res_json['code'], res_json['msg'] = '1', '非法请求'
     else:
-        res_json['code'], res_json['msg'] = '1', '非法请求'
-
+        requests.delete(url, headers=headers)
     return res_json
 

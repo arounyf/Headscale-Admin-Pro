@@ -4,14 +4,10 @@ from sqlalchemy import func
 import requests
 
 from exts import db
-from models import UserModel, NodeModel, RouteModel, ACLModel, PreAuthKeysModel
-from flask import Blueprint, render_template, request, session, make_response, g, redirect, url_for, jsonify, \
-    current_app
+from models import UserModel,  PreAuthKeysModel
+from flask import Blueprint, request,current_app
 
-from .forms import RegisterForm, LoginForm
-from blueprints.forms import RegisterForm
-from werkzeug.security import generate_password_hash, check_password_hash
-from .get_captcha import get_captcha_code_and_content
+
 bp = Blueprint("preauthkey", __name__, url_prefix='/api/preauthkey')
 
 

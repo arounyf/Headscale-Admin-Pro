@@ -4,7 +4,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
+  <title>节点中心</title>
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,7 +25,7 @@
 
             <script type="text/html" id="toolbarDemo">
               <div class="layui-btn-container">
-              <button class="layui-btn layui-btn-sm" lay-event="addNode">添加设备</button>
+                <button id="switchButton" class="layui-btn layui-btn-sm" lay-event=""></button>
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
                 
                 <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">
@@ -58,20 +58,15 @@
   </div>
   
   <script src="/static/layui/layui.js"></script>
+
   <script>
   layui.config({
     base: '/static/' // 静态资源所在路径
   }).use(['index', 'table', 'dropdown'], function(){
     var table = layui.table;
-    var form = layui.form;
-    var dropdown = layui.dropdown;
-    var laydate = layui.laydate;
-    var util = layui.util;
     var $ = layui.$;
-    
 
 
-    
     // 创建渲染实例
     table.render({
       elem: '#test-table-index'
@@ -103,6 +98,18 @@
       }
     });
 
+    function keepButtonStatus(){
+        // 判断是否在iframe内，如果不在则显示主页按钮
+        if (window.top !== window) {
+            $('#switchButton').attr('lay-event', 'addNode');
+            $('#switchButton').text('添加节点');
+        }else{
+            $('#switchButton').attr('lay-event', 'goHome');
+            $('#switchButton').text('返回主页');
+        }
+    }
+
+    keepButtonStatus()
 
 
 
@@ -158,7 +165,6 @@
 
 
 
-  
 
 
 
@@ -171,6 +177,10 @@
       var checkStatus = table.checkStatus(id);
       var othis = lay(this);
       switch(obj.event){
+        case 'goHome':
+          window.location.href = '/admin';
+
+        break;
         case 'addNode':
           layer.prompt({title: '请输入节点id'}, function(value, index, elem){
             if(value === '') return elem.focus();
@@ -186,6 +196,7 @@
                   if(res.code == 0){
                     layer.msg(res.msg, {icon: 6});
                     table.reload('test-table-index',true);
+                    keepButtonStatus()
                   }else{
                       layer.msg(res.msg, {icon: 7});
                   }
@@ -193,7 +204,6 @@
               }
             });
 
-        
             // 关闭 prompt
             layer.close(index);
           });
@@ -202,7 +212,6 @@
           var data = checkStatus.data;
           table.reload('test-table-index',true);
         break;
-
 
         case 'multi-row':
           table.reload('test-table-index', {
@@ -221,6 +230,7 @@
           layer.alert('Table for layui-v'+ layui.v);
         break;
       };
+        keepButtonStatus()
     });
    
     //触发单元格工具事件
