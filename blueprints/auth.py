@@ -70,7 +70,7 @@ def register(registrationID):
 
             return render_template('admin/node.html', node_info = ip_addresses)
         else:
-            return render_template('auth/register.html', registrationID=registrationID)
+            return render_template('auth/register.html',registrationID = registrationID)
     else:
         form = LoginForm(request.form)
 
@@ -82,8 +82,7 @@ def register(registrationID):
             print("登录成功")
             session.permanent = True
 
-            # 登录成功后添加节点
-            return register_node(registrationID)
+            res_json['code'], res_json['msg'] = '0', '登录成功'
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))

@@ -116,7 +116,7 @@ layui.use(function(){
         if(res.code == 0){
           layer.msg('登录成功', {icon: 6});
           setInterval(function() {
-              location.href="../admin/node"
+              location.href="../register/{{ registrationID }}"
           }, 1000);
         }else{
           layer.msg(res.msg, {icon: 7});
