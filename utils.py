@@ -50,8 +50,6 @@ def get_sys_info():
     
 
     net_interface = current_app.config['SERVER_NET']
-
-
     data = psutil.net_io_counters(pernic=True)
     interfaces = data.keys()
     
@@ -110,8 +108,8 @@ def reload_headscale():
     res_json = {'code': '', 'data': '', 'msg': ''}
     # kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)
     try:
-        # 执行 重载ACL 命令
-        #result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
+        # 执行重载headscale命令
+        # result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
         reload_command = "kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
         result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
         
@@ -141,6 +139,34 @@ def get_server_net():
         return {'error': f'执行命令时出错: {e.stderr}'}, 500
     except Exception as e:
         return {'error': f'发生未知错误: {str(e)}'}, 500
+
+
+
+def start_headscale():
+    res_json = {'code': '', 'data': '', 'msg': ''}
+    # 定义日志文件路径
+    log_file_path = os.path.join('/var/lib/headscale', 'headscale.log')
+    # 以追加模式打开日志文件
+    try:
+        with open(log_file_path, 'a') as log_file:
+            # 启动 headscale serve 进程，并将标准输出和标准错误输出重定向到日志文件
+            subprocess.Popen(['headscale', 'serve'], stdout=log_file, stderr=log_file)
+        res_json['code'], res_json['msg'], res_json['data'] = '0', '启动成功', ""
+    except Exception as e:
+        res_json = {'code': '1', 'msg': f'启动失败: {str(e)}', 'data': ''}
+    return res_json
+
+
+def stop_headscale():
+    res_json = {'code': '', 'data': '', 'msg': ''}
+    try:
+        reload_command = "kill -9 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
+        result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
+        res_json['code'], res_json['msg'], res_json['data'] = '0', '停止成功', result.stdout
+    except subprocess.CalledProcessError as e:
+        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
+    return res_json
+
 
 
 def get_headscale_pid():

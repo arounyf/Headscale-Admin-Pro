@@ -1,6 +1,13 @@
-from flask import Flask,  render_template
+from flask import Flask, render_template
+from flask_migrate import Migrate
+from apscheduler.schedulers.background import BackgroundScheduler
+
 import config_loader
 from exts import db, enable_sqlite_foreign_keys
+from login_setup import init_login_manager
+from utils import get_data_record, start_headscale
+
+# 导入蓝图
 from blueprints.auth import bp as auth_bp
 from blueprints.admin import bp as admin_bp
 from blueprints.user import bp as user_bp
@@ -12,16 +19,9 @@ from blueprints.preauthkey import bp as preauthkey_bp
 from blueprints.log import bp as log_bp
 from blueprints.set import bp as set_bp
 
-from flask_migrate import Migrate
-from login_setup import init_login_manager
-from apscheduler.schedulers.background import BackgroundScheduler
-from utils import  get_data_record
-
-app= Flask(__name__)
+app = Flask(__name__)
 app.config.from_object(config_loader)
-app.json.ensure_ascii = False  #让接口返回的中文不转码
-
-
+app.json.ensure_ascii = False  # 让接口返回的中文不转码
 
 # 初始化 Flask-login
 init_login_manager(app)
@@ -31,42 +31,36 @@ db.init_app(app)
 with app.app_context():
     enable_sqlite_foreign_keys(db.engine)
 
-
 migrate = Migrate(app, db)
 
-app.register_blueprint(auth_bp)
-app.register_blueprint(admin_bp)
-app.register_blueprint(user_bp)
-app.register_blueprint(node_bp)
-app.register_blueprint(system_bp)
-app.register_blueprint(route_bp)
-app.register_blueprint(acl_bp)
-app.register_blueprint(preauthkey_bp)
-app.register_blueprint(log_bp)
-app.register_blueprint(set_bp)
+# 创建蓝图列表
+blueprints = [auth_bp,admin_bp,user_bp,node_bp,system_bp,route_bp,acl_bp,preauthkey_bp,log_bp,set_bp]
+
+# 循环注册蓝图
+for blueprint in blueprints:
+    app.register_blueprint(blueprint)
 
 
-#定义一个定时任务函数,每个一个小时记录一下流量使用情况
+# 定义一个定时任务函数,每个一个小时记录一下流量使用情况
 def my_task():
     with app.app_context():
         return get_data_record()
-# 创建调度器
+
+# 创建调度
 scheduler = BackgroundScheduler()
 # 添加任务，每隔 10 秒执行一次
-scheduler.add_job(func=my_task, trigger='interval',seconds=3600)
+scheduler.add_job(func=my_task, trigger='interval', seconds=3600)
 # 启动调度器
 scheduler.start()
+# 启动headscale
+start_headscale()
 
-
-@app.route('/')
-def index():
-    return 'Flask 应用正在运行！'
 
 # 自定义404错误处理器
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('auth/error.html',message="404")
+    return render_template('auth/error.html', message="404")
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000,debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

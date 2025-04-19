@@ -1,4 +1,3 @@
-{% raw %}
 
 <!DOCTYPE html>
 <html>
@@ -37,6 +36,7 @@
 
               </div>
             </script>
+              {% raw %}
 
             <script type="text/html" id="TPL-lastTime">  
                 {{#  
@@ -47,6 +47,7 @@
                 }}
                 {{= lastTime() }}
             </script>               
+            {% endraw %}
 
             <script type="text/html" id="barDemo">
               <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
@@ -66,6 +67,20 @@
     var table = layui.table;
     var $ = layui.$;
 
+    // 通过判断后端是否返回node_info弹出节点信息
+    node_info = '{{ node_info }}';
+    if (node_info){
+        layer.alert('ip地址: '+ node_info, {
+            icon: 1,
+            shadeClose: true,
+            title: '节点添加成功'
+            }, function(){
+                // 跳转到新的页面是为了放在页面刷新导致重复添加节点
+                window.location.href = '/admin/node';
+            }
+        )
+    }
+
 
     // 创建渲染实例
     table.render({
@@ -81,6 +96,7 @@
       ,cellMinWidth: 80
       ,totalRow: true // 开启合计行
       ,page: true
+        {% raw %}
       ,cols: [[
             {type: 'checkbox', fixed: 'left'}
             ,{field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
@@ -93,6 +109,7 @@
             ,{field:'OS', title:'操作系统', width: 220}
             ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
         ]]
+        {% endraw %}
       ,error: function(res, msg){
         console.log(res, msg)
       }
@@ -272,4 +289,3 @@
 </html>
 
 
-{% endraw %}

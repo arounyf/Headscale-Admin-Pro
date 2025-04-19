@@ -6,7 +6,7 @@ from utils import record_log, reload_headscale
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
-from flask import Blueprint, render_template, request, session, redirect, url_for, current_app
+from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
@@ -54,7 +54,7 @@ def register_node(registrationID):
     else:
         res_json['code'], res_json['msg'] = '0', '节点添加成功'
         res_json['data'] = str(response.text)
-
+        record_log(current_user.id, "节点添加成功")
     return res_json
 
 @bp.route('/register/<registrationID>', methods=['GET', 'POST'])
@@ -64,8 +64,11 @@ def register(registrationID):
         # 如果用户已经登录，重定向到 admin 页面
         if current_user.is_authenticated:
             # 已登录，直接添加节点
-            register_node(registrationID)
-            return redirect(url_for('admin.node'))
+            node_info = register_node(registrationID)['data']
+            # 获取 ipAddresses 的值
+            ip_addresses = json.loads(node_info)["node"]["ipAddresses"][0]
+
+            return render_template('admin/node.html', node_info = ip_addresses)
         else:
             return render_template('auth/register.html', registrationID=registrationID)
     else:
@@ -78,9 +81,6 @@ def register(registrationID):
             print(session)
             print("登录成功")
             session.permanent = True
-
-
-            record_log(user.id, "节点添加成功")
 
             # 登录成功后添加节点
             return register_node(registrationID)
