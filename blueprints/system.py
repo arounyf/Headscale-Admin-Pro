@@ -2,7 +2,7 @@ import math
 import os
 
 from flask_login import login_required
-from flask import Blueprint, json
+from flask import Blueprint, json, current_app
 from utils import get_sys_info, get_data_record
 
 bp = Blueprint("system", __name__, url_prefix='/api/system')
@@ -19,7 +19,7 @@ def get_info():
 @bp.route('/data_usage', methods=['GET'])
 @login_required
 def data_usage():
-    with open(os.getcwd()+'/data.json', 'r') as file:
+    with open(current_app.config['NET_TRAFFIC_RECORD_FILE'], 'r') as file:
         content = file.read()
         json_data = json.loads(content)
 

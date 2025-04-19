@@ -21,6 +21,7 @@ SERVER_HOST = 'http://127.0.0.1:8080'
 
 # 从 yaml 配置文件中获取headscale配置项
 SERVER_URL = config_yaml.get('server_url', {})
+NET_TRAFFIC_RECORD_FILE = '/var/lib/headscale/data.json'
 SQLALCHEMY_DATABASE_URI =  "sqlite:///" + config_yaml.get('database', {}).get('sqlite', {}).get('path')
 
 

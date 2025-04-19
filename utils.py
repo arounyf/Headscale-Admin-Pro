@@ -83,7 +83,7 @@ def get_data_record():
     recv_speed = str(json_data_now["recv_speed"])
     sent_speed = str(json_data_now["sent_speed"])
 
-    with open(os.getcwd()+'/data.json', 'r') as file:
+    with open(current_app.config['NET_TRAFFIC_RECORD_FILE'], 'r') as file:
         content = file.read()
         json_data_local = json.loads(content)
 
@@ -96,7 +96,7 @@ def get_data_record():
         json_data_local["sent"]["y"] = sent_speed
         json_data_local["recv"]["y"] = recv_speed
 
-    with open(os.getcwd()+'/data.json', 'w') as file:
+    with open(current_app.config['NET_TRAFFIC_RECORD_FILE'], 'w') as file:
         json.dump(json_data_local, file, indent=4)
 
     return json_data_local
