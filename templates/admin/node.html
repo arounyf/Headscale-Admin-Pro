@@ -68,8 +68,14 @@
     var $ = layui.$;
 
     // 通过判断后端是否返回node_info弹出节点信息
+
     node_info = '{{ node_info }}';
-    if (node_info){
+    console.log(node_info)
+
+    if (node_info == "error"){
+        // 跳转到新的页面是为了放在页面刷新导致重复添加节点
+        window.location.href = '/admin/node';
+    } else if(node_info && node_info != "error"){
         layer.alert('ip地址: '+ node_info, {
             icon: 1,
             shadeClose: true,
@@ -81,6 +87,7 @@
         )
     }
 
+  
 
     // 创建渲染实例
     table.render({

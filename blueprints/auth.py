@@ -65,9 +65,14 @@ def register(registrationID):
         if current_user.is_authenticated:
             # 已登录，直接添加节点
             node_info = register_node(registrationID)['data']
-            # 获取 ipAddresses 的值
-            ip_addresses = json.loads(node_info)["node"]["ipAddresses"][0]
+            print(node_info)
 
+            try:
+                # 获取 ipAddresses 的值
+                ip_addresses = json.loads(node_info)["node"]["ipAddresses"][0]
+            except Exception as e:
+                print(f"发生错误: {e}")
+                ip_addresses = 'error'
             return render_template('admin/node.html', node_info = ip_addresses)
         else:
             return render_template('auth/register.html',registrationID = registrationID)
