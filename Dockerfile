@@ -1,20 +1,14 @@
-FROM ubuntu:22.04
+# 第一阶段：构建阶段
+FROM ubuntu:22.04 AS builder
 
 # 创建一个工作目录
 WORKDIR /init_data
 
-
-# 写入国内软件源配置信息到 sources.list 文件
-RUN echo "# See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade to\n# newer versions of the distribution.\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy main restricted\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy main restricted\n\n## Major bug fix updates produced after the final release of the\n## distribution.\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy-updates main restricted\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy-updates main restricted\n\n## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu\n## team. Also, please note that software in universe WILL NOT receive any\n## review or updates from the Ubuntu security team.\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy universe\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy universe\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy-updates universe\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy-updates universe\n\n## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu\n## team, and may not be under a free licence. Please satisfy yourself as to\n## your rights to use the software. Also, please note that software in\n## multiverse WILL NOT receive any review or updates from the Ubuntu\n## security team.\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy multiverse\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy multiverse\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy-updates multiverse\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy-updates multiverse\n\n## N.B. software from this repository may not have been tested as\n## extensively as that contained in the main release, although it includes\n## newer versions of some applications which may provide useful features.\n## Also, please note that software in backports WILL NOT receive any review\n## or updates from the Ubuntu security team.\ndeb http://cn.archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse\n# deb-src http://cn.archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse\ndeb http://security.ubuntu.com/ubuntu/ jammy-security main restricted\n# deb-src http://security.ubuntu.com/ubuntu/ jammy-security main restricted\ndeb http://security.ubuntu.com/ubuntu/ jammy-security universe\n# deb-src http://security.ubuntu.com/ubuntu/ jammy-security universe\ndeb http://security.ubuntu.com/ubuntu/ jammy-security multiverse\n# deb-src http://security.ubuntu.com/ubuntu/ jammy-security multiverse\n" > /etc/apt/sources.list
-
 # 更新包管理器并安装必要的工具
 RUN apt-get update && \
-    apt-get install --no-install-recommends tzdata net-tools iputils-ping python3 pip wget iproute2 -y && \
+    apt-get install pip wget -y && \
     pip3 install flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler ruamel.yaml email_validator && \
-    wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 && \
-    apt-get clean
-	
-
+    wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 
 
 # 将当前目录下的内容复制到工作目录中
 COPY . /init_data
@@ -22,6 +16,20 @@ RUN mv data-example.json data.json && \
     mv config-example.yaml config.yaml && \
     chmod u+x init.sh
 
+# 第二阶段：运行阶段
+FROM ubuntu:22.04
 
+# 创建一个工作目录
+WORKDIR /init_data
+
+# 安装运行时依赖
+RUN apt-get update && \
+    apt-get install  tzdata net-tools iputils-ping python3  iproute2 -y && \
+    apt-get clean
+
+# 从构建阶段复制必要的文件
+COPY --from=builder /init_data /init_data
+COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 
 CMD ["sh", "-c", "./init.sh 'python3 app.py'"]
+    
