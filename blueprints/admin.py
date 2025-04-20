@@ -58,25 +58,29 @@ def user():
 
 
 
-@login_required
+
 @bp.route('/node')
+@login_required
 def node():
     print(request.url)
     return render_template('admin/node.html')
 
-@login_required
+
 @bp.route('/route')
+@login_required
 def route():
     return render_template('admin/route.html')
 
-@login_required
+
 @bp.route('/deploy')
+@login_required
 def deploy():
     server_url = current_app.config['SERVER_URL']
     return render_template('admin/deploy.html',server_url = server_url)
 
-@login_required
+
 @bp.route('/help')
+@login_required
 def help():
     return render_template('admin/help.html')
 
@@ -88,25 +92,29 @@ def help():
 def acl():
     return render_template('admin/acl.html')
 
-@login_required
+
 @bp.route('preauthkey')
+@login_required
 def preauthkey():
     return render_template('admin/preauthkey.html')
 
-@login_required
+
 @bp.route('log')
+@login_required
 def log():
     return render_template('admin/log.html')
 
-@login_required
+
 @bp.route('info')
+@login_required
 def info():
     return render_template('admin/info.html')
 
 
 
-@login_required
+
 @bp.route('set')
+@login_required
 def set():
     apikey = current_app.config['BEARER_TOKEN']
     server_url = current_app.config['SERVER_URL']
@@ -131,8 +139,9 @@ def set():
     return render_template('admin/set.html',apikey = apikey,server_url = server_url,server_net = options_html,region_html = region_html,headscale_status = headscale_status,version = get_headscale_version())
 
 
-@login_required
+
 @bp.route('password')
+@login_required
 def password():
     return render_template('admin/password.html')
 

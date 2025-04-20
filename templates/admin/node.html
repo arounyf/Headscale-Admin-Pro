@@ -73,8 +73,15 @@
     console.log(node_info)
 
     if (node_info == "error"){
-        // 跳转到新的页面是为了放在页面刷新导致重复添加节点
-        window.location.href = '/admin/node';
+        layer.alert('发生错误', {
+            icon: 7,
+            shadeClose: true,
+            title: '节点添加失败'
+            }, function(){
+                // 跳转到新的页面是为了放在页面刷新导致重复添加节点
+                window.location.href = '/admin/node';
+            }
+        )
     } else if(node_info && node_info != "error"){
         layer.alert('ip地址: '+ node_info, {
             icon: 1,

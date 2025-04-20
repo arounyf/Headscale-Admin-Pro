@@ -1,11 +1,8 @@
 import wtforms
 from flask import session
 from flask_login import current_user
-from sqlalchemy import func
-from werkzeug.security import check_password_hash, generate_password_hash
-from wtforms.validators import  length, DataRequired, Regexp, Length, EqualTo
-from sqlalchemy import  text
-from exts import db
+from werkzeug.security import check_password_hash
+from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
 from models import UserModel
 
 
@@ -14,6 +11,7 @@ class RegisterForm(wtforms.Form):
     password = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='密码格式错误')])
     confirmPassword = wtforms.StringField(validators=[EqualTo('password',message='密码输入不一致')])
     phone = wtforms.StringField(validators=[DataRequired(),length(11, 11),Regexp(r'(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}', 0, '手机号码不合法')])
+    email = wtforms.StringField(validators=[Email(message='请输入有效的电子邮件地址')])
     vercode = wtforms.StringField(validators=[Length(min=4, max=4, message='验证码格式错误')])
     captcha_uuid = wtforms.StringField(validators=[Length(min=36, max=36, message='UUID错误')])
 

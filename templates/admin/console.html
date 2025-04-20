@@ -276,7 +276,7 @@
             util.countdown.timer = inst.timer; // 记录当前定时器，以便在重复渲染时清除。实际使用时不常用
           },
           done: function(obj, inst){ // 计时完成
-            layer.msg('你的账号已到期');
+            {#layer.msg('你的账号已到期');#}
           }
         });
 
