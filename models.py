@@ -24,7 +24,7 @@ class UserModel(db.Model, UserMixin):
 
     # 项目新增字段
     expire = db.Column(db.DateTime)
-    cellphone = db.Column(db.Text)  
+    cellphone = db.Column(db.Text)
     role = db.Column(db.Text)
     enable = db.Column(db.Text)
     route = db.Column(db.Text)
@@ -74,7 +74,7 @@ class PreAuthKeysModel(db.Model):
         ForeignKeyConstraint(
             ['user_id'], ['users.id'],
             name='fk_pre_auth_keys_user',
-            ondelete='ON DELETE SET NULL'  # 外键删除策略
+            ondelete='CASCADE'  # 外键删除策略
         ),
     )
 
@@ -112,7 +112,7 @@ class NodeModel(db.Model):
         ForeignKeyConstraint(
             ['auth_key_id'], ['pre_auth_keys.id'],
             name='fk_nodes_auth_key',
-            ondelete='SET NULL'  # 建议改为 SET NULL（避免级联删除时意外删除 PreAuthKey）
+            ondelete='CASCADE'  # 建议改为 SET NULL（避免级联删除时意外删除 PreAuthKey）
         ),
     )
 
@@ -148,7 +148,7 @@ class RouteModel(db.Model):
         ForeignKeyConstraint(
             ['node_id'], ['nodes.id'],
             name='fk_routes_node',
-            ondelete='ON DELETE CASCADE'
+            ondelete='CASCADE'
         ),
         Index('idx_routes_deleted_at', 'deleted_at'),
     )
