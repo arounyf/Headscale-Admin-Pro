@@ -29,20 +29,6 @@ else
 fi
 
 
-# 检查容器内的 DB存放 目录是否为空
-if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
-	echo "将自动生成数据库文件"
-	# 初始化数据库
-	python3 -m flask db init
-	python3 -m flask db migrate
-	python3 -m flask db upgrade
-	echo "将自动生成流量统计文件"
-	cp -r $INIT_DATA_APP_DIR/data.json $CONTAINER_DB_DIR
-else
-    echo "检测到SQLITE已有数据"
-fi
-
-
 # 检查容器内的 app 目录是否为空
 if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
 	echo "复制flask文件"
@@ -56,6 +42,19 @@ if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
 	rm $CONTAINER_APP_DIR/data.json
 else
     echo "检测到flask存在已有数据"
+fi
+
+# 检查容器内的 DB存放 目录是否为空
+if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
+	echo "将自动生成数据库文件"
+	# 初始化数据库
+	python3 -m flask db init
+	python3 -m flask db migrate
+	python3 -m flask db upgrade
+	echo "将自动生成流量统计文件"
+	cp -r $INIT_DATA_APP_DIR/data.json $CONTAINER_DB_DIR
+else
+    echo "检测到SQLITE已有数据"
 fi
 
 
