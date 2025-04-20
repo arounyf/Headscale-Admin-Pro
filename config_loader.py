@@ -17,6 +17,7 @@ with open('/etc/headscale/config.yaml', 'r') as file:
 SECRET_KEY = 'SFhkrGKQL2yB9F'
 PERMANENT_SESSION_LIFETIME = 3600
 SERVER_HOST = 'http://127.0.0.1:8080'
+DEFAULT_REG_DAYS = '7'
 
 
 # 从 yaml 配置文件中获取headscale配置项

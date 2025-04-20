@@ -34,6 +34,7 @@ class RegisterForm(wtforms.Form):
 
 
 
+
 class LoginForm(wtforms.Form):
     username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
     password = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='密码格式错误')])
@@ -43,7 +44,6 @@ class LoginForm(wtforms.Form):
 
 
     #user = None  # 用于存储查询到的用户对象
-
     def validate_vercode(self, field):
         code = session['code']
         if code != field.data:
@@ -62,18 +62,17 @@ class LoginForm(wtforms.Form):
                 user = UserModel.query.filter_by(name=field.data).first()
 
 
-
-        self.user = user  # 存储查询到的用户对象
+        self.user = user  # 返回查询到的用户对象
         if not user:
             raise wtforms.ValidationError("用户不存在！")
         else:
             password = self.password.data
-            print(password)
-            if not check_password_hash(user.password, password):
-                print(field.data)
+
+            if check_password_hash(user.password, password):
+                if user.enable != 1:
+                    raise wtforms.ValidationError("用户已被禁用！")
+            else:
                 raise wtforms.ValidationError("密码错误！")
-
-
 
 
 

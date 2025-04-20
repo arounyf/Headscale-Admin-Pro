@@ -114,9 +114,10 @@ def reg():
             username = form.username.data
             password = generate_password_hash(form.password.data)
             phone_number = form.phone.data
+            email = form.email.data
 
             create_time = datetime.now()
-            expire = create_time + timedelta(days=7) # 新用户注册默认7天后到期
+            expire = create_time + timedelta(days=current_app.DEFAULT_REG_DAYS) # 新用户注册默认?天后到期
 
             print(expire)
             print(create_time.strftime("%Y-%m-%d %H:%M:%f"))
@@ -124,7 +125,7 @@ def reg():
                 role = "manager"
             else:
                 role = "user"
-            user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,role=role)
+            user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,email=email,role=role,enable=1)
             db.session.add(user)
             db.session.commit()
 

@@ -15,6 +15,9 @@ mkdir /app
 mkdir /etc/headscale
 mkdir /var/lib/headscale
 
+cd /app
+
+
 # 检查容器内的 headscale 目录是否为空
 if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
     cp -r $INIT_DATA_APP_DIR/config.yaml $CONTAINER_CONFIG_DIR
@@ -55,7 +58,7 @@ else
     echo "检测到flask存在已有数据"
 fi
 
-cd /app
+
 cp headscale /usr/bin
 chmod u+x /usr/bin/headscale
 
