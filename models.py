@@ -163,7 +163,7 @@ class ACLModel(db.Model):
 
     __table_args__ = (
         Index('idx_acl_user_id', 'user_id'),
-        ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_acl_user'),  # 显式命名外键
+        ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_acl_user',ondelete='CASCADE'),  # 显式命名外键
     )
 
 class LogModel(db.Model):
@@ -175,5 +175,5 @@ class LogModel(db.Model):
 
     __table_args__ = (
         Index('idx_log_user_id', 'user_id'),
-        ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_log_user'),  # 显式命名外键
+        ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_log_user',ondelete='CASCADE'),  # 显式命名外键
     )

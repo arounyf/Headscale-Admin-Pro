@@ -104,7 +104,7 @@ def reg():
 
             if (username == "admin"):
                 role = "manager"
-                expire = create_time + timedelta(999)
+                expire = create_time + timedelta(1000)
             else:
                 role = "user"
             user = UserModel(
@@ -116,6 +116,8 @@ def reg():
                 cellphone=phone_number,
                 email=email,
                 role=role,
+                node=2,
+                route=0,
                 enable=1
             )
             db.session.add(user)
