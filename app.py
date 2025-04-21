@@ -65,6 +65,7 @@ scheduler.start()
 # 启动 headscale
 start_headscale()
 
+
 # 自定义404错误处理器
 @app.errorhandler(404)
 def page_not_found(e):

@@ -24,12 +24,18 @@ class RegisterForm(wtforms.Form):
             raise wtforms.ValidationError("验证码错误！")
 
 
+    def validate_password(self,field):
+        if ' ' in field.data:
+            raise wtforms.ValidationError('密码不能包含空格')
+
 
     def validate_username(self,field):
-        user = UserModel.query.filter_by(name=field.data).first()
-        print(user)
-        if user:
-            raise wtforms.ValidationError("该用户已注册！")
+        if ' ' in field.data:
+            raise wtforms.ValidationError('用户名不能包含空格')
+        else:
+            user = UserModel.query.filter_by(name=field.data).first()
+            if user:
+                raise wtforms.ValidationError("该用户已注册！")
 
 
 
@@ -42,7 +48,6 @@ class LoginForm(wtforms.Form):
     captcha_uuid = wtforms.StringField(validators=[Length(min=36, max=36, message='UUID错误')])
 
 
-
     #user = None  # 用于存储查询到的用户对象
     def validate_vercode(self, field):
         code = session['code']
@@ -51,7 +56,7 @@ class LoginForm(wtforms.Form):
 
     def validate_username(self, field):
 
-        # python不支持超过6位数的微秒,但是headscale的微秒都是9位，所以出此下策
+        # python不支持超过6位数的微秒,但是headscale的微秒都是9位，所以加上异常
         # 目前发现使用headscale user create创建的时间存在9位微秒
 
         try:
@@ -59,7 +64,6 @@ class LoginForm(wtforms.Form):
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
                 raise wtforms.ValidationError("不支持从CLI创建的用户！")
-                user = UserModel.query.filter_by(name=field.data).first()
 
 
         self.user = user  # 返回查询到的用户对象
@@ -69,7 +73,7 @@ class LoginForm(wtforms.Form):
             password = self.password.data
 
             if check_password_hash(user.password, password):
-                if user.enable != 1:
+                if user.enable == 0:
                     raise wtforms.ValidationError("用户已被禁用！")
             else:
                 raise wtforms.ValidationError("密码错误！")

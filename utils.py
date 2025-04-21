@@ -8,6 +8,16 @@ from datetime import datetime
 import subprocess
 
 
+# api接口返回格式定义
+def res(code=None, msg=None, data=None):
+    if code is None: code = '1'
+    if msg is None: msg = "msg未初始化"
+    if data is None: data = {}
+    response = { "code": code,"msg": msg,"data": data}
+    return response
+
+
+
 
 def record_log(user_id, log_content):
     from models import LogModel

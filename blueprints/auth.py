@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
-
 import requests
 
-from utils import record_log, reload_headscale
+from utils import record_log, reload_headscale, res
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel
@@ -11,7 +10,9 @@ from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
 
+
 bp = Blueprint("auth", __name__, url_prefix='/')
+
 
 
 
@@ -25,13 +26,7 @@ def get_captcha():
 
     code,content = get_captcha_code_and_content()
     session['code'] = code
-
-    print(request.endpoint)  #
     return content
-
-
-res_json = {'code': '', 'data': '', 'msg': ''}
-
 
 
 def register_node(registrationID):
@@ -43,23 +38,19 @@ def register_node(registrationID):
     url = f'{server_host}/api/v1/node/register?user={current_user.name}&key={registrationID}'
     response = requests.post(url, headers=headers)
 
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': ''
-    }
 
     if response.text == "Unauthorized":
-        res_json['code'], res_json['msg'] = '1', '认证失败'
+        res_code,res_msg,res_data  = '1','认证失败',''
     else:
-        res_json['code'], res_json['msg'] = '0', '节点添加成功'
-        res_json['data'] = str(response.text)
+        res_code,res_msg,res_data  = '0','节点添加成功',str(response.text)
         record_log(current_user.id, "节点添加成功")
-    return res_json
+
+    return res(res_code,res_msg,res_data)
+
+
 
 @bp.route('/register/<registrationID>', methods=['GET', 'POST'])
 def register(registrationID):
-    res_json = {'code': '', 'data': '', 'msg': ''}
     if request.method == 'GET':
         # 如果用户已经登录，重定向到 admin 页面
         if current_user.is_authenticated:
@@ -82,21 +73,13 @@ def register(registrationID):
         if form.validate():
             user = form.user  # 获取表单中查询到的用户对象
             login_user(user)
-
-            print(session)
-            print("登录成功")
-            session.permanent = True
-
-            res_json['code'], res_json['msg'] = '0', '登录成功'
+            res_code,res_msg,res_data = '0','登录成功',''
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
-
-            # res_json['code'], res_json['msg'] = '1', '密码错误'
-            res_json['code'] = '1'
-            res_json['msg'] = str(first_value[0])
-        return res_json
+            res_code, res_msg,res_data = '1',str(first_value[0]),''
+        return res(res_code,res_msg,res_data)
 
 
 @bp.route('/reg', methods=['GET','POST'])
@@ -117,38 +100,43 @@ def reg():
             email = form.email.data
 
             create_time = datetime.now()
-            expire = create_time + timedelta(days=current_app.DEFAULT_REG_DAYS) # 新用户注册默认?天后到期
+            expire = create_time + timedelta(days=int(current_app.config['DEFAULT_REG_DAYS'])) # 新用户注册默认?天后到期
 
-            print(expire)
-            print(create_time.strftime("%Y-%m-%d %H:%M:%f"))
             if (username == "admin"):
                 role = "manager"
+                expire = create_time + timedelta(999)
             else:
                 role = "user"
-            user = UserModel(name=username,password = password,created_at=create_time,updated_at=create_time,expire=expire,cellphone=phone_number,email=email,role=role,enable=1)
+            user = UserModel(
+                name=username,
+                password = password,
+                created_at=create_time,
+                updated_at=create_time,
+                expire=expire,
+                cellphone=phone_number,
+                email=email,
+                role=role,
+                enable=1
+            )
             db.session.add(user)
             db.session.commit()
 
             #acl操作
-            newAcl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
-            print(newAcl)
-            new_acl = ACLModel(acl=newAcl, user_id=user.id)
+            init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
+
+            new_acl = ACLModel(acl=init_acl, user_id=user.id)
             db.session.add(new_acl)
             db.session.commit()
 
-            res_json['data'] = reload_headscale()
-            
-            res_json['code'],res_json['msg'] = '0','注册成功'
-
-
+            res_code,res_msg,res_data = '0','注册成功',reload_headscale()
 
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
 
-            res_json['code'],res_json['msg'] = '1',str(first_value[0])
-        return res_json
+            res_code,res_msg,res_data = '1', str(first_value[0]),''
+        return res(res_code,res_msg,res_data)
 
 
 
@@ -167,7 +155,7 @@ def login():
         if form.validate():
             user = form.user  # 获取表单中查询到的用户对象
             login_user(user)
-            res_json['code'], res_json['msg'] = '0', '登录成功'
+            res_code,res_msg,res_data = '0', '登录成功',''
 
             print(session)
             print("登录成功")
@@ -177,11 +165,8 @@ def login():
             # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
-
-            # res_json['code'], res_json['msg'] = '1', '密码错误'
-            res_json['code'] = '1'
-            res_json['msg'] = str(first_value[0])
-        return res_json
+            res_code,res_msg,res_data ='1',str(first_value[0]),''
+        return res(res_code,res_msg,res_data)
 
 
 
@@ -191,8 +176,8 @@ def login():
 def logout():
     # session.clear()
     logout_user()
-    res_json['code'], res_json['msg'] = '0', 'logout success'
-    return res_json
+    res_code,res_msg,res_data  = '0', 'logout success',''
+    return res(res_code,res_msg,res_data)
 
 
 @bp.route('/password', methods=['GET','POST'])
@@ -205,18 +190,15 @@ def password():
         user = UserModel.query.filter_by(id=current_user.id).first()
         user.password = generate_password_hash(new_password)
         db.session.commit()
-        res_json['code'], res_json['msg'] = '0', '修改成功'
+        res_code,res_msg,res_data = '0', '修改成功',''
         logout_user()
     else:
         # return form.errors
         first_key = next(iter(form.errors.keys()))
         first_value = form.errors[first_key]
+        res_code,res_msg,res_data = '1',str(first_value[0]),''
 
-        # res_json['code'], res_json['msg'] = '1', '密码错误'
-        res_json['code'] = '1'
-        res_json['msg'] = str(first_value[0])
-    return res_json
-
+    return res(res_code,res_msg,res_data)
 
 
 @bp.route('/error')
