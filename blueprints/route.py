@@ -6,11 +6,11 @@ from exts import db
 from models import UserModel,NodeModel,RouteModel
 from flask import Blueprint,  request, current_app
 
+from utils import res
 
 bp = Blueprint("route", __name__, url_prefix='/api/route')
 
 
-res_json = {'code': '', 'data': '', 'msg': ''}
 
 @bp.route('/getRoute')
 @login_required
@@ -59,17 +59,14 @@ def getRoute():
 
     # 额外字段
     res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
+        'code': '0',
+        'data': routes_list,
+        'msg': '获取成功',
         'count':pagination.total,
         'totalRow':{
                 'count':len(routes)
             }
     }
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    res_json['data'] = routes_list
-
 
     return res_json
 
@@ -82,7 +79,6 @@ def route_enable():
     print(route_id)
     print(enabled)
 
-    res_json['code'] = '0'
 
     server_host = current_app.config['SERVER_HOST']
     bearer_token = current_app.config['BEARER_TOKEN']
@@ -91,14 +87,13 @@ def route_enable():
     }
 
     if (enabled == "true"):
-        res_json['msg'] = '打开成功'
+        res_code, res_msg, res_data = '0', '打开成功', ''
         url = f'{server_host}/api/v1/routes/{route_id}/enable'  # 替换为实际的目标 URL
     else:
-        res_json['msg'] = '关闭成功'
+        res_code, res_msg, res_data = '0', '关闭成功', ''
         url = f'{server_host}/api/v1/routes/{route_id}/disable'  # 替换为实际的目标 URL
 
-    res_json['code'], res_json['msg'], res_json['data'] = '0', '删除成功', ""
-    if current_user.role != 'admin':  # 如果不是管理员
+    if current_user.role != 'manager':  # 如果不是管理员
         # 通过 RouteModel 的 node_id 关联到 NodeModel，再判断 user_id 是否为当前用户
         count = db.session.query(RouteModel).join(NodeModel).filter(
             RouteModel.id == route_id,
@@ -106,12 +101,13 @@ def route_enable():
         ).count()
 
         if count > 0:
-            response = requests.delete(url, headers=headers)
+            response = requests.post(url, headers=headers)
             if (response.text == "Unauthorized"):
-                res_json['code'], res_json['msg'] = '1', '认证失败'
+                res_code, res_msg, res_data = '1', '认证失败', 'Unauthorized'
         else:
-            res_json['code'], res_json['msg'] = '1', '非法请求'
+            res_code, res_msg, res_data = '1', '非法请求', ''
     else:
-        requests.delete(url, headers=headers)
-    return res_json
+        requests.post(url, headers=headers)
+
+    return res(res_code,res_msg,res_data)
 

@@ -1,9 +1,11 @@
 import wtforms
+
 from flask import session
 from flask_login import current_user
 from werkzeug.security import check_password_hash
 from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
 from models import UserModel
+
 
 
 class RegisterForm(wtforms.Form):

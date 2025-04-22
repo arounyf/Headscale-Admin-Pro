@@ -28,6 +28,8 @@ def getUsers():
         UserModel.cellphone,
         func.strftime('%Y-%m-%d %H:%M:%S', UserModel.expire, ).label('expire'),
         UserModel.role,
+        UserModel.node,
+        UserModel.route,
         UserModel.enable,
         # 可以添加其他需要的字段
     )
@@ -46,6 +48,8 @@ def getUsers():
         'cellphone':user.cellphone,
         'expire':user.expire,
         'role':user.role,
+        'node':user.node,
+        'route':user.route,
         'enable':user.enable,
     } for user in users]
 
@@ -82,6 +86,23 @@ def re_expire():
     return res_json
 
 
+
+@bp.route('/re_node',methods=['GET','POST'])
+@login_required
+@role_required("manager")
+def re_node():
+    user_id = request.form.get('user_id')
+    new_node = request.form.get('new_node')
+    print(new_node)
+    print(user_id)
+    user = UserModel.query.filter_by(id=user_id).first()
+    user.node = new_node
+    db.session.commit()
+
+    res_json['code'], res_json['msg'] = '0', '更新成功'
+    return res_json
+
+
 @bp.route('/user_enable',methods=['GET','POST'])
 @login_required
 @role_required("manager")
@@ -98,7 +119,29 @@ def user_enable():
         res_json['msg'] = ('启用成功')
     else:
         user.enable = 0
-        res_json['msg'] = ('关闭成功')
+        res_json['msg'] = ('停用成功')
+    db.session.commit()
+
+    return res_json
+
+
+@bp.route('/route_enable',methods=['GET','POST'])
+@login_required
+@role_required("manager")
+def route_enable():
+    user_id = request.form.get('user_id')
+    enable = request.form.get('enable')
+
+    print(user_id)
+    user = UserModel.query.filter_by(id=user_id).first()
+
+    res_json['code']= '0'
+    if (enable == "true"):
+        user.route = 1
+        res_json['msg'] = ('启用成功')
+    else:
+        user.route = 0
+        res_json['msg'] = ('停用成功')
     db.session.commit()
 
     return res_json

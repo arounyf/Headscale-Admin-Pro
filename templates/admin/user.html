@@ -14,8 +14,7 @@
 <body>
 
 
-  
-  <div class="layui-fluid">
+    <div class="layui-fluid">
     <div class="layui-row layui-col-space15">
       <div class="layui-col-md12">
         <div class="layui-card">
@@ -39,12 +38,25 @@
             </script>
 
 
-            <script type="text/html" id="barDemo">
-              <input type="checkbox" name="启用" lay-skin="switch" lay-text="是|否" lay-filter="test-table-sexDemo"
-                value="{{ d.enable }}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}" {{ d.enable == "1" ? 'checked' : '' }}>
-                  &nbsp;
-              <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+
+
+
+             <script type="text/html" id="route-table-toolbar">
+              <!-- 这里的 checked 的状态只是演示 -->
+              <input type="checkbox" name="lock" title="允许" lay-filter="route-table-toolbar"
+               value="{{d.route}}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}"  {{ d.route == "1" ? 'checked' : '' }}>
             </script>
+
+             <script type="text/html" id="enable-table-toolbar">
+                <input type="checkbox" name="启用" lay-skin="switch" lay-text="是|否" lay-filter="enable-table-toolbar"
+                       value="{{ d.enable }}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}" {{ d.enable == "1" ? 'checked' : '' }}>
+            </script>
+
+            <script type="text/html" id="more-table-toolbar">
+                 <a class="layui-btn layui-btn-info layui-btn-xs" lay-event="detail">查看</a>
+                 <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+            </script>
+
 
 
 
@@ -118,8 +130,8 @@
             return ago;
           }
         }
-        ,{field:'cellphone', title:'手机号码', width: 180, sort: true}
-        ,{field:'role', title:'角色', width: 180, sort: true,templet: function(d){
+        ,{field:'cellphone', title:'手机号码', width: 150, sort: true}
+        ,{field:'role', title:'角色', width: 150, sort: true,templet: function(d){
             if (d.role == "manager"){
               return "超级管理员"
             }else{
@@ -128,9 +140,13 @@
            
           }
         }
-        ,{field:'expire', title:'到期时间',width:220,edit: 'text',templet: '#TPL-expire'}
-        ,{fixed: 'right', title:'操作', width: 140, minWidth: 140, toolbar: '#barDemo'}
-      ]] 
+        ,{field:'expire', title:'到期时间',width:200,edit: 'text',templet: '#TPL-expire'}
+        ,{field:'node', title:'节点限制', width: 100,edit: 'text'}
+        ,{field: 'route', title:'路由', width: 100, minWidth: 100, toolbar: '#route-table-toolbar'}
+        ,{field: 'enable', title:'是否启用', width: 100, minWidth: 100, toolbar: '#enable-table-toolbar'}
+        ,{field: 'more', title:'操作', width: 240, minWidth: 140, toolbar: '#more-table-toolbar'}
+
+      ]]
       ,error: function(res, msg){
         console.log(res, msg)
       }
@@ -154,6 +170,27 @@
         type: 'post',
         dataType: 'json',
         data: {user_id: obj.data.id,new_expire: obj.value},
+        success:function(res){
+            // console.log(res.code)
+            if(res.code == 0){
+              layer.msg(res.msg, {icon: 6});
+              var field = 'name' //得到字段
+              var value = obj.value //得到修改后的值
+
+              var update = {};
+              update[field] = value;
+              obj.update(update);
+            }else{
+              layer.msg(res.msg, {icon: 7});
+            }
+          }
+        });
+      }else if(field == "node"){
+        $.ajax({
+        url:'/api/user/re_node',
+        type: 'post',
+        dataType: 'json',
+        data: {user_id: obj.data.id,new_node: obj.value},
         success:function(res){
             // console.log(res.code)
             if(res.code == 0){
@@ -206,12 +243,17 @@
         break;
       };
     });
+
+
+
    
     //触发单元格工具事件
     table.on('tool(test-table-index)', function(obj){ // 双击 toolDouble
       var $ = layui.$;
       var data = obj.data;
       // console.log(obj)
+
+
       if(obj.event === 'del'){
         layer.confirm('真的删除行么', function(index){
           $.ajax({
@@ -232,11 +274,43 @@
           });
           
         });
-      } 
+      }else if(obj.event === 'detail'){
+        layer.open({
+          title: '用户信息',
+          type: 1,
+          area: ['600px','400px'],
+          content: `
+
+
+          `
+        });
+      }
+    });
+
+
+    //事件-路由启用操作
+    form.on('checkbox(route-table-toolbar)', function(obj){
+    var json = JSON.parse(decodeURIComponent($(this).data('json')));
+      json = table.clearCacheKey(json);
+      // console.log("执行用户状态操作");
+      $.ajax({
+        url:'/api/user/route_enable',
+        type: 'post',
+        dataType: 'json',
+        data: {user_id: json.id,enable: obj.elem.checked},
+        success:function(res){
+            console.log(res)
+            if(res.code == 0){
+              layer.msg(res.msg, {icon: 6});
+            }else{
+              layer.msg(res.msg, {icon: 6});
+            }
+        }
+      });
     });
    
     //事件-开关操作
-    form.on('switch(test-table-sexDemo)', function(obj){
+    form.on('switch(enable-table-toolbar)', function(obj){
       var $ = layui.$;
       var json = JSON.parse(decodeURIComponent($(this).data('json')));
       //layer.tips(this.value + ' ' + this.name + '：'+ obj.elem.checked, obj.othis);
