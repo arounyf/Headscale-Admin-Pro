@@ -6,9 +6,10 @@ from exts import db
 from models import UserModel,NodeModel,RouteModel
 from flask import Blueprint,  request, current_app
 
-from utils import res
+from utils import res, to_post
 
 bp = Blueprint("route", __name__, url_prefix='/api/route')
+
 
 
 
@@ -53,12 +54,11 @@ def getRoute():
         'route': route.prefix,
         'createTime':route.created_at,
         'enable':int(route.enabled)
-
-
     } for route in routes]
 
+
     # 额外字段
-    res_json = {
+    res = {
         'code': '0',
         'data': routes_list,
         'msg': '获取成功',
@@ -68,46 +68,38 @@ def getRoute():
             }
     }
 
-    return res_json
+    return res
 
 @bp.route('/route_enable', methods=['GET','POST'])
 @login_required
 def route_enable():
     route_id = request.form.get('routeId')
     enabled = request.form.get('Enable')
-
-    print(route_id)
-    print(enabled)
-
-
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
+    response = None
 
     if (enabled == "true"):
-        res_code, res_msg, res_data = '0', '打开成功', ''
-        url = f'{server_host}/api/v1/routes/{route_id}/enable'  # 替换为实际的目标 URL
+        url_path = f'/api/v1/routes/{route_id}/enable'  # 替换为实际的目标 URL
+        code, msg, data = '0', '打开成功', response
+
     else:
-        res_code, res_msg, res_data = '0', '关闭成功', ''
-        url = f'{server_host}/api/v1/routes/{route_id}/disable'  # 替换为实际的目标 URL
+        url_path = f'/api/v1/routes/{route_id}/disable'  # 替换为实际的目标 URL
+        code, msg, data = '0', '关闭成功' ,response
 
-    if current_user.role != 'manager':  # 如果不是管理员
-        # 通过 RouteModel 的 node_id 关联到 NodeModel，再判断 user_id 是否为当前用户
-        count = db.session.query(RouteModel).join(NodeModel).filter(
-            RouteModel.id == route_id,
-            NodeModel.user_id == current_user.id
-        ).count()
 
-        if count > 0:
-            response = requests.post(url, headers=headers)
-            if (response.text == "Unauthorized"):
-                res_code, res_msg, res_data = '1', '认证失败', 'Unauthorized'
-        else:
-            res_code, res_msg, res_data = '1', '非法请求', ''
+    # 连接两表查询，因为路由表没有user_id
+    user_id = db.session.query(NodeModel.user_id).select_from(RouteModel).join(
+        NodeModel, RouteModel.node_id == NodeModel.id).filter(
+        RouteModel.id == route_id).first(
+    )
+
+    if current_user.route != '1':
+        code, msg, data = '1', '未获得使用权限', response
+    elif current_user.role == 'manager' or user_id == current_user.user_id:  # 如果是管理员或者是本用户的路由
+        response = to_post(url_path).text
+        if (response == "Unauthorized"):
+            code, msg, data = '1', '认证失败', response
     else:
-        requests.post(url, headers=headers)
+        code, msg, data = '1', '非法请求', response
 
-    return res(res_code,res_msg,res_data)
+    return res(code, msg, data)
 

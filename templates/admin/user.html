@@ -131,7 +131,7 @@
           }
         }
         ,{field:'cellphone', title:'手机号码', width: 150, sort: true}
-        ,{field:'role', title:'角色', width: 150, sort: true,templet: function(d){
+        ,{field:'role', title:'角色', width: 120, sort: true,templet: function(d){
             if (d.role == "manager"){
               return "超级管理员"
             }else{
@@ -144,7 +144,7 @@
         ,{field:'node', title:'节点限制', width: 100,edit: 'text'}
         ,{field: 'route', title:'路由', width: 100, minWidth: 100, toolbar: '#route-table-toolbar'}
         ,{field: 'enable', title:'是否启用', width: 100, minWidth: 100, toolbar: '#enable-table-toolbar'}
-        ,{field: 'more', title:'操作', width: 240, minWidth: 140, toolbar: '#more-table-toolbar'}
+        ,{field: 'more', title:'操作', width: 120, minWidth: 140, toolbar: '#more-table-toolbar'}
 
       ]]
       ,error: function(res, msg){

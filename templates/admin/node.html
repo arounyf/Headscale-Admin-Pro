@@ -67,13 +67,13 @@
     var table = layui.table;
     var $ = layui.$;
 
-    // 通过判断后端是否返回node_info弹出节点信息
+    // 通过判断后端是否返回ip_address弹出节点信息
 
-    node_info = '{{ node_info }}';
-    console.log(node_info)
+    ip_address = '{{ ip_address }}';
 
-    if (node_info == "error"){
-        layer.alert('发生错误', {
+
+    if (ip_address == "error"){
+        layer.alert('{{ error_info }}', {
             icon: 7,
             shadeClose: true,
             title: '节点添加失败'
@@ -82,8 +82,8 @@
                 window.location.href = '/admin/node';
             }
         )
-    } else if(node_info && node_info != "error"){
-        layer.alert('ip地址: '+ node_info, {
+    } else if(ip_address && ip_address != "error"){
+        layer.alert('ip地址: '+ ip_address, {
             icon: 1,
             shadeClose: true,
             title: '节点添加成功'

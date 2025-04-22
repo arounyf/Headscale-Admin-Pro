@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func
 import requests
 
+from blueprints.auth import register_node
 from login_setup import role_required
 from models import UserModel,NodeModel
 from flask import Blueprint, request,current_app
@@ -22,35 +23,8 @@ res_json = {
 @bp.route('/register', methods=['GET','POST'])
 @login_required
 def register():
-
     nodekey = request.form.get('nodekey')
-    user_name = current_user.name
-
-
-
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-    url = f'{server_host}/api/v1/node/register?user={user_name}&key={nodekey}'  # 替换为实际的目标 URL
-    response = requests.post(url, headers=headers)
-
-    # 额外字段
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-    }
-
-    if (response.text == "Unauthorized"):
-        res_json['code'], res_json['msg'] = '1', '认证失败'
-    else:
-        res_json['code'], res_json['msg'] = '0', '添加成功'
-
-    res_json['data'] = str(response.text)
-
-    return res_json
+    return register_node(nodekey)
 
 
 @bp.route('/getNodes')

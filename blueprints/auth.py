@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 import requests
 
-from utils import record_log, reload_headscale, res
+from utils import record_log, reload_headscale, res, to_post
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
-from models import UserModel, ACLModel
+from models import UserModel, ACLModel, NodeModel
 from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
@@ -30,22 +30,25 @@ def get_captcha():
 
 
 def register_node(registrationID):
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-    url = f'{server_host}/api/v1/node/register?user={current_user.name}&key={registrationID}'
-    response = requests.post(url, headers=headers)
+
+    url_path = f'/api/v1/node/register?user={current_user.name}&key={registrationID}'
+
+    node_count = db.session.query(NodeModel).filter(
+        NodeModel.user_id == current_user.id
+    ).count()
 
 
-    if response.text == "Unauthorized":
-        res_code,res_msg,res_data  = '1','认证失败',''
+    if int(node_count) >= int(current_user.node):
+        code, msg, data = '2', '超过此用户节点限制', ''
     else:
-        res_code,res_msg,res_data  = '0','节点添加成功',str(response.text)
-        record_log(current_user.id, "节点添加成功")
+        response = to_post(url_path).text
+        if (response == "Unauthorized"):
+            code, msg, data = '1', '认证失败', response
+        else:
+            code,msg,data  = '0','节点添加成功',str(response)
+            record_log(current_user.id, "节点添加成功")
 
-    return res(res_code,res_msg,res_data)
+    return res(code,msg,data)
 
 
 
@@ -55,16 +58,22 @@ def register(registrationID):
         # 如果用户已经登录，重定向到 admin 页面
         if current_user.is_authenticated:
             # 已登录，直接添加节点
-            node_info = register_node(registrationID)['data']
-            print(node_info)
+            register_node_response = register_node(registrationID)
+            error_info = ''
+            print(register_node_response)
+            if register_node_response['code'] == '0':
+                try:
+                    # 获取 ipAddresses 的值
+                    ip_address = json.loads(register_node_response['data'])["node"]["ipAddresses"][0]
+                except Exception as e:
+                    print(f"发生错误: {e}")
+                    ip_address = 'error'  # headscale 错误提示
+                    error_info = json.loads(register_node_response['data']).get('message')
+            else:
+                ip_address = 'error' # hs-admin 错误提示
+                error_info = register_node_response['msg']
 
-            try:
-                # 获取 ipAddresses 的值
-                ip_addresses = json.loads(node_info)["node"]["ipAddresses"][0]
-            except Exception as e:
-                print(f"发生错误: {e}")
-                ip_addresses = 'error'
-            return render_template('admin/node.html', node_info = ip_addresses)
+            return render_template('admin/node.html', error_info = error_info, ip_address = ip_address)
         else:
             return render_template('auth/register.html',registrationID = registrationID)
     else:

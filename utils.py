@@ -6,6 +6,7 @@ import psutil
 from exts import db
 from datetime import datetime
 import subprocess
+import requests
 
 
 # api接口返回格式定义
@@ -17,6 +18,17 @@ def res(code=None, msg=None, data=None):
     return response
 
 
+
+def to_post(url_path,data=None):
+    server_host = current_app.config['SERVER_HOST']
+    bearer_token = current_app.config['BEARER_TOKEN']
+    headers = {
+        'Authorization': f'Bearer {bearer_token}'
+    }
+    url = server_host+url_path
+    response = requests.post(url, headers=headers,data=data)
+    print(f'post请求url地址: {url},返回消息: {response.text}')
+    return response
 
 
 def record_log(user_id, log_content):
