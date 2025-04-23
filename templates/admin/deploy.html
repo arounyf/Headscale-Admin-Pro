@@ -20,8 +20,15 @@
             <pre class="layui-code code-tailscale" lay-options="{theme: 'dark'}"></pre>
             <br>
             <form class="layui-form" action="">
+
+               <div class="layui-form-item">
+                <label class="layui-form-label">接收DNS</label>
+                <div class="layui-input-block">
+                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptDNS" title="ON|OFF">
+                </div>
+              </div>
+
               <div class="layui-form-item">
-              
                 <label class="layui-form-label">接收路由</label>
                 <div class="layui-input-block">
                   <input type="checkbox" lay-skin="switch" lay-filter="AcceptRoutes" title="ON|OFF">
@@ -31,20 +38,36 @@
               <div class="layui-form-item">
                 <label class="layui-form-label">通告路由</label>
                 <div class="layui-inline">
-
                   <input type="checkbox" lay-skin="switch" lay-filter="AdvertiseRoutes" title="ON|OFF">
                   <div class="layui-input-inline" style="width: 120px;">
                     <input type="text" id="subnet" placeholder="192.168.1.0" autocomplete="off" class="layui-input"  >
                   </div>
-
                   <div class="layui-form-mid">/</div>
                   <div class="layui-input-inline" style="width: 80px;">
                     <input type="number"  id="cidr" placeholder="24" autocomplete="off" class="layui-input" min="8" step="8" lay-affix="number">
                   </div>
+                </div>
+              </div>
 
-              </div>            
-            </form>
-          </div>
+
+            <div class="layui-form-item">
+                <label class="layui-form-label">出口节点</label>
+                <div class="layui-input-block"><input type="checkbox" lay-skin="switch" lay-filter="AdvertiseExitNode" title="ON|OFF">
+                </div>
+            </div>
+
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">指定出口</label>
+                <div class="layui-inline">
+                  <input type="checkbox" lay-skin="switch" lay-filter="ExitNode" title="ON|OFF">
+                  <div class="layui-input-inline" style="width: 120px;">
+                    <input type="text" id="exit_info" placeholder="100.64.0.1" autocomplete="off" class="layui-input"  >
+                  </div>
+                </div>
+              </div>
+
+          </form>
         </div>
       </div>
     </div>
@@ -63,14 +86,29 @@ layui.use(['form', 'laydate', 'util'], function(){
 
   var tailscale_up = ["tailscale up --login-server={{ server_url }}"]
 
-  // code
-  layui.code({
-    elem: '.code-tailscale',
-    style: 'font-size: 20px;',
-    code: tailscale_up[0],
-    lang: '复制',
-    langMarker: true,
-    ln: false
+
+    function show_code(code){
+      // code
+      var codeInst = layui.code({
+        elem: '.code-tailscale',
+        style: 'font-size: 20px;',
+        code: code,
+        lang: '复制',
+        langMarker: true,
+        ln: false
+      });
+    }
+
+  show_code(tailscale_up)
+
+    // 接收DNS
+  form.on('switch(AcceptDNS)', function(data){
+    if(this.checked){
+      tailscale_up[1] = "--accept-dns"
+    }else{
+      tailscale_up[1] = ""
+    }
+    show_code(tailscale_up.join(' '))
   });
 
 
@@ -78,35 +116,52 @@ layui.use(['form', 'laydate', 'util'], function(){
   form.on('switch(AcceptRoutes)', function(data){
 
     if(this.checked){
-     
-      tailscale_up[1] = "--accept-routes"
-      console.log(tailscale_up.join(' '))
-      $('.layui-code-line-content').text(tailscale_up.join(' '))
+
+      tailscale_up[2] = "--accept-routes"
     }else{
-      tailscale_up[1] = ""
-      console.log(tailscale_up.join(' '))
-      $('.layui-code-line-content').text(tailscale_up.join(' '))
+      tailscale_up[2] = ""
     }
+    show_code(tailscale_up.join(' '))
   });
+
+
 
 
   // 通告路由
   form.on('switch(AdvertiseRoutes)', function(data){
 
     if(this.checked){
-      tailscale_up[2] = "--advertise-routes="+$('#subnet').val()+"/"+$('#cidr').val()
-      console.log(tailscale_up.join(' '))
-      $('.layui-code-line-content').text(tailscale_up.join(' '))
+      tailscale_up[3] = "--advertise-routes="+$('#subnet').val()+"/"+$('#cidr').val()
     }else{
-      tailscale_up[2] = ""
-      console.log(tailscale_up.join(' '))
-      $('.layui-code-line-content').text(tailscale_up.join(' '))
+      tailscale_up[3] = ""
     }
+    show_code(tailscale_up.join(' '))
   });
-  
-  
 
-  
+  // 出口节点
+  form.on('switch(AdvertiseExitNode)', function(data){
+    if(this.checked){
+      tailscale_up[4] = "--advertise-exit-node"
+    }else{
+      tailscale_up[4] = ""
+    }
+    show_code(tailscale_up.join(' '))
+  });
+
+
+
+    // 指定出口
+  form.on('switch(ExitNode)', function(data){
+
+    if(this.checked){
+      tailscale_up[5] = "--exit-node="+$('#exit_info').val()
+    }else{
+      tailscale_up[5] = ""
+    }
+    show_code(tailscale_up.join(' '))
+  });
+
+
 });
 </script>
 

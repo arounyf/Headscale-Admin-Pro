@@ -187,153 +187,76 @@ layui.define(function(exports){
     reloadData()
 
 
-
-    
-
   });
 
 
 
-  //地图
-  layui.use(['carousel', 'echarts'], function(){
-    var $ = layui.$
-    ,carousel = layui.carousel
-    ,echarts = layui.echarts;
-    
-    var echartsApp = [], options = [
-      {
-        title : {
-          text: '服务器地区分布',
-          subtext: '敬请期待更多服务器'
-        },
-        tooltip : {
-          trigger: 'item'
-        },
-        dataRange: {
-          orient: 'horizontal',
-          min: 0,
-          max: 300,
-          text:['高','低'],
-          splitNumber:0
-        },
-        series : [
-          { 
-            name: '访客地区分布',
-            type: 'map',
-            mapType: 'china',    
-            selectedMode : 'multiple',
-            itemStyle:{
-                normal:{label:{show:true}},
-                emphasis:{label:{show:true}}
-            },
-            data:[
-                {name:'西藏', value:0},
-                {name:'青海', value:0},
-                {name:'宁夏', value:0},
-                {name:'海南', value:0},
-                {name:'甘肃', value:0},
-                {name:'贵州', value:0},
-                {name:'新疆', value:0},
-                {name:'云南', value:0},
-                {name:'重庆', value:0},
-                {name:'吉林', value:0},
-                {name:'山西', value:0},
-                {name:'天津', value:0},
-                {name:'江西', value:0},
-                {name:'广西', value:0},
-                {name:'陕西', value:0},
-                {name:'黑龙江', value:0},
-                {name:'内蒙古', value:0},
-                {name:'安徽', value:0},
-                {name:'北京', value:0},
-                {name:'福建', value:0},
-                {name:'上海', value:0},
-                {name:'湖北', value:0},
-                {name:'湖南', value:0},
-                {name:'四川', value:200},
-                {name:'辽宁', value:0},
-                {name:'河北', value:0},
-                {name:'河南', value:0},
-                {name:'浙江', value:200},
-                {name:'山东', value:0},
-                {name:'江苏', value:0},
-                {name:'广东', value:0}
-            ]
-          }
-        ]
-      }
-    ]
-    ,elemDataView = $('#LAY-index-pagethree-home').children('div')
-    ,renderDataView = function(index){
-      echartsApp[index] = echarts.init(elemDataView[index], layui.echartsTheme);
-      echartsApp[index].setOption(options[index]);
-      window.onresize = echartsApp[index].resize;
-    }; 
-    //没找到DOM，终止执行
-    if(!elemDataView[0]) return;
- 
-    renderDataView(0);  
-  });
+ //地图
+    layui.use(['carousel', 'echarts'], function () {
+        var $ = layui.$
+            , carousel = layui.carousel
+            , echarts = layui.echarts;
 
-  //最新订单
-  layui.use('table', function(){
-    var $ = layui.$
-    ,table = layui.table;
-    
-    //今日热搜
-    table.render({
-      elem: '#LAY-index-topSearch'
-      ,url: layui.setter.paths.base + 'json/console/top-search.js' //模拟接口
-      ,page: true
-      ,cols: [[
-        {type: 'numbers', fixed: 'left'}
-        ,{field: 'keywords', title: '关键词', minWidth: 300, templet: '<div><a href="https://www.baidu.com/s?wd={{ d.keywords }}" target="_blank" class="layui-table-link">{{ d.keywords }}</div>'}
-        ,{field: 'frequency', title: '搜索次数', minWidth: 120, sort: true}
-        ,{field: 'userNums', title: '用户数', sort: true}
-      ]]
-      ,skin: 'line'
-    });
-    
-    //今日热贴
-    table.render({
-      elem: '#LAY-index-topCard'
-      ,url: layui.setter.paths.base + 'json/console/top-card.js' //模拟接口
-      ,page: true
-      ,cellMinWidth: 120
-      ,cols: [[
-        {type: 'numbers', fixed: 'left'}
-        ,{field: 'title', title: '标题', minWidth: 300, templet: '<div><a href="{{ d.href }}" target="_blank" class="layui-table-link">{{ d.title }}</div>'}
-        ,{field: 'username', title: '发帖者'}
-        ,{field: 'channel', title: '类别'}
-        ,{field: 'crt', title: '点击率', sort: true}
-      ]]
-      ,skin: 'line'
-    });
-
-    //项目进展
-    table.render({
-      elem: '#LAY-home-homepage-console'
-      ,url: layui.setter.paths.base + 'json/console/prograss.js' //模拟接口
-      ,cols: [[
-        {type: 'checkbox', fixed: 'left'}
-        ,{field: 'prograss', title: '任务'}
-        ,{field: 'time', title: '所需时间'}
-        ,{field: 'complete', title: '完成情况'
-          ,templet: function(d){
-            if(d.complete == '已完成'){
-              return '<del style="color: #16b777;">'+ d.complete +'</del>'
-            }else if(d.complete == '进行中'){
-              return '<span style="color: #FFB800;">'+ d.complete +'</span>'
-            }else{
-              return '<span style="color: #FF5722;">'+ d.complete +'</span>'
+        var echartsApp = [], options = [
+            {
+                title: {
+                    text: '服务器地区分布',
+                    subtext: '敬请期待更多服务器'
+                },
+                tooltip: {
+                    trigger: 'item'
+                },
+                dataRange: {
+                    orient: 'horizontal',
+                    min: 0,
+                    max: 300,
+                    text: ['高', '低'],
+                    splitNumber: 0
+                },
+                series: [
+                    {
+                        name: '访客地区分布',
+                        type: 'map',
+                        mapType: 'china',
+                        selectedMode: 'multiple',
+                        itemStyle: {
+                            normal: { label: { show: true } },
+                            emphasis: { label: { show: true } }
+                        },
+                        data: [] // 初始为空，等待 AJAX 数据填充
+                    }
+                ]
             }
-          }
+        ]
+            , elemDataView = $('#LAY-index-pagethree-home').children('div')
+            , renderDataView = function (index) {
+                echartsApp[index] = echarts.init(elemDataView[index], layui.echartsTheme);
+                echartsApp[index].setOption(options[index]);
+                window.onresize = echartsApp[index].resize;
+            };
+        //没找到DOM，终止执行
+        if (!elemDataView[0]) return;
+
+        function loadVisitorData() {
+            $.ajax({
+                url: '/api/system/visitor_distribution', // 替换为实际的 API 地址
+                type: 'get',
+                dataType: 'json',
+                success: function (res) {
+                    options[0].series[0].data = res; // 更新访客分布数据
+                    renderDataView(0); // 重新渲染图表
+                },
+                error: function (error) {
+                    console.error('获取访客分布数据出错:', error);
+                }
+            });
         }
-      ]]
-      ,skin: 'line'
+
+        // 加载访客分布数据
+        loadVisitorData();
+
     });
 
-  });
   
   exports('console', {})
 });

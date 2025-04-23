@@ -403,8 +403,3 @@ logtail:
 # firewall devices. See https://tailscale.com/kb/1181/firewalls/ for more information.
 randomize_client_port: false
 
-
-
-apikey: not set
-server_net:
-region_html: <tr><td>1</td><td>四川</td><td>200 Mbps</td></tr><tr><td>2</td><td>浙江</td><td>200 Mbps</td></tr>

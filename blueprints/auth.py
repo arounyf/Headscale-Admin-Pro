@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
-import requests
 
-from utils import record_log, reload_headscale, res, to_post
+from utils import record_log, reload_headscale, res, to_post, to_rewrite_acl
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
 from models import UserModel, ACLModel, NodeModel
@@ -107,15 +106,18 @@ def reg():
             password = generate_password_hash(form.password.data)
             phone_number = form.phone.data
             email = form.email.data
+            default_reg_days = current_app.config['DEFAULT_REG_DAYS']
 
             create_time = datetime.now()
-            expire = create_time + timedelta(days=int(current_app.config['DEFAULT_REG_DAYS'])) # 新用户注册默认?天后到期
+            expire = create_time + timedelta(days=int(default_reg_days)) # 新用户注册默认?天后到期
 
             if (username == "admin"):
                 role = "manager"
                 expire = create_time + timedelta(1000)
             else:
                 role = "user"
+            if default_reg_days != 0:
+                default_reg_days = 1
             user = UserModel(
                 name=username,
                 password = password,
@@ -125,9 +127,9 @@ def reg():
                 cellphone=phone_number,
                 email=email,
                 role=role,
-                node=2,
+                node=current_app.config['DEFAULT_NODE_COUNT'],
                 route=0,
-                enable=1
+                enable=default_reg_days
             )
             db.session.add(user)
             db.session.commit()
@@ -138,7 +140,8 @@ def reg():
             new_acl = ACLModel(acl=init_acl, user_id=user.id)
             db.session.add(new_acl)
             db.session.commit()
-
+            to_rewrite_acl()
+            reload_headscale()
             res_code,res_msg,res_data = '0','注册成功',reload_headscale()
 
         else:
@@ -168,9 +171,6 @@ def login():
             login_user(user)
             res_code,res_msg,res_data = '0', '登录成功',''
 
-            print(session)
-            print("登录成功")
-            session.permanent = True
             record_log(user.id, "登录成功")
         else:
             # return form.errors

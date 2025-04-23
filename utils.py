@@ -8,6 +8,8 @@ from datetime import datetime
 import subprocess
 import requests
 
+from models import ACLModel, UserModel
+
 
 # api接口返回格式定义
 def res(code=None, msg=None, data=None):
@@ -217,3 +219,28 @@ def get_headscale_version():
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         print({e.stderr})
+
+
+def to_rewrite_acl():
+    acl_path = current_app.config['ACL_PATH']
+    # acls = ACLModel.query.filter(ACLModel.enable == 1).all()
+
+    acls = db.session.query(ACLModel).select_from(ACLModel).join(
+        UserModel, ACLModel.user_id == UserModel.id).filter(
+        UserModel.enable == '1').all(
+    )
+
+    acl_list = [json.loads(acl.acl) for acl in acls]
+    acl_data = {
+        "acls": acl_list
+    }
+    print(acl_data)
+    try:
+        with open(acl_path, 'w') as f:
+            json.dump(acl_data, f, indent=4)
+        code,msg,data = '0','写入成功',acl_data
+    except Exception as e:
+        # return f"写入文件时出错: {str(e)}", 500
+        code,msg,data = '0','写入失败',str(e)
+
+    return res(code,msg,data)

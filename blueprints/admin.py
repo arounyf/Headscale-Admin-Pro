@@ -19,7 +19,7 @@ def admin():
         'user': {'html': '<dd data-name="console"><a lay-href="user"><i class="layui-icon layui-icon-user"></i>用户</a></dd>', 'roles': ['manager']},
         'node': {'html': '<dd data-name="console"><a lay-href="node"><i class="layui-icon layui-icon-website"></i>节点</a></dd>', 'roles': ['manager', 'user']},
         'route': {'html': '<dd data-name="console"><a lay-href="route"><i class="layui-icon layui-icon-senior"></i>路由</a></dd>', 'roles': ['manager', 'user']},
-        'deploy': {'html': '<dd data-name="console"><a lay-href="deploy"><i class="layui-icon layui-icon-chat"></i>指令</a></dd>', 'roles': ['manager', 'user']},
+        'deploy': {'html': '<dd data-name="console"><a lay-href="deploy"><i class="layui-icon layui-icon-fonts-code"></i>指令</a></dd>', 'roles': ['manager', 'user']},
         'help': {'html': '<dd data-name="console"><a lay-href="help"><i class="layui-icon layui-icon-read"></i>文档</a></dd>', 'roles': ['manager', 'user']},
         'acl': {'html': '<dd data-name="console"><a lay-href="acl"><i class="layui-icon layui-icon-auz"></i>ACL</a></dd>', 'roles': ['manager']},
         'preauthkey': {'html': '<dd data-name="console"><a lay-href="preauthkey"><i class="layui-icon layui-icon-key"></i>密钥</a></dd>', 'roles': ['manager', 'user']},
@@ -29,7 +29,6 @@ def admin():
 
 
     role = current_user.role
-    print(role)
     if(role == "manager"):
         default_page = "console"
     else:
@@ -119,6 +118,10 @@ def set():
     apikey = current_app.config['BEARER_TOKEN']
     server_url = current_app.config['SERVER_URL']
     server_net = current_app.config['SERVER_NET']
+    default_reg_days = current_app.config['DEFAULT_REG_DAYS']
+    default_node_count = current_app.config['DEFAULT_NODE_COUNT']
+    open_user_reg = current_app.config['OPEN_USER_REG']
+    region_data = current_app.config['REGION_DATA']
 
     options_html = ""
     for interface in get_server_net()["network_interfaces"]:
@@ -130,13 +133,30 @@ def set():
     region_html = current_app.config['REGION_HTML']
 
 
-    print(get_headscale_pid())
+
     if get_headscale_pid():
         headscale_status = "checked"
     else:
         headscale_status = ""
 
-    return render_template('admin/set.html',apikey = apikey,server_url = server_url,server_net = options_html,region_html = region_html,headscale_status = headscale_status,version = get_headscale_version())
+
+    if open_user_reg == 'on':
+        open_user_reg = "checked"
+    else:
+        open_user_reg = ""
+
+
+    return render_template('admin/set.html',apikey = apikey,
+                               server_url = server_url,
+                               server_net = options_html,
+                               region_html = region_html,
+                               headscale_status = headscale_status,
+                               default_reg_days = default_reg_days,
+                               default_node_count = default_node_count,
+                               open_user_reg = open_user_reg,
+                               region_data = region_data,
+                               version = get_headscale_version()
+                           )
 
 
 

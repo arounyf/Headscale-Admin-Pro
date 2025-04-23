@@ -1,13 +1,9 @@
-import os
 import subprocess
-
 from flask_login import login_required
-
 from exts import db
 from login_setup import role_required
 from flask import Blueprint, request,current_app
 from ruamel.yaml import YAML
-
 from models import ApiKeys
 from utils import start_headscale, stop_headscale
 
@@ -25,6 +21,11 @@ def upset():
     server_net = request.form.get('serverNet')
     server_url = request.form.get('serverUrl')
     region_html = request.form.get('regionHtml')
+    region_data = request.form.get('regionData')
+    default_node_count = request.form.get('defaultNodeCount')
+    open_user_reg = request.form.get('openUserReg')
+    default_reg_days = request.form.get('defaultRegDays')
+
 
 
     # 创建 YAML 对象，设置保留注释
@@ -39,22 +40,27 @@ def upset():
     config_yaml['apikey'] = apikey
     config_yaml['server_url'] = server_url
     config_yaml['server_net'] = server_net
+    config_yaml['default_node_count'] = default_node_count
+    config_yaml['open_user_reg'] = open_user_reg
+    config_yaml['default_reg_days'] = default_reg_days
     config_yaml['region_html'] = region_html
+    config_yaml['region_data'] = region_data
 
     current_app.config['BEARER_TOKEN'] = config_yaml['apikey']
     current_app.config['SERVER_URL'] = config_yaml['server_url']
     current_app.config['SERVER_NET'] = config_yaml['server_net']
     current_app.config['REGION_HTML'] = config_yaml['region_html']
-
+    current_app.config['REGION_DATA'] = config_yaml['region_data']
+    current_app.config['DEFAULT_REG_DAYS'] = config_yaml['default_reg_days']
+    current_app.config['DEFAULT_NODE_COUNT'] = config_yaml['default_node_count']
+    current_app.config['OPEN_USER_REG'] = config_yaml['open_user_reg']
 
     # 将更新后的配置写回到文件
     with open('/etc/headscale/config.yaml', 'w') as file:
         yaml.dump(config_yaml, file)
 
-
     res_json['code'], res_json['msg'] = '0', '修改成功'
     res_json['data'] = ""
-
 
     return res_json
 

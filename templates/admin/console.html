@@ -30,6 +30,13 @@
                       </li>
 
                       <li class="layui-col-xs3">
+                        <a lay-href="/admin/user">
+                          <i class="layui-icon layui-icon-user"></i>
+                          <cite>用户</cite>
+                        </a>
+                      </li>
+
+                      <li class="layui-col-xs3">
                         <a lay-href="/admin/node">
                           <i class="layui-icon layui-icon-website"></i>
                           <cite>节点</cite>
@@ -48,7 +55,28 @@
                         </a>
                       </li>
 
-                            
+                      <li class="layui-col-xs3">
+                        <a lay-href="/admin/acl">
+                          <i class="layui-icon layui-icon-auz"></i>
+                          <cite>ACL</cite>
+                        </a>
+                      </li>
+
+                      <li class="layui-col-xs3">
+                        <a lay-href="/admin/preauthkey">
+                          <i class="layui-icon layui-icon-key"></i>
+                          <cite>密钥</cite>
+                        </a>
+                      </li>
+
+
+                      <li class="layui-col-xs3">
+                        <a lay-href="/admin/set">
+                          <i class="layui-icon layui-icon-set"></i>
+                          <cite>设置</cite>
+                        </a>
+                      </li>
+
                     </ul>
 
                   </div>
@@ -237,28 +265,16 @@
     var element = layui.element;
 
 
-    $.ajax({
-      url:'/api/node/getNodes?page=1&limit=999',
-      type: 'get',
-      dataType: 'json',
-      success:function(res){
-        if(res.code == 0){
-          //console.log(res.count)
-          $('#nodeNum').html(res.count)
-          $('#RoutesNum').html(res.routes)
-        }
-      }
-    });
+
 
     $.ajax({
       url:'/api/user/init_data',
       type: 'get',
       dataType: 'json',
       success:function(res){
-        if(res.data.defaultPass == '0'){
-          location.href = 'password';
-          top.layer.msg('请修改默认密码', {icon: 7});
-        }
+
+        $('#nodeNum').html(res.data.node_count)
+        $('#RoutesNum').html(res.data.route_count)
 
         $('#reg').text(res.data.created_at.split('+')[0])
         
@@ -317,6 +333,10 @@
 
 
   });
+
+
+
+
   </script>
 </body>
 </html>

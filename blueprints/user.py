@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func
 from exts import db
 from login_setup import role_required
-from models import UserModel
+from models import UserModel, NodeModel, RouteModel
 from flask import Blueprint, request
 
 
@@ -113,13 +113,18 @@ def user_enable():
     print(user_id)
     user = UserModel.query.filter_by(id=user_id).first()
 
-    res_json['code']= '0'
+
     if (enable == "true"):
         user.enable = 1
+        res_json['code'] = '0'
         res_json['msg'] = ('启用成功')
     else:
-        user.enable = 0
-        res_json['msg'] = ('停用成功')
+        if user.name == 'admin':
+            res_json['code'] = '1'
+            res_json['msg'] = ('停用失败，无法停用admin用户')
+        else:
+            user.enable = 0
+            res_json['msg'] = ('停用成功')
     db.session.commit()
 
     return res_json
@@ -166,10 +171,16 @@ def delUser():
 def init_data():
     user_created_at = current_user.created_at
     user_expire = current_user.expire
-    print(user_created_at)
-    print(user_expire)
+    node_count = NodeModel.query.count()
+    route_count = RouteModel.query.count()
 
-    data = {"created_at":str(user_created_at),"expire":str(user_expire)}
+
+    data = {
+            "created_at":str(user_created_at),
+            "expire":str(user_expire),
+            "node_count":node_count,
+            "route_count":route_count
+        }
 
     res_json['code'], res_json['msg'] = '0', '查询成功'
     res_json['data'] = data

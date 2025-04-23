@@ -9,7 +9,16 @@ from models import UserModel
 
 
 class RegisterForm(wtforms.Form):
-    username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
+    username = wtforms.StringField(
+        validators=[
+            DataRequired(message='用户名不能为空'),
+            Length(min=3, max=20, message='用户名长度需在3 - 20位之间'),
+            Regexp(
+                regex=r'^[a-zA-Z][a-zA-Z0-9]*$',
+                message='用户名必须以字母开头，且只能包含字母和数字'
+            )
+        ]
+    )
     password = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='密码格式错误')])
     confirmPassword = wtforms.StringField(validators=[EqualTo('password',message='密码输入不一致')])
     phone = wtforms.StringField(validators=[DataRequired(),length(11, 11),Regexp(r'(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}', 0, '手机号码不合法')])

@@ -3,8 +3,8 @@ from flask_login import login_required
 from exts import db
 from login_setup import role_required
 from models import UserModel,  ACLModel
-from flask import Blueprint,  request
-from utils import reload_headscale
+from flask import Blueprint, request, current_app
+from utils import reload_headscale, to_rewrite_acl
 
 bp = Blueprint("acl", __name__, url_prefix='/api/acl')
 
@@ -88,27 +88,7 @@ def re_acl():
 @login_required
 @role_required("manager")
 def rewrite_acl():
-
-    acl_path="/etc/headscale/acl.hujson"
-    acls = ACLModel.query.all()
-
-    acl_list = [json.loads(acl.acl) for acl in acls]
-    acl_data = {
-        "acls": acl_list
-    }
-    print(acl_data)
-    try:
-        with open(acl_path, 'w') as f:
-            json.dump(acl_data, f, indent=4)
-        res_json['code'], res_json['msg'] = '0', '写入成功'
-    except Exception as e:
-        # return f"写入文件时出错: {str(e)}", 500
-        res_json['code'], res_json['msg'] = '0', '写入失败'
-        res_json['data'] = str(e)
-
-
-    res_json['data'] = acl_data
-    return  res_json
+    return  to_rewrite_acl()
 
 
 @bp.route('/read_acl', methods=['GET','POST'])

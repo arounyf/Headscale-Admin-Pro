@@ -18,14 +18,14 @@
           <div class="layui-card-header">系统设置</div>
           <div class="layui-card-body" pad15>
             
-            <div class="layui-form" wid100 lay-filter="">
+            <div class="layui-form" wid100 lay-filter="" >
 
 
               <div class="layui-form-item">
                   <label class="layui-form-label">apiKey</label>
 
                   <div class="layui-input-inline" style="width:395px">
-                    <input type="password" name="apiKey" lay-verify="required" autocomplete="off"   value="{{ apikey }}" class="layui-input" lay-affix="eye">
+                    <input type="password" name="apiKey" lay-verify="required" autocomplete="off"   value="{{ apikey }}" class="layui-input" lay-affix="eye" placeholder="apikey是与headscale通信的凭证" >
                   </div>
                   <div class="layui-form-mid" style="padding: 0!important;">
                     <button type="button" class="layui-btn layui-btn-primary" lay-on="get_apikey">自动生成</button>
@@ -37,7 +37,30 @@
               <div class="layui-form-item">
                 <label class="layui-form-label">server url</label>
                 <div class="layui-input-block" style="width:500px">
-                  <input type="text" name="serverUrl" lay-verify="required" value="{{ server_url }}" class="layui-input">
+                  <input type="text" name="serverUrl" lay-verify="required" value="{{ server_url }}" class="layui-input" placeholder="headscale对外提供服务的URL" >
+                </div>
+              </div>
+
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">新用户默认天数</label>
+                <div class="layui-input-block" style="width:500px">
+                  <input type="text" name="defaultRegDays" lay-verify="required" value="{{ default_reg_days }}" class="layui-input" placeholder="新用户注册默认到期天数,0代表默认禁用" >
+                </div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">默认节点限制</label>
+                <div class="layui-input-block" style="width:500px">
+                  <input type="text" name="defaultNodeCount" lay-verify="required" value="{{ default_node_count }}" class="layui-input" placeholder="新用户注册默认节点数量限制" >
+                </div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">对外注册</label>
+                <div class="layui-input-block" style="width:500px">
+                  <input type="checkbox" name="openUserReg" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="open_user_reg_switch"
+                     {{ open_user_reg }}     ><div class="layui-unselect layui-form-switch" lay-skin="switch" ><div>关闭</div><i></i></div>
                 </div>
               </div>
 
@@ -50,9 +73,6 @@
                         <option value=""></option>
 {#                        <option value="0">写作</option>#}
 {#                        <option value="1" selected>阅读</option>#}
-{#                        <option value="2">游戏</option>#}
-{#                        <option value="3">音乐</option>#}
-{#                        <option value="4">旅行</option>#}
                           {{ server_net|safe }}
                       </select>
                     </div>
@@ -70,6 +90,15 @@
               </div>
 
 
+              <div class="layui-form-item layui-form-text">
+                <label class="layui-form-label">服务器分布数据</label>
+                <div class="layui-input-block">
+                  <textarea name="regionData" class="layui-textarea"  lay-verify="required" >{{ region_data }}</textarea>
+                </div>
+              </div>
+
+
+
               <div class="layui-form-item">
                 <div class="layui-input-block">
                   <button class="layui-btn" lay-submit lay-filter="set_config">确认保存</button>
@@ -79,6 +108,9 @@
           </div>
         </div>
       </div>
+
+
+
 
 
         <div class="layui-col-md4">
@@ -93,6 +125,8 @@
           </div>
         </div>
         </div>
+
+
 
 
 
