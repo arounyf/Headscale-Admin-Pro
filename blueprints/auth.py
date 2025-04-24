@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-
-from authlib.common.encoding import json_loads
-
+import json
 from utils import record_log, reload_headscale, res, to_post, to_rewrite_acl
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
@@ -133,7 +131,7 @@ def reg():
 
                 try:
                     # 获取 user_id
-                    user_id = json_loads(result_reg)['user']['id']
+                    user_id = json.loads(result_reg)['user']['id']
                 except Exception as e:
                     print(f"发生错误: {e}")
                     user_id = False
@@ -166,7 +164,7 @@ def reg():
 
                     res_code,res_msg,res_data = '0','注册成功',''
                 else:
-                    res_code, res_msg, res_data = '1',json_loads(result_reg)['message'], ''
+                    res_code, res_msg, res_data = '1',json.loads(result_reg)['message'], ''
             else:
                 # return form.errors
                 first_key = next(iter(form.errors.keys()))
