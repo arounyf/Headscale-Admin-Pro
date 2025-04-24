@@ -122,8 +122,8 @@
       ,totalRow: true // 开启合计行
       ,page: true
       ,cols: [[
-        {type: 'checkbox', fixed: 'left'}
-        ,{field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
+        //{type: 'checkbox', fixed: 'left'}
+        {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
         ,{field:'userName', width:150, title: '用户名', sort: true, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
         ,{field:'createTime', title:'注册时间', width: 180,templet: function(d){
             var ago = util.timeAgo(d.createTime);

@@ -1,4 +1,3 @@
-  {% raw %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -66,10 +65,16 @@
       ,totalRow: true // 开启合计行
       ,page: true
       ,cols: [[
-            {type: 'checkbox'}
-            ,{field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
-            ,{field:'name', title:'用户名',width:180,totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-            ,{field:'content', title:'内容',width:700}
+           // {type: 'checkbox'}
+            {field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
+            {% if current_user.role == 'manager' %}
+                ,{field:'name', title:'用户名',width:180,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
+            {% endif %}
+            ,{field:'content', title:'内容',width:700
+                {% if current_user.role == 'user' %}
+                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
+                {% endif %}
+            }
             ,{field:'create_time', title:'时间',width:300}
         ]]
       ,error: function(res, msg){
@@ -103,4 +108,3 @@
   </script>
 </body>
 </html>
-    {% endraw %}

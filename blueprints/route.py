@@ -89,9 +89,10 @@ def route_enable():
     # 连接两表查询，因为路由表没有user_id
     user_id = db.session.query(NodeModel.user_id).select_from(RouteModel).join(
         NodeModel, RouteModel.node_id == NodeModel.id).filter(
-        RouteModel.id == route_id).first(
+        RouteModel.id == route_id).scalar(
     )
 
+    print(user_id)
     if current_user.route != '1':
         code, msg, data = '1', '未获得使用权限', response
     elif current_user.role == 'manager' or user_id == current_user.user_id:  # 如果是管理员或者是本用户的路由

@@ -28,7 +28,7 @@ def to_post(url_path,data=None):
         'Authorization': f'Bearer {bearer_token}'
     }
     url = server_host+url_path
-    response = requests.post(url, headers=headers,data=data)
+    response = requests.post(url, headers=headers,json=data)
     print(f'post请求url地址: {url},返回消息: {response.text}')
     return response
 

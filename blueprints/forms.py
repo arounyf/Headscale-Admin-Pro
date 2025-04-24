@@ -1,9 +1,13 @@
+from datetime import datetime, timedelta
+
 import wtforms
 
-from flask import session
+from flask import session, current_app
 from flask_login import current_user
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
+
+from exts import db
 from models import UserModel
 
 
@@ -44,15 +48,19 @@ class RegisterForm(wtforms.Form):
         if ' ' in field.data:
             raise wtforms.ValidationError('用户名不能包含空格')
         else:
-            user = UserModel.query.filter_by(name=field.data).first()
-            if user:
-                raise wtforms.ValidationError("该用户已注册！")
+            user_name = db.session.query(UserModel.name).filter(
+                UserModel.name == field.data).scalar(
+            )
+            if user_name:
+                raise wtforms.ValidationError(f"{user_name}用户已注册！")
 
 
     def validate_email(self,field):
-        email = UserModel.query.filter_by(email=field.data).first()
+        email = db.session.query(UserModel.email).filter(
+            UserModel.email == field.data).scalar(
+        )
         if email:
-            raise wtforms.ValidationError("该邮箱已被注册！")
+            raise wtforms.ValidationError(f"{email}邮箱已被注册！")
 
 
 
@@ -71,15 +79,32 @@ class LoginForm(wtforms.Form):
 
     def validate_username(self, field):
 
-        # python不支持超过6位数的微秒,但是headscale的微秒都是9位，所以加上异常
+        # sqlalchemy不支持超过6位数的微秒,但是headscale的微秒都是9位，所以加上异常处理
         # 目前发现使用headscale user create创建的时间存在9位微秒
 
         try:
             user = UserModel.query.filter_by(name=field.data).first()
         except Exception as e:
             if (type(e).__name__ == "ValueError"):
-                raise wtforms.ValidationError("不支持从CLI创建的用户！")
 
+                default_reg_days = current_app.config['DEFAULT_REG_DAYS']
+                if default_reg_days != 0:
+                    default_reg_days = 1
+
+                db.session.query(UserModel).filter(UserModel.name == self.username.data).update(
+                    {
+                        UserModel.password: generate_password_hash(self.password.data),
+                        UserModel.created_at: datetime.now(),
+                        UserModel.updated_at: datetime.now(),
+                        UserModel.expire: datetime.now() + timedelta(days=int(default_reg_days)),
+                        UserModel.role: 'user',
+                        UserModel.node: current_app.config['DEFAULT_NODE_COUNT'],
+                        UserModel.route: '0',
+                        UserModel.enable: default_reg_days
+                    }
+                )
+                print(self.username.data)
+                user = UserModel.query.filter_by(name=field.data).first()
 
         self.user = user  # 返回查询到的用户对象
         if not user:

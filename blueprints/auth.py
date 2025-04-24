@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+from authlib.common.encoding import json_loads
+
 from utils import record_log, reload_headscale, res, to_post, to_rewrite_acl
 from flask_login import login_user, logout_user, current_user, login_required
 from exts import db
@@ -119,32 +121,52 @@ def reg():
                     role = "user"
                 if default_reg_days != 0:
                     default_reg_days = 1
-                user = UserModel(
-                    name=username,
-                    password = password,
-                    created_at=create_time,
-                    updated_at=create_time,
-                    expire=expire,
-                    cellphone=phone_number,
-                    email=email,
-                    role=role,
-                    node=current_app.config['DEFAULT_NODE_COUNT'],
-                    route=0,
-                    enable=default_reg_days
-                )
-                db.session.add(user)
-                db.session.commit()
 
-                #acl操作
-                init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
+                json_data =  {
+                  "name": username,
+                  "displayName": username,
+                  "email": email,
+                  "pictureUrl": "NULL"
+                }
 
-                new_acl = ACLModel(acl=init_acl, user_id=user.id)
-                db.session.add(new_acl)
-                db.session.commit()
-                to_rewrite_acl()
-                reload_headscale()
-                res_code,res_msg,res_data = '0','注册成功',reload_headscale()
+                result_reg = to_post('/api/v1/user',data = json_data).text  # 直接使用数据库创建用户会出现ACL失效，所有使用api创建
 
+                try:
+                    # 获取 user_id
+                    user_id = json_loads(result_reg)['user']['id']
+                except Exception as e:
+                    print(f"发生错误: {e}")
+                    user_id = False
+
+                # 修改数据库以解决sqlalchemy对9位微秒的兼容性问题，以及填充字段
+                if user_id:
+                    db.session.query(UserModel).filter(UserModel.name == username).update(
+                        {
+                        UserModel.password: password,
+                        UserModel.created_at: create_time,
+                        UserModel.updated_at: create_time,
+                        UserModel.expire: expire,
+                        UserModel.role: role,
+                        UserModel.cellphone: phone_number,
+                        UserModel.node: current_app.config['DEFAULT_NODE_COUNT'],
+                        UserModel.route: '0',
+                        UserModel.enable: default_reg_days
+                        }
+                    )
+
+                    # 添加ACL
+                    init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
+                    new_acl = ACLModel(acl=init_acl, user_id=user_id)
+                    db.session.add(new_acl)
+                    db.session.commit()
+
+                    # 用户初始化
+                    to_rewrite_acl()
+                    reload_headscale()
+
+                    res_code,res_msg,res_data = '0','注册成功',''
+                else:
+                    res_code, res_msg, res_data = '1',json_loads(result_reg)['message'], ''
             else:
                 # return form.errors
                 first_key = next(iter(form.errors.keys()))

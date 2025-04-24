@@ -110,12 +110,18 @@
       ,cellMinWidth: 80
       ,totalRow: true // 开启合计行
       ,page: true
-        {% raw %}
+
       ,cols: [[
-            {type: 'checkbox', fixed: 'left'}
-            ,{field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
-            ,{field:'userName', width:180, title: '用户名', sort: true, edit: 'text',totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-            ,{field:'name', width:180, title: '节点名', edit: 'text'}
+            //{type: 'checkbox', fixed: 'left'}
+            {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
+            {% if current_user.role == 'manager' %}
+                ,{field:'userName', width:180, title: '用户名', sort: true, edit: 'text',totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
+            {% endif %}
+            ,{field:'name', width:180, title: '节点名', edit: 'text'
+                {% if current_user.role == 'user' %}
+                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
+                {% endif %}
+            }
             ,{field:'ip', width: 160, title: 'ip地址'}
             ,{field:'createTime', title:'创建时间', width: 180, sort: true}
             ,{field:'lastTime', title:'最近连接', width: 180, sort: true,templet:'#TPL-lastTime'}
@@ -123,7 +129,7 @@
             ,{field:'OS', title:'操作系统', width: 220}
             ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
         ]]
-        {% endraw %}
+
       ,error: function(res, msg){
         console.log(res, msg)
       }

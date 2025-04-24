@@ -19,10 +19,10 @@ def admin():
         'user': {'html': '<dd data-name="console"><a lay-href="user"><i class="layui-icon layui-icon-user"></i>用户</a></dd>', 'roles': ['manager']},
         'node': {'html': '<dd data-name="console"><a lay-href="node"><i class="layui-icon layui-icon-website"></i>节点</a></dd>', 'roles': ['manager', 'user']},
         'route': {'html': '<dd data-name="console"><a lay-href="route"><i class="layui-icon layui-icon-senior"></i>路由</a></dd>', 'roles': ['manager', 'user']},
+        'acl': {'html': '<dd data-name="console"><a lay-href="acl"><i class="layui-icon layui-icon-auz"></i>ACL</a></dd>','roles': ['manager']},
+        'preauthkey': {'html': '<dd data-name="console"><a lay-href="preauthkey"><i class="layui-icon layui-icon-key"></i>密钥</a></dd>','roles': ['manager', 'user']},
         'deploy': {'html': '<dd data-name="console"><a lay-href="deploy"><i class="layui-icon layui-icon-fonts-code"></i>指令</a></dd>', 'roles': ['manager', 'user']},
         'help': {'html': '<dd data-name="console"><a lay-href="help"><i class="layui-icon layui-icon-read"></i>文档</a></dd>', 'roles': ['manager', 'user']},
-        'acl': {'html': '<dd data-name="console"><a lay-href="acl"><i class="layui-icon layui-icon-auz"></i>ACL</a></dd>', 'roles': ['manager']},
-        'preauthkey': {'html': '<dd data-name="console"><a lay-href="preauthkey"><i class="layui-icon layui-icon-key"></i>密钥</a></dd>', 'roles': ['manager', 'user']},
         'set': {'html': '<dd data-name="console"><a lay-href="set"><i class="layui-icon layui-icon-set"></i>设置</a></dd>', 'roles': ['manager']},
         'log': {'html': '<dd data-name="console"><a lay-href="log"><i class="layui-icon layui-icon-form"></i>日志</a></dd>', 'roles': ['manager', 'user']}
     }

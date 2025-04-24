@@ -1,4 +1,4 @@
-  {% raw %}
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -69,8 +69,14 @@
       ,page: true
       ,cols: [[
             {field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
-            ,{field:'name', title:'用户名',width:200, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-            ,{field:'key', title:'密钥',width:300}
+            {% if current_user.role == 'manager' %}
+                ,{field:'name', title:'用户名',width:200, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
+            {% endif %}
+            ,{field:'key', title:'密钥',width:300
+                {% if current_user.role == 'user' %}
+                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
+                {% endif %}
+            }
             ,{field:'create_time', title:'创建时间',width:300}
             ,{field:'expiration', title: '到期时间', width:300, sort: true}
             ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
@@ -154,4 +160,3 @@
   </script>
 </body>
 </html>
-    {% endraw %}
