@@ -49,6 +49,10 @@ class RegisterForm(wtforms.Form):
                 raise wtforms.ValidationError("该用户已注册！")
 
 
+    def validate_email(self,field):
+        email = UserModel.query.filter_by(email=field.data).first()
+        if email:
+            raise wtforms.ValidationError("该邮箱已被注册！")
 
 
 

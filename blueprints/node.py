@@ -8,6 +8,8 @@ from login_setup import role_required
 from models import UserModel,NodeModel
 from flask import Blueprint, request,current_app
 
+from utils import res
+
 bp = Blueprint("node", __name__, url_prefix='/api/node')
 
 # 额外字段
@@ -24,7 +26,22 @@ res_json = {
 @login_required
 def register():
     nodekey = request.form.get('nodekey')
-    return register_node(nodekey)
+    register_node_response = register_node(nodekey)
+
+    print(register_node_response)
+    if register_node_response['code'] == '0':
+        try:
+            # 获取 ipAddresses 的值
+            ip_address = json.loads(register_node_response['data'])["node"]["ipAddresses"][0]
+            code,msg,data = '0',ip_address,''
+        except Exception as e:
+            print(f"发生错误: {e}")
+            headscale_error_msg = json.loads(register_node_response['data']).get('message')
+            code, msg, data = '1', headscale_error_msg, ''
+    else:
+        error_msg = register_node_response['msg']
+        code, msg, data = '1', error_msg, ''
+    return res(code,msg,data)
 
 
 @bp.route('/getNodes')

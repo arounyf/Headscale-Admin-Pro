@@ -92,66 +92,68 @@ def register(registrationID):
 
 @bp.route('/reg', methods=['GET','POST'])
 def reg():
-    if request.method == 'GET':
-        # 如果用户已经登录，重定向到 admin 页面
-        if current_user.is_authenticated:
-            return redirect(url_for('admin.admin'))
-        else:
-            return render_template('auth/reg.html')
-    else:
-
-        form = RegisterForm(request.form)
-        if form.validate():
-            username = form.username.data
-            password = generate_password_hash(form.password.data)
-            phone_number = form.phone.data
-            email = form.email.data
-            default_reg_days = current_app.config['DEFAULT_REG_DAYS']
-
-            create_time = datetime.now()
-            expire = create_time + timedelta(days=int(default_reg_days)) # 新用户注册默认?天后到期
-
-            if (username == "admin"):
-                role = "manager"
-                expire = create_time + timedelta(1000)
+    if current_app.config['OPEN_USER_REG'] == 'on':
+        if request.method == 'GET':
+            # 如果用户已经登录，重定向到 admin 页面
+            if current_user.is_authenticated:
+                return redirect(url_for('admin.admin'))
             else:
-                role = "user"
-            if default_reg_days != 0:
-                default_reg_days = 1
-            user = UserModel(
-                name=username,
-                password = password,
-                created_at=create_time,
-                updated_at=create_time,
-                expire=expire,
-                cellphone=phone_number,
-                email=email,
-                role=role,
-                node=current_app.config['DEFAULT_NODE_COUNT'],
-                route=0,
-                enable=default_reg_days
-            )
-            db.session.add(user)
-            db.session.commit()
-
-            #acl操作
-            init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
-
-            new_acl = ACLModel(acl=init_acl, user_id=user.id)
-            db.session.add(new_acl)
-            db.session.commit()
-            to_rewrite_acl()
-            reload_headscale()
-            res_code,res_msg,res_data = '0','注册成功',reload_headscale()
-
+                return render_template('auth/reg.html')
         else:
-            # return form.errors
-            first_key = next(iter(form.errors.keys()))
-            first_value = form.errors[first_key]
 
-            res_code,res_msg,res_data = '1', str(first_value[0]),''
-        return res(res_code,res_msg,res_data)
+            form = RegisterForm(request.form)
+            if form.validate():
+                username = form.username.data
+                password = generate_password_hash(form.password.data)
+                phone_number = form.phone.data
+                email = form.email.data
+                default_reg_days = current_app.config['DEFAULT_REG_DAYS']
 
+                create_time = datetime.now()
+                expire = create_time + timedelta(days=int(default_reg_days)) # 新用户注册默认?天后到期
+
+                if (username == "admin"):
+                    role = "manager"
+                    expire = create_time + timedelta(1000)
+                else:
+                    role = "user"
+                if default_reg_days != 0:
+                    default_reg_days = 1
+                user = UserModel(
+                    name=username,
+                    password = password,
+                    created_at=create_time,
+                    updated_at=create_time,
+                    expire=expire,
+                    cellphone=phone_number,
+                    email=email,
+                    role=role,
+                    node=current_app.config['DEFAULT_NODE_COUNT'],
+                    route=0,
+                    enable=default_reg_days
+                )
+                db.session.add(user)
+                db.session.commit()
+
+                #acl操作
+                init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
+
+                new_acl = ACLModel(acl=init_acl, user_id=user.id)
+                db.session.add(new_acl)
+                db.session.commit()
+                to_rewrite_acl()
+                reload_headscale()
+                res_code,res_msg,res_data = '0','注册成功',reload_headscale()
+
+            else:
+                # return form.errors
+                first_key = next(iter(form.errors.keys()))
+                first_value = form.errors[first_key]
+
+                res_code,res_msg,res_data = '1', str(first_value[0]),''
+            return res(res_code,res_msg,res_data)
+    else:
+        return '<h1>当前服务器已关闭对外注册</h1>'
 
 
 @bp.route('/login', methods=['GET','POST'])
