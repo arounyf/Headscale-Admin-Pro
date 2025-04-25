@@ -41,11 +41,9 @@ def register_node(registrationID):
         code, msg, data = '2', '超过此用户节点限制', ''
     else:
         response = to_post(url_path).text
-        if (response == "Unauthorized"):
-            code, msg, data = '1', '认证失败', response
-        else:
-            code,msg,data  = '0','节点添加成功',str(response)
-            record_log(current_user.id, "节点添加成功")
+
+        code,msg,data  = '0','节点添加成功',str(response)
+        record_log(current_user.id, "节点添加成功")
 
     return res(code,msg,data)
 

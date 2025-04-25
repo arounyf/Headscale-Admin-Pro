@@ -3,6 +3,8 @@ import math
 import os
 from flask import current_app
 import psutil
+from ruamel.yaml import YAML
+
 from exts import db
 from datetime import datetime
 import subprocess
@@ -20,7 +22,7 @@ def res(code=None, msg=None, data=None):
     return response
 
 
-
+# 如果返回Unauthorized则自动刷新apikey
 def to_post(url_path,data=None):
     server_host = current_app.config['SERVER_HOST']
     bearer_token = current_app.config['BEARER_TOKEN']
@@ -29,7 +31,19 @@ def to_post(url_path,data=None):
     }
     url = server_host+url_path
     response = requests.post(url, headers=headers,json=data)
-    print(f'post请求url地址: {url},返回消息: {response.text}')
+
+    print(f'post请求url地址: {url},返回消息: {response.text}---------------------------------------')
+
+    if response.text == "Unauthorized":
+        apikey = to_refresh_apikey()['data']
+        print(f'------------apikey--------------{apikey}---------------------------------')
+        headers = {
+            'Authorization': f'Bearer {apikey}'
+        }
+        response = requests.post(url, headers=headers, json=data)
+
+        print(f'post二次请求url地址: {url},返回消息: {response.text}---------------------------------------')
+
     return response
 
 
@@ -244,3 +258,46 @@ def to_rewrite_acl():
         code,msg,data = '0','写入失败',str(e)
 
     return res(code,msg,data)
+
+
+
+def save_config_yaml(config_dict):
+    # 创建 YAML 对象，设置保留注释
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    # 读取 YAML 配置文件
+
+    with open('/etc/headscale/config.yaml', 'r') as file:
+        config_yaml = yaml.load(file)
+
+    for key, value in config_dict.items():
+        print(f"Key: {key}, Value: {value}")
+        current_app.config['key'] = value
+        config_yaml[key.lower()] = value
+
+        # 将更新后的配置写回到文件
+    with open('/etc/headscale/config.yaml', 'w') as file:
+        yaml.dump(config_yaml, file)
+
+    code, msg, data = '0', '修改成功', ''
+    return res(code, msg, data)
+
+
+
+
+
+def to_refresh_apikey():
+    try:
+        headscale_command = "headscale apikey create"
+        result = subprocess.run(headscale_command, shell=True, capture_output=True, text=True, check=True)
+        apikey = result.stdout.strip()
+        config_mapping = {
+            'BEARER_TOKEN': apikey
+        }
+        save_config_yaml(config_mapping)
+        code, msg, data = '0','获取apikey成功',apikey
+    except subprocess.CalledProcessError as e:
+        code, msg, data = '1', '执行失败', f"错误信息：{e.stderr}"
+
+    return res(code, msg, data)

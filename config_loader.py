@@ -12,7 +12,6 @@ with open('/etc/headscale/config.yaml', 'r') as file:
 
 
 
-
 # 配置定义
 SECRET_KEY = 'SFhkrGKQL2yB9F'
 PERMANENT_SESSION_LIFETIME = 3600
@@ -24,11 +23,10 @@ SERVER_HOST = 'http://127.0.0.1:8080'
 SERVER_URL = config_yaml.get('server_url', {})
 NET_TRAFFIC_RECORD_FILE = '/var/lib/headscale/data.json'
 SQLALCHEMY_DATABASE_URI =  "sqlite:///" + config_yaml.get('database', {}).get('sqlite', {}).get('path')
-
+ACL_PATH = "/etc/headscale/"+config_yaml.get('policy', {}).get('path')
 
 # 从 yaml 配置文件中获取WEB UI配置项
-ACL_PATH = "/etc/headscale/"+config_yaml.get('policy', {}).get('path')
-BEARER_TOKEN = config_yaml.get('apikey', {})
+BEARER_TOKEN = config_yaml.get('bearer_token', {})
 SERVER_NET = config_yaml.get('server_net', {})
 REGION_HTML = config_yaml.get('region_html', '<tr>'
                                              '<td>1</td><td>四川</td><td>200 Mbps</td></tr>'

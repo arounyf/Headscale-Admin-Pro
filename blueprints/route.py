@@ -96,9 +96,7 @@ def route_enable():
     if current_user.route != '1':
         code, msg, data = '1', '未获得使用权限', response
     elif current_user.role == 'manager' or user_id == current_user.user_id:  # 如果是管理员或者是本用户的路由
-        response = to_post(url_path).text
-        if (response == "Unauthorized"):
-            code, msg, data = '1', '认证失败', response
+        to_post(url_path)
     else:
         code, msg, data = '1', '非法请求', response
 
