@@ -23,7 +23,7 @@ def res(code=None, msg=None, data=None):
     return response
 
 
-# 如果返回Unauthorized则自动刷新apikey
+
 def to_post(url_path,data=None):
     server_host = current_app.config['SERVER_HOST']
     bearer_token = current_app.config['BEARER_TOKEN']
@@ -35,6 +35,9 @@ def to_post(url_path,data=None):
 
     print(f'post请求url地址: {url},返回消息: {response.text}---------------------------------------')
 
+
+
+    # 如果返回Unauthorized则自动刷新apikey
     if response.text == "Unauthorized":
         apikey = to_refresh_apikey()['data']
         print(f'------------apikey--------------{apikey}---------------------------------')

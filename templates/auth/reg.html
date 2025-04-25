@@ -122,9 +122,10 @@ function generateUUID(){
 
 }
 
-function refresh_captcha(){
+function get_captcha(){
     captcha_uuid = generateUUID();
     document.getElementById('captchaImage').src = '/get_captcha?captcha_uuid=' + captcha_uuid;
+    return captcha_uuid
 }
 
 layui.use(function(){
@@ -132,17 +133,17 @@ layui.use(function(){
   var form = layui.form;
   var layer = layui.layer;
   var util = layui.util;
-  var captcha_uuid='';
-
-
+  var captcha_uuid = get_captcha();
 
 
   // 点击按钮更新验证码
   $('#captchaImage').click(function(){
-      refresh_captcha()
+      captcha_uuid = get_captcha();
+      console.log(captcha_uuid)
   });
 
-  refresh_captcha()
+
+  console.log(captcha_uuid)
 
   // 自定义验证规则
   form.verify({
@@ -181,8 +182,7 @@ layui.use(function(){
             }, 1000);
           }else{
             layer.msg(res.msg, {icon: 7});
-            captcha_uuid = generateUUID();
-            document.getElementById('captchaImage').src = '/get_captcha?captcha_uuid=' + captcha_uuid;
+            captcha_uuid = get_captcha();
           }
 
         }
