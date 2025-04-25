@@ -3,6 +3,7 @@ import math
 import os
 from flask import current_app
 import psutil
+from mako.testing.helpers import result_lines
 from ruamel.yaml import YAML
 
 from exts import db
@@ -181,18 +182,23 @@ def get_server_net():
 
 
 def start_headscale():
-    res_json = {'code': '', 'data': '', 'msg': ''}
+
     # 定义日志文件路径
     log_file_path = os.path.join('/var/lib/headscale', 'headscale.log')
     # 以追加模式打开日志文件
-    try:
-        with open(log_file_path, 'a') as log_file:
-            # 启动 headscale serve 进程，并将标准输出和标准错误输出重定向到日志文件
-            subprocess.Popen(['headscale', 'serve'], stdout=log_file, stderr=log_file)
-        res_json['code'], res_json['msg'], res_json['data'] = '0', '启动成功', ""
-    except Exception as e:
-        res_json = {'code': '1', 'msg': f'启动失败: {str(e)}', 'data': ''}
-    return res_json
+
+    headscale_pid =  get_headscale_pid()
+    if headscale_pid:
+        code, msg, data = '0', '检测到headscale已启动', ''
+    else:
+        try:
+            with open(log_file_path, 'a') as log_file:
+                # 启动 headscale serve 进程，并将标准输出和标准错误输出重定向到日志文件
+                subprocess.Popen(['headscale', 'serve'], stdout=log_file, stderr=log_file)
+            code,msg,data = '0', '启动成功', ""
+        except Exception as e:
+            code, msg, data = '1', f'启动失败: {str(e)}', ''
+    return res(code,msg,data)
 
 
 def stop_headscale():
@@ -216,7 +222,7 @@ def get_headscale_pid():
         if pid:
             return int(pid)
         else:
-            print("未找到 headscale serve 进程的 PID。")
+            print("未找到 headscale serve 进程的 PID")
             return False
     except subprocess.CalledProcessError as e:
         print(f"执行命令时出现错误: {e.stderr}")
@@ -272,8 +278,8 @@ def save_config_yaml(config_dict):
         config_yaml = yaml.load(file)
 
     for key, value in config_dict.items():
-        print(f"Key: {key}, Value: {value}")
-        current_app.config['key'] = value
+        print(f"------------保存新的配置------------------Key: {key}, Value: {value}--------------------------")
+        current_app.config[key] = value
         config_yaml[key.lower()] = value
 
         # 将更新后的配置写回到文件

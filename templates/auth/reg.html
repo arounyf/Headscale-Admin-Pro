@@ -122,6 +122,11 @@ function generateUUID(){
 
 }
 
+function refresh_captcha(){
+    captcha_uuid = generateUUID();
+    document.getElementById('captchaImage').src = '/get_captcha?captcha_uuid=' + captcha_uuid;
+}
+
 layui.use(function(){
   var $ = layui.$;
   var form = layui.form;
@@ -129,14 +134,15 @@ layui.use(function(){
   var util = layui.util;
   var captcha_uuid='';
 
+
+
+
   // 点击按钮更新验证码
   $('#captchaImage').click(function(){
-      captcha_uuid = generateUUID();
-      document.getElementById('captchaImage').src = '/get_captcha?captcha_uuid=' + captcha_uuid;
+      refresh_captcha()
   });
 
-  captcha_uuid = generateUUID();
-  document.getElementById('captchaImage').src = '/get_captcha?captcha_uuid=' + captcha_uuid;
+  refresh_captcha()
 
   // 自定义验证规则
   form.verify({
