@@ -21,6 +21,8 @@ class SqliteDB(object):
             self.connection = sqlite3.connect(database=self.database, isolation_level=self.isolation_level)
             self.cursor = self.connection.cursor()
             self.cursor.row_factory = sqlite3.Row  # 设置返回类似字典的对象
+            # 开启外键约束
+            self.cursor.execute("PRAGMA foreign_keys = ON;")
             return self.cursor
         except Exception as ex:
             traceback.print_exc()

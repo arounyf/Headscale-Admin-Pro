@@ -3,16 +3,15 @@ import math
 import os
 import sqlite3
 import subprocess
+import sys
 import time
-
 import requests
 import psutil
+
 from flask import current_app
 from ruamel.yaml import YAML
 from datetime import datetime
-
 from sqlalchemy.sql.functions import current_user
-
 from exts import SqliteDB
 
 
@@ -88,8 +87,6 @@ def record_log(log_content,user_id = None):
         insert_query = "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);"
         cursor.execute(insert_query, (user_id, log_content, current_time))
         return True
-
-
 
 
 
@@ -200,23 +197,20 @@ def get_server_net():
 
 
 def start_headscale():
-
     # 定义日志文件路径
     log_file_path = os.path.join('/var/lib/headscale', 'headscale.log')
-    # 以追加模式打开日志文件
 
-    headscale_pid =  get_headscale_pid()
-    if headscale_pid:
-        code, msg, data = '0', '检测到headscale已启动', ''
-    else:
-        try:
-            with open(log_file_path, 'a') as log_file:
-                # 启动 headscale serve 进程，并将标准输出和标准错误输出重定向到日志文件
-                subprocess.Popen(['headscale', 'serve'], stdout=log_file, stderr=log_file)
-            code,msg,data = '0', '启动成功', ""
-        except Exception as e:
-            code, msg, data = '1', f'启动失败: {str(e)}', ''
-    return res(code,msg,data)
+    # 以追加模式打开日志文件
+    if get_headscale_pid():
+        return  res('0', '检测到headscale已启动')
+
+    try:
+        with open(log_file_path, 'a') as log_file:
+            # 启动 headscale serve 进程，并将标准输出和标准错误输出重定向到日志文件
+            subprocess.Popen(['headscale', 'serve'], stdout=log_file, stderr=log_file)
+        return res('0', '启动成功')
+    except Exception as e:
+        return res('1', f'启动失败: {str(e)}')
 
 
 def stop_headscale():
@@ -238,9 +232,9 @@ def get_headscale_pid():
         result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
         pid = result.stdout.strip()
         if pid:
+            print(f"headscale pid is {pid}")
             return int(pid)
         else:
-            print("获取 headscale serve 进程的 PID")
             return False
     except subprocess.CalledProcessError as e:
         print(f"执行命令时出现错误: {e.stderr}")
@@ -331,23 +325,38 @@ def to_refresh_apikey():
 
 
 
+def get_headscale_status(app):
+    with app.app_context():
+        url = current_app.config['SERVER_HOST'] + '/health'
+    max_attempts = 5
+    attempt = 0
+    while attempt < max_attempts:
+        try:
+            response = requests.get(url)
+            if response.json() == {"status": "pass"}:
+                print("The headscale health status is pass!")
+                return True
+            else:
+                print(f"The headscale health status is error!")
+        except (requests.RequestException, ValueError):
+            print("The status of headscale is being retrieved. Please wait.")
+        attempt += 1
+        time.sleep(1)
+    print("Failed to get a valid headscale status after multiple attempts.")
+    return False
+
 
 
 def to_init_db(app):
-    with app.app_context():
-        url = current_app.config['SERVER_HOST'] + '/health'
-    while True:
-        try:
-            response = requests.get(url)
-            if response.status_code == 200 and response.json() == {"status": "pass"}:
-                print("headscale状态正常")
-                break
-            else:
-                print("headscale状态异常,正在重试...")
-                time.sleep(3)
-        except (requests.RequestException, ValueError):
-            print("headscale状态出错，正在重试...")
-            time.sleep(3)
+    if not get_headscale_status(app):
+        with open('/var/lib/headscale/headscale.log', 'r') as file:
+            lines = file.readlines()
+            last_five_lines = lines[-5:]
+            print("------------------------headscale failed to boot. Here are some boot logs-----------------------------")
+            for line in last_five_lines:
+                print(line.strip())
+        sys.exit(1)
+
     # 要添加的字段列表
     fields = [
         ('password', 'TEXT'),
@@ -370,18 +379,13 @@ def to_init_db(app):
                 alter_query = f"ALTER TABLE users ADD COLUMN {field} {field_type};"
                 try:
                     cursor.execute(alter_query)
-                    print(f"成功添加字段 {field} 到 users 表。")
+                    print(f"add {field} to users db table")
                 except Exception as e:
-                    print(f"添加字段 {field} 时出错: {e}")
-
-    print("数据库users表检验完成")
+                    print(f"add {field} error: {e}")
 
 
 
     with SqliteDB() as cursor:
-
-        # 开启外键约束
-        cursor.execute("PRAGMA foreign_keys = ON;")
 
         # 检查 acl 表是否存在
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='acl';")
@@ -398,13 +402,12 @@ def to_init_db(app):
             );
             """
             cursor.execute(create_table_query)
-            print("成功创建 acl 表。")
 
             # 创建索引
             create_index_query = "CREATE INDEX idx_acl_user_id ON acl (user_id);"
             cursor.execute(create_index_query)
-            print("成功创建 idx_acl_user_id 索引。")
-        print("数据库acl表检验完成")
+
+            print("create acl db table is success")
 
 
 
@@ -424,11 +427,9 @@ def to_init_db(app):
             );
             """
             cursor.execute(create_table_query)
-            print("成功创建 log 表。")
 
             # 创建索引
             create_index_query = "CREATE INDEX idx_log_user_id ON log (user_id);"
             cursor.execute(create_index_query)
-            print("成功创建 idx_log_user_id 索引。")
 
-        print("数据库log表检验完成")
+            print("create log db table is success")
