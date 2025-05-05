@@ -1,15 +1,11 @@
-from datetime import datetime, timedelta
-
+import sqlite3
 import wtforms
-
-from flask import session, current_app
+from flask import session
 from flask_login import current_user
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
-
-from exts import db
-from models import UserModel
-
+from exts import SqliteDB
+from models import User
 
 
 class RegisterForm(wtforms.Form):
@@ -48,19 +44,21 @@ class RegisterForm(wtforms.Form):
         if ' ' in field.data:
             raise wtforms.ValidationError('用户名不能包含空格')
         else:
-            user_name = db.session.query(UserModel.name).filter(
-                UserModel.name == field.data).scalar(
-            )
-            if user_name:
-                raise wtforms.ValidationError(f"{user_name}用户已注册！")
+            with SqliteDB() as cursor:
+                cursor.execute("SELECT name FROM users WHERE name =?", (field.data,))
+                cursor.row_factory = sqlite3.Row
+                user_name = cursor.fetchone()
+                if user_name:
+                    raise wtforms.ValidationError(f"{user_name['name']} 用户已注册！")
 
 
     def validate_email(self,field):
-        email = db.session.query(UserModel.email).filter(
-            UserModel.email == field.data).scalar(
-        )
-        if email:
-            raise wtforms.ValidationError(f"{email}邮箱已被注册！")
+        with SqliteDB() as cursor:
+            cursor.row_factory = sqlite3.Row
+            cursor.execute("SELECT email FROM users WHERE email =?", (field.data,))
+            email = cursor.fetchone()
+            if email:
+                raise wtforms.ValidationError(f"{email['email']} 邮箱已被注册！")
 
 
 
@@ -77,46 +75,33 @@ class LoginForm(wtforms.Form):
         if code != field.data:
             raise wtforms.ValidationError("验证码错误！")
 
+
     def validate_username(self, field):
-
-        # sqlalchemy不支持超过6位数的微秒,但是headscale的微秒都是9位，所以加上异常处理
-        # 目前发现使用headscale user create创建的时间存在9位微秒
-
         try:
-            user = UserModel.query.filter_by(name=field.data).first()
-        except Exception as e:
-            if (type(e).__name__ == "ValueError"):
+            with SqliteDB() as cursor:
+                query = """
+                        SELECT id, name, created_at, updated_at,email, password,expire, cellphone, role, node, route, enable 
+                        FROM users 
+                        WHERE name =?
+                        """
+                cursor.execute(query, (field.data,))
+                user_data = cursor.fetchone()
+                if user_data:
+                    user = User(*user_data)
+                    self.user = user
+                    input_password = self.password.data
+                    if check_password_hash(user.password, input_password):
+                        if user.enable == 0:
+                            raise wtforms.ValidationError("用户已被禁用！")
+                    else:
+                        raise wtforms.ValidationError("密码错误！")
+                else:
+                    raise wtforms.ValidationError("用户不存在！")
+                return True
+        except sqlite3.Error as e:
+            print(f"查询失败: {e}")
+            return False
 
-                default_reg_days = current_app.config['DEFAULT_REG_DAYS']
-                if default_reg_days != 0:
-                    default_reg_days = 1
-
-                db.session.query(UserModel).filter(UserModel.name == self.username.data).update(
-                    {
-                        UserModel.password: generate_password_hash(self.password.data),
-                        UserModel.created_at: datetime.now(),
-                        UserModel.updated_at: datetime.now(),
-                        UserModel.expire: datetime.now() + timedelta(days=int(default_reg_days)),
-                        UserModel.role: 'user',
-                        UserModel.node: current_app.config['DEFAULT_NODE_COUNT'],
-                        UserModel.route: '0',
-                        UserModel.enable: default_reg_days
-                    }
-                )
-                print(self.username.data)
-                user = UserModel.query.filter_by(name=field.data).first()
-
-        self.user = user  # 返回查询到的用户对象
-        if not user:
-            raise wtforms.ValidationError("用户不存在！")
-        else:
-            password = self.password.data
-
-            if check_password_hash(user.password, password):
-                if user.enable == 0:
-                    raise wtforms.ValidationError("用户已被禁用！")
-            else:
-                raise wtforms.ValidationError("密码错误！")
 
 
 

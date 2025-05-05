@@ -1,12 +1,8 @@
 from flask_login import login_required, current_user
-from sqlalchemy import func
-import requests
+from flask import Blueprint,  request
+from exts import SqliteDB
+from utils import res, to_post, table_res
 
-from exts import db
-from models import UserModel,NodeModel,RouteModel
-from flask import Blueprint,  request, current_app
-
-from utils import res, to_post
 
 bp = Blueprint("route", __name__, url_prefix='/api/route')
 
@@ -16,59 +12,61 @@ bp = Blueprint("route", __name__, url_prefix='/api/route')
 @bp.route('/getRoute')
 @login_required
 def getRoute():
-    # print(session)
-    page = request.args.get('page', default=1, type=int)  # 默认第 1 页
-    per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
-    #
-    # 分页查询
-    # 分页查询
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('limit', default=10, type=int)
+    offset = (page - 1) * per_page
 
-    # 使用 func.strftime 格式化时间字段
-    query = RouteModel.query.with_entities(
-        RouteModel.id,
-        UserModel.name,
-        NodeModel.given_name,
-        RouteModel.prefix,
-        RouteModel.enabled,
-        func.strftime('%Y-%m-%d %H:%M:%S', RouteModel.created_at,'localtime').label('created_at')
-        # 可以添加其他需要的字段
-    ).join(
-        NodeModel, RouteModel.node_id == NodeModel.id  # 假设 RouteModel 通过 node_id 关联 NodeModel
-    ).join(
-        UserModel, NodeModel.user_id == UserModel.id
-    )
+    with SqliteDB() as cursor:
+        # 构建基础查询语句
+        base_query = """
+            SELECT 
+                routes.id,
+                users.name,
+                nodes.given_name,
+                routes.prefix,
+                routes.enabled,
+                strftime('%Y-%m-%d %H:%M:%S', routes.created_at, 'localtime') as created_at
+            FROM 
+                routes
+            JOIN 
+                nodes ON routes.node_id = nodes.id
+            JOIN 
+                users ON nodes.user_id = users.id
+        """
 
-    # 判断用户角色
-    if current_user.role != 'manager':
-        # 如果不是 manager，只查询当前用户的节点信息
-        query = query.filter(NodeModel.user_id == current_user.id)
+        # 判断用户角色
+        if current_user.role != 'manager':
+            base_query += " WHERE nodes.user_id =? "
+            params = (current_user.id,)
+        else:
+            params = ()
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    routes = pagination.items
-    #
+        # 查询总记录数
+        count_query = f"SELECT COUNT(*) as total FROM ({base_query})"
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()['total']
+
+        # 分页查询
+        paginated_query = f"{base_query} LIMIT? OFFSET? "
+        paginated_params = params + (per_page, offset)
+        cursor.execute(paginated_query, paginated_params)
+        routes = cursor.fetchall()
+
     # 数据格式化
-    routes_list = [{
-        'id': route.id,
-        'name': route.name,
-        'NodeName': route.given_name,
-        'route': route.prefix,
-        'createTime':route.created_at,
-        'enable':int(route.enabled)
-    } for route in routes]
+    routes_list = []
+    for route in routes:
+        routes_list.append({
+            'id': route['id'],
+            'name': route['name'],
+            'NodeName': route['given_name'],
+            'route': route['prefix'],
+            'createTime': route['created_at'],
+            'enable': int(route['enabled'])
+        })
 
 
-    # 额外字段
-    res = {
-        'code': '0',
-        'data': routes_list,
-        'msg': '获取成功',
-        'count':pagination.total,
-        'totalRow':{
-                'count':len(routes)
-            }
-    }
 
-    return res
+    return table_res('0','获取成功',routes_list,total_count,len(routes_list))
 
 @bp.route('/route_enable', methods=['GET','POST'])
 @login_required
@@ -77,25 +75,29 @@ def route_enable():
     enabled = request.form.get('Enable')
     response = None
 
-    if (enabled == "true"):
-        url_path = f'/api/v1/routes/{route_id}/enable'  # 替换为实际的目标 URL
+    if enabled == "true":
+        url_path = f'/api/v1/routes/{route_id}/enable'
         code, msg, data = '0', '打开成功', response
-
     else:
-        url_path = f'/api/v1/routes/{route_id}/disable'  # 替换为实际的目标 URL
-        code, msg, data = '0', '关闭成功' ,response
+        url_path = f'/api/v1/routes/{route_id}/disable'
+        code, msg, data = '0', '关闭成功', response
 
-
-    # 连接两表查询，因为路由表没有user_id
-    user_id = db.session.query(NodeModel.user_id).select_from(RouteModel).join(
-        NodeModel, RouteModel.node_id == NodeModel.id).filter(
-        RouteModel.id == route_id).scalar(
-    )
+    with SqliteDB() as cursor:
+        # 连接两表查询，获取 user_id
+        query = """
+            SELECT nodes.user_id
+            FROM routes
+            JOIN nodes ON routes.node_id = nodes.id
+            WHERE routes.id =?
+        """
+        cursor.execute(query, (route_id,))
+        result = cursor.fetchone()
+        user_id = result['user_id'] if result else None
 
     print(user_id)
     if current_user.route != '1':
         code, msg, data = '1', '未获得使用权限', response
-    elif current_user.role == 'manager' or user_id == current_user.user_id:  # 如果是管理员或者是本用户的路由
+    elif current_user.role == 'manager' or user_id == current_user.id:
         to_post(url_path)
     else:
         code, msg, data = '1', '非法请求', response

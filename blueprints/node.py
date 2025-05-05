@@ -1,25 +1,14 @@
 import json
-from flask_login import current_user, login_required
-from sqlalchemy import func
 import requests
-
+from flask_login import current_user, login_required
 from blueprints.auth import register_node
+from exts import SqliteDB
 from login_setup import role_required
-from models import UserModel,NodeModel
 from flask import Blueprint, request,current_app
+from utils import res, table_res
 
-from utils import res
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
-
-# 额外字段
-res_json = {
-    'code': '',
-    'data': '',
-    'msg': '',
-}
-
-
 
 
 @bp.route('/register', methods=['GET','POST'])
@@ -47,69 +36,67 @@ def register():
 @bp.route('/getNodes')
 @login_required
 def getNodes():
-    # print(session)
-    page = request.args.get('page', default=1, type=int)  # 默认第 1 页
-    per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
-    #
-    # 分页查询
-    # 分页查询
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('limit', default=10, type=int)
+    offset = (page - 1) * per_page
 
-    # 使用 func.strftime 格式化时间字段
-    query = NodeModel.query.with_entities(
-        NodeModel.id,
-        UserModel.name,
-        NodeModel.given_name,
-        NodeModel.user_id,
-        NodeModel.ipv4,
-        NodeModel.host_info,
-        func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.last_seen,'localtime').label('last_seen'),
-        # NodeModel.last_seen,
+    with SqliteDB() as cursor:
+        # 构建基础查询语句
+        base_query = """
+            SELECT 
+                nodes.id,
+                users.name,
+                nodes.given_name,
+                nodes.user_id,
+                nodes.ipv4,
+                nodes.host_info,
+                strftime('%Y-%m-%d %H:%M:%S', nodes.last_seen, 'localtime') as last_seen,
+                strftime('%Y-%m-%d %H:%M:%S', nodes.expiry, 'localtime') as expiry,
+                strftime('%Y-%m-%d %H:%M:%S', nodes.created_at, 'localtime') as created_at,
+                strftime('%Y-%m-%d %H:%M:%S', nodes.updated_at, 'localtime') as updated_at,
+                strftime('%Y-%m-%d %H:%M:%S', nodes.deleted_at, 'localtime') as deleted_at
+            FROM 
+                nodes
+            JOIN 
+                users ON nodes.user_id = users.id
+        """
 
-        func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.expiry,'localtime').label('expiry'),
-        func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.created_at,'localtime').label('created_at'),
-        func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.updated_at,'localtime').label('updated_at'),
-        func.strftime('%Y-%m-%d %H:%M:%S', NodeModel.deleted_at,'localtime').label('deleted_at')
-        # 可以添加其他需要的字段
-    ).join(UserModel, NodeModel.user_id == UserModel.id)  # 通过 user_id 进行表连接
+        # 判断用户角色
+        if current_user.role != 'manager':
+            base_query += " WHERE nodes.user_id =? "
+            params = (current_user.id,)
+        else:
+            params = ()
 
-    # 判断用户角色
-    if current_user.role != 'manager':
-        # 如果不是 manager，只查询当前用户的节点信息
-        query = query.filter(NodeModel.user_id == current_user.id)
+        # 查询总记录数
+        count_query = f"SELECT COUNT(*) as total FROM ({base_query})"
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()['total']
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    nodes = pagination.items
+        # 分页查询
+        paginated_query = f"{base_query} LIMIT? OFFSET? "
+        paginated_params = params + (per_page, offset)
+        cursor.execute(paginated_query, paginated_params)
+        nodes = cursor.fetchall()
 
-    #
     # 数据格式化
-    nodes_list = [{
-        'id': node.id,
-        'userName': node.name,
-        'name': node.given_name,
-        'ip': node.ipv4,
-        'lastTime': node.last_seen,
-        'createTime':node.created_at,
-        'OS': json.loads(node.host_info).get("OS")+json.loads(node.host_info).get("OSVersion"),
-        'Client':json.loads(node.host_info).get("IPNVersion")
+    nodes_list = []
+    for node in nodes:
+        host_info = json.loads(node['host_info'])
+        nodes_list.append({
+            'id': node['id'],
+            'userName': node['name'],
+            'name': node['given_name'],
+            'ip': node['ipv4'],
+            'lastTime': node['last_seen'],
+            'createTime': node['created_at'],
+            'OS': (host_info.get("OS") or "") + (host_info.get("OSVersion") or ""),
+            'Client': host_info.get("IPNVersion") or ""
+        })
 
 
-    } for node in nodes]
 
-    # 接口返回json数据
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-        'count':pagination.total,
-        'totalRow':{
-                'count':len(nodes)
-            }
-    }
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    res_json['data'] = nodes_list
-
-
-    return res_json
+    return table_res('0', '获取成功',nodes_list,total_count,len(nodes_list))
 
 
 
@@ -117,31 +104,28 @@ def getNodes():
 @login_required
 def delete():
     node_id = request.form.get('NodeId')
-
     server_host = current_app.config['SERVER_HOST']
     bearer_token = current_app.config['BEARER_TOKEN']
     headers = {
         'Authorization': f'Bearer {bearer_token}'
     }
-    url = f'{server_host}/api/v1/node/{node_id}'  # 替换为实际的目标 URL
+    url = f'{server_host}/api/v1/node/{node_id}'
 
-
-    res_json['code'], res_json['msg'] = '0', '删除成功'
-    if current_user.role != 'manager':  # 如果不是管理员
-        count = NodeModel.query.filter(
-            NodeModel.id == node_id,
-            NodeModel.user_id == current_user.id
-        ).count()
+    if current_user.role != 'manager':
+        with SqliteDB() as cursor:
+            query = "SELECT COUNT(*) as count FROM nodes WHERE id =? AND user_id =?;"
+            cursor.execute(query, (node_id, current_user.id))
+            result = cursor.fetchone()
+            count = result['count'] if result else 0
 
         if count > 0:
             response = requests.delete(url, headers=headers)
-            if (response.text == "Unauthorized"):
-                res_json['code'], res_json['msg'] = '1', '认证失败'
         else:
-            res_json['code'], res_json['msg'] = '1', '非法请求'
+            return res('1', '非法请求')
     else:
         requests.delete(url, headers=headers)
-    return res_json
+
+    return res('0', '删除成功')
 
 
 @bp.route('/new_owner', methods=['GET','POST'])

@@ -1,17 +1,19 @@
 import json
 import math
 import os
-from flask import current_app
-import psutil
-from mako.testing.helpers import result_lines
-from ruamel.yaml import YAML
-
-from exts import db
-from datetime import datetime
+import sqlite3
 import subprocess
-import requests
+import time
 
-from models import ACLModel, UserModel
+import requests
+import psutil
+from flask import current_app
+from ruamel.yaml import YAML
+from datetime import datetime
+
+from sqlalchemy.sql.functions import current_user
+
+from exts import SqliteDB
 
 
 # api接口返回格式定义
@@ -22,6 +24,24 @@ def res(code=None, msg=None, data=None):
     response = { "code": code,"msg": msg,"data": data}
     return response
 
+
+def table_res(code=None, msg=None, data=None, count=None, total_row_count = None):
+    if code is None: code = '1'
+    if msg is None: msg = "msg未初始化"
+    if data is None: data = {}
+    if count is None: count = 0
+    if total_row_count is None: total_row_count = 0
+
+    response = {
+        'code': code,
+        'msg': msg,
+        'data': data,
+        'count': count,
+        'totalRow': {
+            'count': total_row_count
+        }
+    }
+    return response
 
 
 def to_post(url_path,data=None):
@@ -51,31 +71,26 @@ def to_post(url_path,data=None):
     return response
 
 
-def record_log(user_id, log_content):
-    from models import LogModel
+def record_log(log_content,user_id = None):
     """
     记录日志到数据库
     :param user_id: 用户 ID
     :param log_content: 日志内容
     :return: 成功返回 True，失败返回 False
     """
-    try:
-        # 创建日志记录实例
-        new_log = LogModel(
-            user_id=user_id,
-            content=log_content,
-            created_at=datetime.now()
-        )
-        # 将实例添加到数据库会话
-        db.session.add(new_log)
-        # 提交会话以保存更改
-        db.session.commit()
+
+    if user_id == None:
+        user_id = current_user.id
+    with SqliteDB() as cursor:
+        # 获取当前时间
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # 插入日志记录的 SQL 语句
+        insert_query = "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);"
+        cursor.execute(insert_query, (user_id, log_content, current_time))
         return True
-    except Exception as e:
-        # 若出现异常，回滚会话
-        db.session.rollback()
-        print(f"日志记录失败: {e}")
-        return False
+
+
+
 
 
 
@@ -207,7 +222,7 @@ def start_headscale():
 def stop_headscale():
     res_json = {'code': '', 'data': '', 'msg': ''}
     try:
-        reload_command = "kill -9 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
+        reload_command = "kill -15 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
         result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
         res_json['code'], res_json['msg'], res_json['data'] = '0', '停止成功', result.stdout
     except subprocess.CalledProcessError as e:
@@ -225,9 +240,10 @@ def get_headscale_pid():
         if pid:
             return int(pid)
         else:
-            print("未找到 headscale serve 进程的 PID")
+            print("获取 headscale serve 进程的 PID")
             return False
     except subprocess.CalledProcessError as e:
+        print(f"执行命令时出现错误: {e.stderr}")
         print(f"执行命令时出现错误: {e.stderr}")
         return False
     except ValueError:
@@ -243,32 +259,34 @@ def get_headscale_version():
     except subprocess.CalledProcessError as e:
         print({e.stderr})
 
-
 def to_rewrite_acl():
     acl_path = current_app.config['ACL_PATH']
-    # acls = ACLModel.query.filter(ACLModel.enable == 1).all()
 
-    acls = db.session.query(ACLModel).select_from(ACLModel).join(
-        UserModel, ACLModel.user_id == UserModel.id).filter(
-        UserModel.enable == '1').all(
-    )
+    with SqliteDB() as cursor:
+        # 构建 SQL 查询语句
+        query = """
+            SELECT acl.acl
+            FROM acl
+            JOIN users user ON acl.user_id = user.id
+            WHERE user.enable = '1'
+        """
+        cursor.execute(query)
+        acls = cursor.fetchall()
 
-    acl_list = [json.loads(acl.acl) for acl in acls]
+    acl_list = [json.loads(acl['acl']) for acl in acls]
     acl_data = {
         "acls": acl_list
     }
     print(acl_data)
+
     try:
         with open(acl_path, 'w') as f:
             json.dump(acl_data, f, indent=4)
-        code,msg,data = '0','写入成功',acl_data
+        code, msg, data = '0', '写入成功', acl_data
     except Exception as e:
-        # return f"写入文件时出错: {str(e)}", 500
-        code,msg,data = '0','写入失败',str(e)
+        code, msg, data = '1', '写入失败', str(e)
 
-    return res(code,msg,data)
-
-
+    return res(code, msg, data)
 
 def save_config_yaml(config_dict):
     # 创建 YAML 对象，设置保留注释
@@ -310,3 +328,107 @@ def to_refresh_apikey():
         code, msg, data = '1', '执行失败', f"错误信息：{e.stderr}"
 
     return res(code, msg, data)
+
+
+
+
+
+def to_init_db(app):
+    with app.app_context():
+        url = current_app.config['SERVER_HOST'] + '/health'
+    while True:
+        try:
+            response = requests.get(url)
+            if response.status_code == 200 and response.json() == {"status": "pass"}:
+                print("headscale状态正常")
+                break
+            else:
+                print("headscale状态异常,正在重试...")
+                time.sleep(3)
+        except (requests.RequestException, ValueError):
+            print("headscale状态出错，正在重试...")
+            time.sleep(3)
+    # 要添加的字段列表
+    fields = [
+        ('password', 'TEXT'),
+        ('expire', 'DATETIME'),
+        ('cellphone', 'TEXT'),
+        ('role', 'TEXT'),
+        ('enable', 'TEXT'),
+        ('route', 'TEXT'),
+        ('node', 'TEXT')
+    ]
+
+    with SqliteDB() as cursor:
+        # 获取 users 表的所有列名
+        cursor.execute("PRAGMA table_info(users);")
+        existing_columns = [row[1] for row in cursor.fetchall()]
+
+        for field, field_type in fields:
+            if field not in existing_columns:
+                # 若字段不存在，则添加该字段
+                alter_query = f"ALTER TABLE users ADD COLUMN {field} {field_type};"
+                try:
+                    cursor.execute(alter_query)
+                    print(f"成功添加字段 {field} 到 users 表。")
+                except Exception as e:
+                    print(f"添加字段 {field} 时出错: {e}")
+
+    print("数据库users表检验完成")
+
+
+
+    with SqliteDB() as cursor:
+
+        # 开启外键约束
+        cursor.execute("PRAGMA foreign_keys = ON;")
+
+        # 检查 acl 表是否存在
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='acl';")
+        acl_table_exists = cursor.fetchone()
+
+        if not acl_table_exists:
+            # 若 acl 表不存在，则创建该表
+            create_table_query = """
+            CREATE TABLE acl (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                acl TEXT,
+                user_id INTEGER,
+                CONSTRAINT `fk_acl_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+            );
+            """
+            cursor.execute(create_table_query)
+            print("成功创建 acl 表。")
+
+            # 创建索引
+            create_index_query = "CREATE INDEX idx_acl_user_id ON acl (user_id);"
+            cursor.execute(create_index_query)
+            print("成功创建 idx_acl_user_id 索引。")
+        print("数据库acl表检验完成")
+
+
+
+        # 检查 log 表是否存在
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='log';")
+        log_table_exists = cursor.fetchone()
+
+        if not log_table_exists:
+            # 若 log 表不存在，则创建该表
+            create_table_query = """
+            CREATE TABLE log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                content TEXT,
+                created_at DATETIME,
+                CONSTRAINT `fk_log_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+            );
+            """
+            cursor.execute(create_table_query)
+            print("成功创建 log 表。")
+
+            # 创建索引
+            create_index_query = "CREATE INDEX idx_log_user_id ON log (user_id);"
+            cursor.execute(create_index_query)
+            print("成功创建 idx_log_user_id 索引。")
+
+        print("数据库log表检验完成")

@@ -30,7 +30,7 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
         <div class="layui-input-prefix">
           <i class="layui-icon layui-icon-username"></i>
         </div>
-        <input type="text" name="username" value="" lay-verify="required" placeholder="昵称" autocomplete="off" class="layui-input" lay-affix="clear">
+        <input type="text" name="username" value="" lay-verify="required" placeholder="用户名" autocomplete="off" class="layui-input" lay-affix="clear">
       </div>
     </div>
 
@@ -178,7 +178,7 @@ layui.use(function(){
             layer.msg(res.msg, {icon: 6});
             setTimeout(function() {
                 location.href="login?username="+field.username
-                {#alert('hello')#}
+                {#alert('success')#}
             }, 1000);
           }else{
             layer.msg(res.msg, {icon: 7});

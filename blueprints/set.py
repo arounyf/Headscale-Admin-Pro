@@ -1,16 +1,14 @@
 import subprocess
 from flask_login import login_required
-from exts import db
+from exts import SqliteDB
 from login_setup import role_required
-from flask import Blueprint, request,current_app
-from ruamel.yaml import YAML
-from models import ApiKeys
-from utils import start_headscale, stop_headscale, save_config_yaml
+from flask import Blueprint, request
+from utils import start_headscale, stop_headscale, save_config_yaml, res
+
 
 bp = Blueprint("set", __name__, url_prefix='/api/set')
 
 
-res_json = {'code': '', 'data': '', 'msg': ''}
 
 
 @bp.route('/upset' , methods=['GET','POST'])
@@ -46,27 +44,23 @@ def upset():
 @login_required
 @role_required("manager")
 def get_apikey():
-    #获取之前先清理
-    try:
-        # 删除所有记录
-        num_rows_deleted = ApiKeys.query.delete()
-        # 提交事务
-        db.session.commit()
-        print(f"成功删除 {num_rows_deleted} 条记录")
-    except Exception as e:
-        # 回滚事务
-        db.session.rollback()
-        print(f"删除记录时出现错误: {e}")
+    with SqliteDB() as cursor:
+        try:
+            # 删除所有记录
+            delete_query = "DELETE FROM api_keys;"
+            cursor.execute(delete_query)
+            num_rows_deleted = cursor.rowcount
+            print(f"成功删除 {num_rows_deleted} 条记录")
+        except Exception as e:
+            print(f"删除记录时出现错误: {e}")
+            return res('1', f"删除记录时出现错误: {e}", '')
 
     try:
         headscale_command = "headscale apikey create"
         result = subprocess.run(headscale_command, shell=True, capture_output=True, text=True, check=True)
-
-        res_json['code'], res_json['msg'], res_json['data'] = '0', '执行成功', result.stdout
+        return res('0', '执行成功', result.stdout)
     except subprocess.CalledProcessError as e:
-        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
-
-    return res_json
+        return res('1', '执行失败', f"错误信息：{e.stderr}")
 
 
 

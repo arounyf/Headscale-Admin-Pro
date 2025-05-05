@@ -1,77 +1,76 @@
+import requests
 from datetime import datetime, timedelta
 from flask_login import current_user, login_required
-from sqlalchemy import func
-import requests
-
-from exts import db
-from models import UserModel,  PreAuthKeysModel
 from flask import Blueprint, request,current_app
+from exts import SqliteDB
+from utils import table_res, res
+
 
 
 bp = Blueprint("preauthkey", __name__, url_prefix='/api/preauthkey')
 
 
-res_json = {'code': '', 'data': '', 'msg': ''}
 
 @bp.route('/getPreAuthKey')
 @login_required
 def getPreAuthKey():
-    # print(session)
-    page = request.args.get('page', default=1, type=int)  # 默认第 1 页
-    per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
-    #
-    # 分页查询
-    # 分页查询
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('limit', default=10, type=int)
+    offset = (page - 1) * per_page
 
-    # 使用 func.strftime 格式化时间字段
-    query = PreAuthKeysModel.query.with_entities(
-        PreAuthKeysModel.id,
-        PreAuthKeysModel.key,
-        UserModel.name,
-        func.strftime('%Y-%m-%d %H:%M:%S', PreAuthKeysModel.created_at,'localtime').label('created_at'),
-        func.strftime('%Y-%m-%d %H:%M:%S', PreAuthKeysModel.expiration,'localtime').label('expiration'),
+    with SqliteDB() as cursor:
+        # 构建基础查询语句
+        base_query = """
+            SELECT 
+                pre_auth_keys.id,
+                pre_auth_keys.key,
+                users.name,
+                strftime('%Y-%m-%d %H:%M:%S', pre_auth_keys.created_at, 'localtime') as created_at,
+                strftime('%Y-%m-%d %H:%M:%S', pre_auth_keys.expiration, 'localtime') as expiration
+            FROM 
+                pre_auth_keys
+            JOIN 
+                users ON pre_auth_keys.user_id = users.id
+        """
 
-        # 可以添加其他需要的字段
-    ) .join(UserModel, PreAuthKeysModel.user_id == UserModel.id)
+        # 判断用户角色
+        if current_user.role != 'manager':
+            base_query += " WHERE pre_auth_keys.user_id =? "
+            params = (current_user.id,)
+        else:
+            params = ()
 
-    # 判断用户角色
-    if current_user.role != 'manager':
-        # 如果不是 manager，只查询当前用户的节点信息
-        query = query.filter(PreAuthKeysModel.user_id == current_user.id)
+        # 查询总记录数
+        count_query = f"SELECT COUNT(*) as total FROM ({base_query})"
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()['total']
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    PreAuthKeys = pagination.items
-    #
+        # 分页查询
+        paginated_query = f"{base_query} LIMIT? OFFSET? "
+        paginated_params = params + (per_page, offset)
+        cursor.execute(paginated_query, paginated_params)
+        pre_auth_keys = cursor.fetchall()
+
     # 数据格式化
-    PreAuthKeys_list = [{
-        'id': PreAuthKey.id,
-        'key': PreAuthKey.key,
-        'name': PreAuthKey.name,
-        'create_time': PreAuthKey.created_at,
-        'expiration': PreAuthKey.expiration,
+    pre_auth_keys_list = []
+    for pre_auth_key in pre_auth_keys:
+        pre_auth_keys_list.append({
+            'id': pre_auth_key['id'],
+            'key': pre_auth_key['key'],
+            'name': pre_auth_key['name'],
+            'create_time': pre_auth_key['created_at'],
+            'expiration': pre_auth_key['expiration']
+        })
 
-    } for PreAuthKey in PreAuthKeys]
 
-    # 接口返回json数据
-    res_json = {
-        'code': '0',
-        'data': PreAuthKeys_list,
-        'msg': '获取成功',
-        'count': pagination.total,
-        'totalRow': {
-            'count': len(PreAuthKeys)
-        }
-    }
 
-    return res_json
+    return table_res('0','获取成功',pre_auth_keys_list,total_count,len(pre_auth_keys_list))
 
 @bp.route('/addKey', methods=['GET','POST'])
 @login_required
 def addKey():
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    # user_id = current_user.id
-    user_name = current_user.name
 
+    user_name = current_user.name
     expire_date = datetime.now() + timedelta(days=7)
 
 
@@ -93,10 +92,8 @@ def addKey():
 
     response = requests.post(url, headers=headers, json=data)
 
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    res_json['data'] = response.text
 
-    return res_json
+    return res('0','获取成功',response.text)
 
 
 
@@ -107,11 +104,10 @@ def addKey():
 def delKey():
     key_id = request.form.get('keyId')
 
-    # 直接使用 delete 方法结合条件删除记录
-    db.session.query(PreAuthKeysModel).filter(PreAuthKeysModel.id == key_id).delete()
-    db.session.commit()
+    with SqliteDB() as cursor:
+        # 构建删除语句
+        delete_query = "DELETE FROM pre_auth_keys WHERE id =?;"
+        cursor.execute(delete_query, (key_id,))
 
-    res_json['code'], res_json['msg'] = '0', '删除成功'
-    return res_json
-
+    return res('0', '删除成功')
 

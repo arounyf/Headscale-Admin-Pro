@@ -1,9 +1,9 @@
 # login_setup.py
 import functools
-
 from flask import redirect, url_for, render_template
 from flask_login import LoginManager, current_user
-from models import UserModel
+from exts import SqliteDB
+from models import User
 
 
 login_manager = LoginManager()
@@ -22,14 +22,29 @@ def unauthorized():
     return render_template('auth/error.html',message=message)
 
 
+
 @login_manager.user_loader
-def user_loader(username):
+def user_loader(user_id):
     try:
-        # 根据用户名查询数据库中的用户
-        user = UserModel.query.filter_by(id=username).first()
-        if user:
-            return user
-        return None
+        with SqliteDB() as cursor:
+            query = """
+                SELECT 
+                    id, name, 
+                    strftime('%Y-%m-%d %H:%M:%S', created_at, 'localtime') as created_at,
+                    strftime('%Y-%m-%d %H:%M:%S', updated_at, 'localtime') as updated_at,
+                    email, password,
+                    strftime('%Y-%m-%d %H:%M:%S', expire, 'localtime') as expire, 
+                    cellphone, role, node, route, enable 
+                FROM 
+                    users 
+                WHERE 
+                    id =?
+            """
+            cursor.execute(query, (user_id,))
+            user_data = cursor.fetchone()
+            if user_data:
+                return User(*user_data)
+            return None
     except Exception as e:
         print(f"Error loading user: {e}")
         return None

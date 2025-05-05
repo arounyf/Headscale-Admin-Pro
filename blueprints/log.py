@@ -1,57 +1,68 @@
 from flask_login import login_required, current_user
-from sqlalchemy import func
-from models import UserModel,  PreAuthKeysModel, LogModel
 from flask import Blueprint,  request
+from exts import SqliteDB
+
 
 bp = Blueprint("log", __name__, url_prefix='/api/log')
 
 
-res_json = {'code': '', 'data': '', 'msg': ''}
-
 @bp.route('/getLogs')
 @login_required
 def getLogs():
-    # 分页查询
-    page = request.args.get('page', default=1, type=int)  # 默认第 1 页
-    per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('limit', default=10, type=int)
+    offset = (page - 1) * per_page
 
+    with SqliteDB() as cursor:
+        # 构建基础查询语句
+        base_query = """
+            SELECT 
+                log.id,
+                log.content,
+                users.name,
+                strftime('%Y-%m-%d %H:%M:%S', log.created_at, 'localtime') as created_at
+            FROM 
+                log
+            JOIN 
+                users ON log.user_id = users.id
+        """
 
-    # 使用 func.strftime 格式化时间字段
-    query = LogModel.query.with_entities(
-        LogModel.id,
-        LogModel.content,
-        UserModel.name,
-        func.strftime('%Y-%m-%d %H:%M:%S', LogModel.created_at,'localtime').label('created_at'),
-        # 可以添加其他需要的字段
-    ) .join(UserModel, LogModel.user_id == UserModel.id)
+        # 判断用户角色
+        if current_user.role != 'manager':
+            base_query += " WHERE log.user_id =? "
+            params = (current_user.id,)
+        else:
+            params = ()
 
-    # 判断用户角色
-    if current_user.role != 'manager':
-        # 如果不是 manager，只查询当前用户的节点信息
-        query = query.filter(LogModel.user_id == current_user.id)
+        # 查询总记录数
+        count_query = f"SELECT COUNT(*) as total FROM ({base_query})"
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()['total']
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    logs = pagination.items
+        # 分页查询
+        paginated_query = f"{base_query} LIMIT? OFFSET? "
+        paginated_params = params + (per_page, offset)
+        cursor.execute(paginated_query, paginated_params)
+        logs = cursor.fetchall()
 
     # 数据格式化
-    logs_list = [{
-        'id': log.id,
-        'content': log.content,
-        'name': log.name,
-        'create_time': log.created_at,
+    logs_list = []
+    for log in logs:
+        logs_list.append({
+            'id': log['id'],
+            'content': log['content'],
+            'name': log['name'],
+            'create_time': log['created_at']
+        })
 
-    } for log in logs]
-
-    # print("----------------------------------------------")
-    # print(logs)
     # 接口返回json数据
     res_json = {
         'code': '0',
         'data': logs_list,
         'msg': '获取成功',
-        'count': pagination.total,
+        'count': total_count,
         'totalRow': {
-            'count': len(logs)
+            'count': len(logs_list)
         }
     }
 

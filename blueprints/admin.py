@@ -1,8 +1,9 @@
-
 from flask_login import login_required, current_user
 from login_setup import role_required
 from flask import Blueprint, render_template, current_app, request
 from utils import get_server_net, get_headscale_pid, get_headscale_version
+
+
 
 bp = Blueprint("admin", __name__, url_prefix='/admin')
 
@@ -107,7 +108,25 @@ def log():
 @bp.route('info')
 @login_required
 def info():
-    return render_template('admin/info.html')
+    name = current_user.name
+    cellphone = current_user.cellphone
+    email = current_user.email
+    node = current_user.node
+    route = current_user.route
+    expire = current_user.expire
+
+    if (route == "1"):
+        route = "checked"
+    else:
+        route = ""
+
+    return render_template('admin/info.html', name = name,
+                            cellphone = cellphone,
+                            email = email,
+                            node = node,
+                            route = route,
+                            expire = expire
+                           )
 
 
 
