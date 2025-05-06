@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import json
 from utils import record_log, reload_headscale, to_rewrite_acl
 from flask_login import login_user, logout_user, current_user, login_required
-from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
+from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json, jsonify
 from exts import SqliteDB
 from utils import res, to_post
 from .forms import RegisterForm, LoginForm, PasswdForm
@@ -46,13 +46,15 @@ def register_node(registrationID):
         user_node_limit = user_result['node'] if user_result else 0
 
     if int(node_count) >= int(user_node_limit):
-        code, msg, data = '2', '超过此用户节点限制', ''
+        return res('2', '超过此用户节点限制', '')
     else:
-        response = to_post(url_path).text
-        code, msg, data = '0', '节点添加成功', str(response)
-        record_log(current_user.id, "节点添加成功")
 
-    return res(code, msg, data)
+        result_post = to_post(url_path)
+        if result_post['code'] == '0':
+            record_log(current_user.id,"节点添加成功")
+            return res('0', '节点添加成功', result_post['data'])
+        else:
+            return res(result_post['code'], result_post['msg'])
 
 @bp.route('/register/<registrationID>', methods=['GET', 'POST'])
 def register(registrationID):
@@ -131,49 +133,46 @@ def reg():
               "pictureUrl": "NULL"
             }
 
-            result_reg = to_post('/api/v1/user',data = json_data).text  # 直接使用数据库创建用户会出现ACL失效，所有使用api创建
+            result_reg = to_post('/api/v1/user',data = json_data)  # 直接使用数据库创建用户会出现ACL失效，所有使用api创建
 
-            try:
-                # 获取 user_id
-                user_id = json.loads(result_reg)['user']['id']
-            except Exception as e:
-                print(f"发生错误: {e}")
-                user_id = False
-
-
-            if user_id:
-
-                with SqliteDB() as cursor:
-                    update_query = """
-                            UPDATE users 
-                            SET password = ?,created_at = ?,updated_at = ?,expire = ?,role = ?,cellphone = ?,node = ?,route = ?,enable = ?
-                            WHERE name = ?
-                        """
-                    values = (
-                        password, create_time, create_time, expire, role, phone_number, current_app.config['DEFAULT_NODE_COUNT'], '0',
-                        default_reg_days, username
-                    )
-                    cursor.execute(update_query, values)
-
-                    # 初始化用户ACL规则
-                    init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
-                    insert_query = "INSERT INTO acl (acl, user_id) VALUES (?,?);"
-                    cursor.execute(insert_query, (init_acl, user_id))
-
-                    # 用户初始化
-                    to_rewrite_acl()
-                    reload_headscale()
-
-                res_code,res_msg,res_data = '0','注册成功',''
+            if result_reg['code'] == '0':
+                try:
+                    user_id = json.loads(result_reg['data'])['user']['id']   # 获取 user_id
+                except Exception as e:
+                    print(f"发生错误: {e}")
+                    return res('1','注册失败')
             else:
-                res_code, res_msg, res_data = '1',json.loads(result_reg)['message'], ''
+                return res('1', result_reg['msg'])
+
+
+            with SqliteDB() as cursor:
+                update_query = """
+                        UPDATE users 
+                        SET password = ?,created_at = ?,updated_at = ?,expire = ?,role = ?,cellphone = ?,node = ?,route = ?,enable = ?
+                        WHERE name = ?
+                    """
+                values = (
+                    password, create_time, create_time, expire, role, phone_number, current_app.config['DEFAULT_NODE_COUNT'], '0',
+                    default_reg_days, username
+                )
+                cursor.execute(update_query, values)
+
+                # 初始化用户ACL规则
+                init_acl = f'{{"action": "accept","src": ["{username}"],"dst": ["{username}:*"]}}'
+                insert_query = "INSERT INTO acl (acl, user_id) VALUES (?,?);"
+                cursor.execute(insert_query, (init_acl, user_id))
+
+                # 用户初始化
+                to_rewrite_acl()
+                reload_headscale()
+
+                return res('0','注册成功','')
+
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
-
-            res_code,res_msg,res_data = '1', str(first_value[0]),''
-        return res(res_code,res_msg,res_data)
+            return res('1', str(first_value[0]),'')
 
 
 @bp.route('/login', methods=['GET','POST'])
@@ -193,7 +192,7 @@ def login():
             login_user(user)
             res_code,res_msg,res_data = '0', '登录成功',''
 
-            record_log("登录成功",user.id)
+            record_log(user.id,"登录成功")
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))
@@ -233,6 +232,10 @@ def password():
 
     return res(res_code, res_msg, res_data)
 
+
+@bp.route('/derp')
+def derp():
+    return current_app.config['DERP_CONFIG']
 
 @bp.route('/error')
 @login_required

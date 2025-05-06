@@ -1,7 +1,6 @@
 import json
 import math
 import os
-import sqlite3
 import subprocess
 import sys
 import time
@@ -11,7 +10,6 @@ import psutil
 from flask import current_app
 from ruamel.yaml import YAML
 from datetime import datetime
-from sqlalchemy.sql.functions import current_user
 from exts import SqliteDB
 
 
@@ -43,34 +41,37 @@ def table_res(code=None, msg=None, data=None, count=None, total_row_count = None
     return response
 
 
-def to_post(url_path,data=None):
+
+def to_post(url_path, data=None, is_recursive=False):
     server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
+    bearer_token = current_app.config['BEARER_TOKEN'] if not is_recursive else to_refresh_apikey()['data']
     headers = {
         'Authorization': f'Bearer {bearer_token}'
     }
-    url = server_host+url_path
-    response = requests.post(url, headers=headers,json=data)
+    url = server_host + url_path
 
-    print(f'post请求url地址: {url},返回消息: {response.text}---------------------------------------')
-
-
-
-    # 如果返回Unauthorized则自动刷新apikey
-    if response.text == "Unauthorized":
-        apikey = to_refresh_apikey()['data']
-        print(f'------------apikey--------------{apikey}---------------------------------')
-        headers = {
-            'Authorization': f'Bearer {apikey}'
-        }
+    try:
         response = requests.post(url, headers=headers, json=data)
+    except Exception as e:
+        print(str(e))
+        return res('1',f'headscale后台服务异常',None)
 
-        print(f'post二次请求url地址: {url},返回消息: {response.text}---------------------------------------')
+    request_type = '二次请求' if is_recursive else '请求'
+    print(f'post{request_type}url地址: {url},返回消息: {response.text}---------------------------------------')
 
-    return response
+    if response.text == "Unauthorized" and not is_recursive:
+
+        if to_post(url_path, data, is_recursive=True)['data'] != "Unauthorized":
+            print(f'------------apikey已刷新--------------{bearer_token}---------------------------------')
+        else:
+            print(f'------------apikey刷新出错--------------{bearer_token}---------------------------------')
+            return res('2', f'apikey刷新出错', None)
+
+    return res('0','请求成功',response.text)
 
 
-def record_log(log_content,user_id = None):
+
+def record_log(user_id,log_content):
     """
     记录日志到数据库
     :param user_id: 用户 ID
@@ -78,8 +79,6 @@ def record_log(log_content,user_id = None):
     :return: 成功返回 True，失败返回 False
     """
 
-    if user_id == None:
-        user_id = current_user.id
     with SqliteDB() as cursor:
         # 获取当前时间
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -293,7 +292,6 @@ def save_config_yaml(config_dict):
         config_yaml = yaml.load(file)
 
     for key, value in config_dict.items():
-        print(f"------------保存新的配置------------------Key: {key}, Value: {value}--------------------------")
         current_app.config[key] = value
         config_yaml[key.lower()] = value
 
@@ -301,8 +299,8 @@ def save_config_yaml(config_dict):
     with open('/etc/headscale/config.yaml', 'w') as file:
         yaml.dump(config_yaml, file)
 
-    code, msg, data = '0', '修改成功', ''
-    return res(code, msg, data)
+
+    return res('0', '修改成功', '')
 
 
 
@@ -343,19 +341,19 @@ def get_headscale_status(app):
         attempt += 1
         time.sleep(1)
     print("Failed to get a valid headscale status after multiple attempts.")
-    return False
+    with open('/var/lib/headscale/headscale.log', 'r') as file:
+        lines = file.readlines()
+        last_five_lines = lines[-5:]
+        print("------------------------headscale failed to boot. Here are some boot logs-----------------------------")
+        for line in last_five_lines:
+            print(line.strip())
+    sys.exit(1)
+
 
 
 
 def to_init_db(app):
-    if not get_headscale_status(app):
-        with open('/var/lib/headscale/headscale.log', 'r') as file:
-            lines = file.readlines()
-            last_five_lines = lines[-5:]
-            print("------------------------headscale failed to boot. Here are some boot logs-----------------------------")
-            for line in last_five_lines:
-                print(line.strip())
-        sys.exit(1)
+    get_headscale_status(app)
 
     # 要添加的字段列表
     fields = [

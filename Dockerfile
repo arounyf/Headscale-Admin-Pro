@@ -14,6 +14,7 @@ RUN apt-get update && \
 COPY . /init_data
 RUN mv data-example.json data.json && \
     mv config-example.yaml config.yaml && \
+    mv derp-example.yaml derp.yaml && \
     chmod u+x init.sh
 
 # 第二阶段：运行阶段

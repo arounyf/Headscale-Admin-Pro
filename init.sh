@@ -21,7 +21,8 @@ cd /app
 # 检查容器内的 headscale 目录是否为空
 if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
     cp -r $INIT_DATA_APP_DIR/config.yaml $CONTAINER_CONFIG_DIR
-	echo "复制配置文件"
+    cp -r $INIT_DATA_APP_DIR/derp.yaml $CONTAINER_CONFIG_DIR
+	echo "复制headscale配置文件"
 	touch $CONTAINER_CONFIG_DIR/acl.hujson
 	echo "创建ACL文件"
 else
@@ -31,9 +32,10 @@ fi
 
 # 检查容器内的 app 目录是否为空
 if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
-	echo "复制flask文件"
+	echo "复制flask-app文件"
   cp -r $INIT_DATA_APP_DIR/* $CONTAINER_APP_DIR
 	rm $CONTAINER_APP_DIR/config.yaml
+	rm $CONTAINER_APP_DIR/derp.yaml
 	rm $CONTAINER_APP_DIR/init.sh
 	rm $CONTAINER_APP_DIR/Dockerfile
 	rm $CONTAINER_APP_DIR/README.md
@@ -41,20 +43,15 @@ if [ -z "$(ls -A $CONTAINER_APP_DIR 2>/dev/null)" ]; then
 	rm $CONTAINER_APP_DIR/nginx-example.conf
 	rm $CONTAINER_APP_DIR/data.json
 else
-    echo "检测到flask存在已有数据"
+    echo "检测到flask-app存在已有数据"
 fi
 
 # 检查容器内的 DB存放 目录是否为空
 if [ -z "$(ls -A $CONTAINER_DB_DIR 2>/dev/null)" ]; then
-	echo "将自动生成数据库文件"
-	# 初始化数据库
-	python3 -m flask db init
-	python3 -m flask db migrate
-	python3 -m flask db upgrade
 	echo "将自动生成流量统计文件"
 	cp -r $INIT_DATA_APP_DIR/data.json $CONTAINER_DB_DIR
 else
-    echo "检测到SQLITE已有数据"
+    echo "检测到data已有数据"
 fi
 
 

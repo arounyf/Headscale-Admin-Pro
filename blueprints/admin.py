@@ -1,6 +1,6 @@
 from flask_login import login_required, current_user
 from login_setup import role_required
-from flask import Blueprint, render_template, current_app, request
+from flask import Blueprint, render_template, current_app, request, json
 from utils import get_server_net, get_headscale_pid, get_headscale_version
 
 
@@ -151,6 +151,8 @@ def set():
 
     region_html = current_app.config['REGION_HTML']
 
+    with open(current_app.config['DERP_PATH'], 'r') as f:
+        derp_config = f.read()
 
 
     if get_headscale_pid():
@@ -174,7 +176,8 @@ def set():
                                default_node_count = default_node_count,
                                open_user_reg = open_user_reg,
                                region_data = region_data,
-                               version = get_headscale_version()
+                               version = get_headscale_version(),
+                               derp_config = derp_config
                            )
 
 

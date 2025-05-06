@@ -4,7 +4,7 @@ import traceback
 import config_loader
 
 # 直接从配置文件导入数据库 URI
-DATABASE = config_loader.SQLALCHEMY_DATABASE_URI
+DATABASE = config_loader.DATABASE_URI
 
 
 class SqliteDB(object):

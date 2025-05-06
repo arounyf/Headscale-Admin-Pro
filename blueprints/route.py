@@ -73,14 +73,11 @@ def getRoute():
 def route_enable():
     route_id = request.form.get('routeId')
     enabled = request.form.get('Enable')
-    response = None
 
     if enabled == "true":
         url_path = f'/api/v1/routes/{route_id}/enable'
-        code, msg, data = '0', '打开成功', response
     else:
         url_path = f'/api/v1/routes/{route_id}/disable'
-        code, msg, data = '0', '关闭成功', response
 
     with SqliteDB() as cursor:
         # 连接两表查询，获取 user_id
@@ -94,13 +91,14 @@ def route_enable():
         result = cursor.fetchone()
         user_id = result['user_id'] if result else None
 
-    print(user_id)
+
     if current_user.route != '1':
-        code, msg, data = '1', '未获得使用权限', response
+        return res('1', '未获得使用权限')
     elif current_user.role == 'manager' or user_id == current_user.id:
-        to_post(url_path)
+        result_post = to_post(url_path)
+        if result_post['code'] == '0':
+            return res('0', '切换成功', result_post['data'])
+        else:
+            return res(result_post['code'], result_post['msg'])
     else:
-        code, msg, data = '1', '非法请求', response
-
-    return res(code, msg, data)
-
+        return res('1', '非法请求')

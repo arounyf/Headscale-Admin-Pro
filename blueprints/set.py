@@ -1,8 +1,11 @@
 import subprocess
 from flask_login import login_required
+from ruamel import yaml
+from ruamel.yaml import YAML
+
 from exts import SqliteDB
 from login_setup import role_required
-from flask import Blueprint, request
+from flask import Blueprint, request, current_app
 from utils import start_headscale, stop_headscale, save_config_yaml, res
 
 
@@ -15,29 +18,34 @@ bp = Blueprint("set", __name__, url_prefix='/api/set')
 @login_required
 @role_required("manager")
 def upset():
-    apikey = request.form.get('apiKey')
-    server_net = request.form.get('serverNet')
-    server_url = request.form.get('serverUrl')
-    region_html = request.form.get('regionHtml')
-    region_data = request.form.get('regionData')
-    default_node_count = request.form.get('defaultNodeCount')
-    open_user_reg = request.form.get('openUserReg')
-    default_reg_days = request.form.get('defaultRegDays')
-
-    # 定义映射字典
-    config_mapping = {
-        'BEARER_TOKEN': apikey,
-        'SERVER_URL': server_url,
-        'SERVER_NET': server_net,
-        'DEFAULT_NODE_COUNT': default_node_count,
-        'OPEN_USER_REG': open_user_reg,
-        'DEFAULT_REG_DAYS': default_reg_days,
-        'REGION_HTML': region_html,
-        'REGION_DATA': region_data
+    # 反转 form_fields 字典的键值对
+    form_fields = {
+        'BEARER_TOKEN': 'apiKey',
+        'SERVER_NET': 'serverNet',
+        'SERVER_URL':'serverUrl',
+        'REGION_HTML':'regionHtml',
+        'REGION_DATA':'regionData',
+        'DEFAULT_NODE_COUNT': 'defaultNodeCount',
+        'OPEN_USER_REG': 'openUserReg',
+        'DEFAULT_REG_DAYS': 'defaultRegDays',
+        'DERP_CONFIG': 'derpConfig'
     }
 
-    return save_config_yaml(config_mapping)
+    # 构建字典
+    config_mapping = {}
 
+    for config_key, form_value in form_fields.items():
+        value = request.form.get(form_value)
+        if value is not None:
+            if config_key =='DERP_CONFIG':   # 这里对derp url做特殊处理
+
+                with open(current_app.config['DERP_PATH'], 'w') as f:
+                    f.write(value)
+                print(value)
+            else:
+                config_mapping[config_key] = value
+
+    return save_config_yaml(config_mapping)
 
 
 @bp.route('/get_apikey' , methods=['POST'])
