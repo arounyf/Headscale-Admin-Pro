@@ -7,7 +7,7 @@ WORKDIR /init_data
 # 更新包管理器并安装必要的工具
 RUN apt-get update && \
     apt-get install pip wget -y && \
-    pip3 install flask sqlalchemy flask_sqlalchemy wtforms captcha flask_migrate psutil flask_login requests apscheduler ruamel.yaml email_validator && \
+    pip3 install flask wtforms captcha psutil flask_login requests apscheduler ruamel.yaml email_validator && \
     wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 
 
 # 将当前目录下的内容复制到工作目录中

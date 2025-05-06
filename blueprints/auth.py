@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 import json
-from utils import record_log, reload_headscale, to_rewrite_acl
+from utils import record_log, reload_headscale, to_rewrite_acl, to_request
 from flask_login import login_user, logout_user, current_user, login_required
 from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from exts import SqliteDB
-from utils import res, to_post
+from utils import res
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
@@ -49,7 +49,7 @@ def register_node(registrationID):
         return res('2', '超过此用户节点限制', '')
     else:
 
-        result_post = to_post(url_path)
+        result_post = to_request('POST',url_path)
         if result_post['code'] == '0':
             record_log(current_user.id,"节点添加成功")
             return res('0', '节点添加成功', result_post['data'])
@@ -116,16 +116,19 @@ def reg():
             default_reg_days = current_app.config['DEFAULT_REG_DAYS']
 
             create_time = datetime.now()
-            expire = create_time + timedelta(days=int(default_reg_days)) # 新用户注册默认?天后到期
+
 
             if (username == "admin"):
                 role = "manager"
                 expire = create_time + timedelta(1000)
             else:
                 role = "user"
-            if default_reg_days != 0:
-                default_reg_days = 1
+                expire = create_time + timedelta(days=int(default_reg_days))  # 新用户注册默认?天后到期
 
+            default_reg_days = 1 if default_reg_days != 0 else default_reg_days # 若用户注册默认天数不为0，代表该用户启用
+
+
+            # headscale用户注册请求参数构建
             json_data =  {
               "name": username,
               "displayName": username,
@@ -133,7 +136,7 @@ def reg():
               "pictureUrl": "NULL"
             }
 
-            result_reg = to_post('/api/v1/user',data = json_data)  # 直接使用数据库创建用户会出现ACL失效，所有使用api创建
+            result_reg = to_request('POST','/api/v1/user',data = json_data)  # 直接使用数据库创建用户会出现ACL失效，所有使用api创建
 
             if result_reg['code'] == '0':
                 try:
@@ -162,11 +165,11 @@ def reg():
                 insert_query = "INSERT INTO acl (acl, user_id) VALUES (?,?);"
                 cursor.execute(insert_query, (init_acl, user_id))
 
-                # 用户初始化
-                to_rewrite_acl()
-                reload_headscale()
+            # 用户初始化
+            to_rewrite_acl()
+            reload_headscale()
 
-                return res('0','注册成功','')
+            return res('0','注册成功','')
 
         else:
             # return form.errors

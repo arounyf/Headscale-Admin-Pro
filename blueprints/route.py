@@ -1,8 +1,7 @@
 from flask_login import login_required, current_user
 from flask import Blueprint,  request
 from exts import SqliteDB
-from utils import res, to_post, table_res
-
+from utils import res, table_res, to_request
 
 bp = Blueprint("route", __name__, url_prefix='/api/route')
 
@@ -87,18 +86,19 @@ def route_enable():
             JOIN nodes ON routes.node_id = nodes.id
             WHERE routes.id =?
         """
-        cursor.execute(query, (route_id,))
-        result = cursor.fetchone()
-        user_id = result['user_id'] if result else None
+        user_id = cursor.execute(query, (route_id,)).fetchone()[0]
 
 
     if current_user.route != '1':
         return res('1', '未获得使用权限')
-    elif current_user.role == 'manager' or user_id == current_user.id:
-        result_post = to_post(url_path)
-        if result_post['code'] == '0':
-            return res('0', '切换成功', result_post['data'])
+
+    if current_user.role == 'manager' or user_id == current_user.id:
+        response = to_request('POST',url_path)
+        if response['code'] == '0':
+            return res('0', '切换成功', response['data'])
         else:
-            return res(result_post['code'], result_post['msg'])
+            return res(response['code'], response['msg'])
     else:
         return res('1', '非法请求')
+
+

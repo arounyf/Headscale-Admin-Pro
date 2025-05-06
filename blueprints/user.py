@@ -2,8 +2,7 @@ from flask_login import current_user, login_required
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import res
-
+from utils import res, table_res
 
 bp = Blueprint("user", __name__, url_prefix='/api/user')
 
@@ -12,64 +11,42 @@ bp = Blueprint("user", __name__, url_prefix='/api/user')
 @login_required
 @role_required("manager")
 def getUsers():
-    page = request.args.get('page', default=1, type=int)  # 默认第 1 页
-    per_page = request.args.get('limit', default=10, type=int)  # 默认每页 10 条
-
-    offset = (page - 1) * per_page
-
-    users_list = []
+    # 获取分页参数，默认第1页，每页10条
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('limit', default=10, type=int)
 
     with SqliteDB() as cursor:
-        # 查询总记录数
-        cursor.execute("SELECT COUNT(*) FROM users")
-        total_count = cursor.fetchone()[0]
-
-        # 查询用户数据
+        # 查询总记录数和当前页用户数据
         query = """
-            SELECT id, name, created_at, cellphone, expire, role, node, route, enable
+            SELECT COUNT(*) OVER() as total_count, id, name, 
+            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
+            cellphone, 
+            strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable
             FROM users
             LIMIT? OFFSET?
         """
-        cursor.execute(query, (per_page, offset))
+        cursor.execute(query, (per_page, (page - 1) * per_page))
         rows = cursor.fetchall()
 
-        for row in rows:
+        total_count = rows[0]['total_count'] if rows else 0
 
-            try:
-                created_at = str(row['created_at'])[:19]
-                expire = str(row['expire'])[:19]
-            except Exception as e:
-                print(f"处理时间出错: {e}")
-                created_at = ""
-                expire = ""
-
-            user_dict = {
+        # 创建用户字典列表
+        users_list = [
+            {
                 'id': row['id'],
                 'userName': row['name'],
-                'createTime': created_at,
+                'createTime': str(row['created_at']),
                 'cellphone': row['cellphone'],
-                'expire': expire,
+                'expire': str(row['expire']),
                 'role': row['role'],
                 'node': row['node'],
                 'route': row['route'],
-                'enable': row['enable'],
+                'enable': row['enable']
             }
-            users_list.append(user_dict)
+            for row in rows
+        ]
 
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-        'count': total_count,
-        'totalRow': {
-            'count': len(users_list)
-        }
-    }
-    res_json['code'], res_json['msg'] = '0', '获取成功'
-    res_json['data'] = users_list
-
-    return res_json
-
+    return table_res('0', '获取成功', users_list, total_count, len(users_list))
 
 
 @bp.route('/re_expire',methods=['GET','POST'])
@@ -81,13 +58,6 @@ def re_expire():
     new_expire = request.form.get('new_expire')
 
     with SqliteDB() as cursor:
-        # 查询用户
-        query = "SELECT * FROM users WHERE id =?;"
-        cursor.execute(query, (user_id,))
-        user = cursor.fetchone()
-
-        if not user:
-            return res('1', '未找到该用户','')
         # 更新用户的过期时间
         update_query = "UPDATE users SET expire =? WHERE id =?;"
         cursor.execute(update_query, (new_expire, user_id))
@@ -176,29 +146,23 @@ def init_data():
     with SqliteDB() as cursor:
         # 查询当前用户的创建时间和过期时间
         current_user_id = current_user.id  # 假设 current_user 有 id 属性
-        user_query = "SELECT created_at, expire FROM users WHERE id =?;"
+        user_query = """
+            SELECT 
+            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
+            strftime('%Y-%m-%d %H:%M:%S', expire) as expire
+            FROM users WHERE id =?
+        """
         cursor.execute(user_query, (current_user_id,))
         user_info = cursor.fetchone()
 
-        try:
-            created_at = str(user_info['created_at'])[:19]
-            expire = str(user_info['expire'])[:19]
-        except Exception as e:
-            print(f"处理时间出错: {e}")
-            created_at = ""
-            expire = ""
+
+        created_at = str(user_info['created_at'])
+        expire = str(user_info['expire'])
 
         # 查询节点数量
-        node_count_query = "SELECT COUNT(*) as count FROM nodes;"
-        cursor.execute(node_count_query)
-        node_count_result = cursor.fetchone()
-        node_count = node_count_result['count'] if node_count_result else 0
-
+        node_count = cursor.execute("SELECT COUNT(*) as count FROM nodes").fetchone()[0]
         # 查询路由数量
-        route_count_query = "SELECT COUNT(*) as count FROM routes;"
-        cursor.execute(route_count_query)
-        route_count_result = cursor.fetchone()
-        route_count = route_count_result['count'] if route_count_result else 0
+        route_count = cursor.execute("SELECT COUNT(*) as count FROM routes").fetchone()[0]
 
     data = {
         "created_at": created_at,

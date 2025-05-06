@@ -109,6 +109,7 @@
               success:function(res){
                 if(res.code == 0){
                   layer.msg('新建成功', {icon: 6});
+                  table.reload('test-table-index',true);
                 }else{
                   layer.msg('新建失败', {icon: 7});
                 }
@@ -127,11 +128,11 @@
     //触发单元格工具事件
     table.on('tool(test-table-index)', function(obj){ // 双击 toolDouble
       var $ = layui.$;
-      var data = obj.data;
+
       // console.log(obj)
       if(obj.event === 'del'){
         layer.confirm('真的删除行么', function(index){
-          obj.del();
+
           layer.close(index);
 
           $.ajax({
@@ -142,8 +143,10 @@
             success:function(res){
               if(res.code == 0){
                 layer.msg(res.msg, {icon: 6});
+                obj.del();
               }else{
                 layer.msg(res.msg, {icon: 7});
+
               }
               
             }

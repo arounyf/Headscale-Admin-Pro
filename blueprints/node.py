@@ -5,8 +5,7 @@ from blueprints.auth import register_node
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request,current_app
-from utils import res, table_res
-
+from utils import res, table_res, to_request
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
 
@@ -100,32 +99,27 @@ def getNodes():
 
 
 
+
+
 @bp.route('/delete', methods=['POST'])
 @login_required
 def delete():
     node_id = request.form.get('NodeId')
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-    url = f'{server_host}/api/v1/node/{node_id}'
 
-    if current_user.role != 'manager':
-        with SqliteDB() as cursor:
-            query = "SELECT COUNT(*) as count FROM nodes WHERE id =? AND user_id =?;"
-            cursor.execute(query, (node_id, current_user.id))
-            result = cursor.fetchone()
-            count = result['count'] if result else 0
+    url = f'/api/v1/node/{node_id}'
 
-        if count > 0:
-            response = requests.delete(url, headers=headers)
+    with SqliteDB() as cursor:
+        user_id = cursor.execute("SELECT user_id FROM nodes WHERE id =? ", (node_id,)).fetchone()[0]
+    if user_id == current_user.id or current_user.role == 'manager':
+        response = to_request('DELETE', url)
+        if response['code'] == '0':
+            return res('0', '删除成功', response['data'])
         else:
-            return res('1', '非法请求')
+            return res(response['code'], response['msg'])
     else:
-        requests.delete(url, headers=headers)
+        return res('1', '非法请求')
 
-    return res('0', '删除成功')
+
 
 
 @bp.route('/new_owner', methods=['GET','POST'])
@@ -136,30 +130,22 @@ def new_owner():
     node_id = request.form.get('nodeId')
     user_name = request.form.get('userName')
 
-    print(node_id)
-    print(user_name)
-
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-
-    url = f'{server_host}/api/v1/node/{node_id}/user'  # 替换为实际的目标 URL
-
+    url = f'/api/v1/node/{node_id}/user'  # 替换为实际的目标 URL
 
     data = {"user": user_name}
-    response = requests.post(url, headers=headers,json=data)
-    # 额外字段
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-    }
-    res_json['code'], res_json['msg'] = '0', '更新成功'
-    res_json['data'] = str(response.text)
 
-    return res_json
+    with SqliteDB() as cursor:
+        user_id = cursor.execute("SELECT user_id FROM nodes WHERE id =? ", (node_id,)).fetchone()[0]
+    if user_id == current_user.id or current_user.role == 'manager':
+        response = to_request('POST', url, data)
+        if response['code'] == '0':
+            return res('0', '更新成功', response['data'])
+        else:
+            return res(response['code'], response['msg'])
+    else:
+        return res('1', '非法请求')
+
+
 
 
 @bp.route('/rename', methods=['POST'])
@@ -169,27 +155,15 @@ def rename():
     node_id = request.form.get('nodeId')
     node_name = request.form.get('nodeName')
 
-    print(node_id)
-    print(node_name)
+    url = f'/api/v1/node/{node_id}/rename/{node_name}'  # 替换为实际的目标 URL
 
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-
-    url = f'{server_host}/api/v1/node/{node_id}/rename/{node_name}'  # 替换为实际的目标 URL
-
-
-
-    response = requests.post(url, headers=headers)
-    # 额外字段
-    res_json = {
-        'code': '',
-        'data': '',
-        'msg': '',
-    }
-    res_json['code'], res_json['msg'] = '0', '更新成功'
-    res_json['data'] = str(response.text)
-
-    return res_json
+    with SqliteDB() as cursor:
+        user_id = cursor.execute("SELECT user_id FROM nodes WHERE id =? ",(node_id,)).fetchone()[0]
+    if user_id == current_user.id or current_user.role == 'manager':
+        response = to_request('POST',url)
+        if response['code'] == '0':
+            return res('0', '更新成功', response['data'])
+        else:
+            return res(response['code'], response['msg'])
+    else:
+        return res('1', '非法请求')

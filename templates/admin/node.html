@@ -169,7 +169,7 @@
         success:function(res){
             // console.log(res.code)
             if(res.code == 0){
-              layer.msg('修改成功', {icon: 6});
+              layer.msg(res.msg, {icon: 6});
               var field = 'name' //得到字段
               ,value = obj.value //得到修改后的值
               ,data = obj.data; //得到所在行所有键值
@@ -177,7 +177,7 @@
               update[field] = value;
               obj.update(update);
             }else{
-              layer.msg('修改失败', {icon: 7});
+              layer.msg(res.msg, {icon: 7});
             }
           }
         });
@@ -192,7 +192,7 @@
             if(res.code == 0){
               layer.msg(res.msg, {icon: 6});
             }else{
-              layer.msg('修改失败', {icon: 7});
+              layer.msg(res.msg, {icon: 7});
             }
           }
         });

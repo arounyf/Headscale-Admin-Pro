@@ -3,9 +3,7 @@ from datetime import datetime, timedelta
 from flask_login import current_user, login_required
 from flask import Blueprint, request,current_app
 from exts import SqliteDB
-from utils import table_res, res
-
-
+from utils import table_res, res, to_request
 
 bp = Blueprint("preauthkey", __name__, url_prefix='/api/preauthkey')
 
@@ -73,28 +71,15 @@ def addKey():
     user_name = current_user.name
     expire_date = datetime.now() + timedelta(days=7)
 
-
-    server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN']
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-
-    url =  f'{server_host}/api/v1/preauthkey'
-
-    bearer_token = current_app.config['BEARER_TOKEN']
-    # 设置请求头，包含 Bearer Token
-    headers = {
-        'Authorization': f'Bearer {bearer_token}'
-    }
-    print(url)
+    url =  f'/api/v1/preauthkey'
     data = {'user':user_name,'reusable':True,'ephemeral':False,'expiration':expire_date.isoformat() + 'Z'}
 
-    response = requests.post(url, headers=headers, json=data)
+    response = to_request('POST',url,data)
 
-
-    return res('0','获取成功',response.text)
-
+    if response['code'] == '0':
+        return res('0', '获取成功', response['data'])
+    else:
+        return res(response['code'], response['msg'])
 
 
 
@@ -103,11 +88,15 @@ def addKey():
 @login_required
 def delKey():
     key_id = request.form.get('keyId')
-
-    with SqliteDB() as cursor:
-        # 构建删除语句
-        delete_query = "DELETE FROM pre_auth_keys WHERE id =?;"
-        cursor.execute(delete_query, (key_id,))
-
-    return res('0', '删除成功')
-
+    try:
+        with SqliteDB() as cursor:
+            user_id = cursor.execute("SELECT user_id FROM pre_auth_keys WHERE id =? ", (key_id,)).fetchone()[0]
+            print(user_id)
+            if user_id == current_user.id or current_user.role == 'manager':
+                cursor.execute("DELETE FROM pre_auth_keys WHERE id =?", (key_id,))
+                return res('0', '删除成功')
+            else:
+                return res('1', '非法请求')
+    except Exception as e:
+        print(f"发生未知错误: {e}")
+        return res('1', '删除失败')

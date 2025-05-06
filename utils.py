@@ -41,25 +41,32 @@ def table_res(code=None, msg=None, data=None, count=None, total_row_count = None
     return response
 
 
-def to_post(url_path,data=None,flag = True):
+def to_request(method,url_path,data=None,flag = True):
     server_host = current_app.config['SERVER_HOST']
     bearer_token = current_app.config['BEARER_TOKEN']
     headers = {
         'Authorization': f'Bearer {bearer_token}'
     }
     url = server_host+url_path
-    response = requests.post(url, headers=headers,json=data)
 
-    print(f'post请求url地址: {url},返回消息: {response.text}---------------------------------------')
+    # 动态调用 requests 库中的方法
+    request_method = getattr(requests, method.lower())
+    response = request_method(url, headers=headers, json=data)
+
+    print(f'{method}请求url地址: {url},返回消息: {response.text}---------------------------------------')
 
 
     # 如果返回Unauthorized则自动刷新apikey
     if response.text == "Unauthorized" and flag:
         current_app.config['BEARER_TOKEN'] = to_refresh_apikey()['data']
-        data = to_post(url_path,data,False)['data']
+        data = to_request('POST',url_path,data,False)['data']
         return res('0', '请求成功', data)
     else:
         return res('0','请求成功',response.text)
+
+
+
+
 
 
 
@@ -262,16 +269,16 @@ def to_rewrite_acl():
     acl_data = {
         "acls": acl_list
     }
-    print(acl_data)
+
 
     try:
         with open(acl_path, 'w') as f:
             json.dump(acl_data, f, indent=4)
-        code, msg, data = '0', '写入成功', acl_data
+        return res('0', '写入成功', acl_data)
     except Exception as e:
-        code, msg, data = '1', '写入失败', str(e)
+        return res('1', '写入失败', str(e))
 
-    return res(code, msg, data)
+
 
 def save_config_yaml(config_dict):
     print(config_dict)
