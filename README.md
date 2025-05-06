@@ -15,7 +15,8 @@
 # 时间线
 2024年6月我接触到了tailscale,后在个人博客上发布了derper与headscale的搭建教程   
 2024年9月8日headscale-Admin首个版本正式开源发布   
-2025年3月26日Headscale-Admin-Pro正式开源发布   
+2025年3月26日Headscale-Admin-Pro正式开源发布  
+
 
 # 使用docker部署
 ```shell
@@ -28,9 +29,7 @@ docker-compose up -d
    
 1、访问 http://ip:5000，注册admin账户即为系统管理员账户   
 
-2、进入后台设置网卡名、apikey并启动headscale   
-
-3、访问 http://ip:5000   
+2、进入后台设置网卡名、并确认其它配置是否需要修改，修改之后重启headscale
 
 4、配置nginx，配置示例 nginx-example.conf(可选)
 
@@ -38,7 +37,7 @@ docker-compose up -d
 
 # 功能
 - 用户管理
-- 用户自行注册
+- 用户独立后台
 - 用户到期管理
 - 流量统计
 - 基于用户ACL
@@ -50,7 +49,8 @@ docker-compose up -d
 - api和menu权限管理
 - 内置headscale
 - 内置配置在线修改
-- 一键添加节点
+- 一键添加节点(需配置反向代理)
+- 自动更新apikey
 
 
 # 兼容性测试
