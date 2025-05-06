@@ -41,33 +41,25 @@ def table_res(code=None, msg=None, data=None, count=None, total_row_count = None
     return response
 
 
-
-def to_post(url_path, data=None, is_recursive=False):
+def to_post(url_path,data=None,flag = True):
     server_host = current_app.config['SERVER_HOST']
-    bearer_token = current_app.config['BEARER_TOKEN'] if not is_recursive else to_refresh_apikey()['data']
+    bearer_token = current_app.config['BEARER_TOKEN']
     headers = {
         'Authorization': f'Bearer {bearer_token}'
     }
-    url = server_host + url_path
+    url = server_host+url_path
+    response = requests.post(url, headers=headers,json=data)
 
-    try:
-        response = requests.post(url, headers=headers, json=data)
-    except Exception as e:
-        print(str(e))
-        return res('1',f'headscale后台服务异常',None)
+    print(f'post请求url地址: {url},返回消息: {response.text}---------------------------------------')
 
-    request_type = '二次请求' if is_recursive else '请求'
-    print(f'post{request_type}url地址: {url},返回消息: {response.text}---------------------------------------')
 
-    if response.text == "Unauthorized" and not is_recursive:
-
-        if to_post(url_path, data, is_recursive=True)['data'] != "Unauthorized":
-            print(f'------------apikey已刷新--------------{bearer_token}---------------------------------')
-        else:
-            print(f'------------apikey刷新出错--------------{bearer_token}---------------------------------')
-            return res('2', f'apikey刷新出错', None)
-
-    return res('0','请求成功',response.text)
+    # 如果返回Unauthorized则自动刷新apikey
+    if response.text == "Unauthorized" and flag:
+        current_app.config['BEARER_TOKEN'] = to_refresh_apikey()['data']
+        data = to_post(url_path,data,False)['data']
+        return res('0', '请求成功', data)
+    else:
+        return res('0','请求成功',response.text)
 
 
 
@@ -282,6 +274,7 @@ def to_rewrite_acl():
     return res(code, msg, data)
 
 def save_config_yaml(config_dict):
+    print(config_dict)
     # 创建 YAML 对象，设置保留注释
     yaml = YAML()
     yaml.preserve_quotes = True

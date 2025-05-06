@@ -24,7 +24,7 @@ SERVER_HOST = 'http://127.0.0.1:8080'
 SERVER_URL = config_yaml.get('server_url', {})
 DATABASE_URI =  config_yaml.get('database', {}).get('sqlite', {}).get('path')
 ACL_PATH = "/etc/headscale/"+config_yaml.get('policy', {}).get('path')
-DERP_PATH = "/etc/headscale/"+config_yaml.get('derp', {}).get('paths')
+DERP_PATH = config_yaml.get('derp', {}).get('paths')
 
 
 

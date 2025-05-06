@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import json
 from utils import record_log, reload_headscale, to_rewrite_acl
 from flask_login import login_user, logout_user, current_user, login_required
-from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json, jsonify
+from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from exts import SqliteDB
 from utils import res, to_post
 from .forms import RegisterForm, LoginForm, PasswdForm
@@ -140,7 +140,7 @@ def reg():
                     user_id = json.loads(result_reg['data'])['user']['id']   # 获取 user_id
                 except Exception as e:
                     print(f"发生错误: {e}")
-                    return res('1','注册失败')
+                    return res('1','注册失败',result_reg['data'])
             else:
                 return res('1', result_reg['msg'])
 

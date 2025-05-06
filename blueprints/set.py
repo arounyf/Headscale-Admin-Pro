@@ -1,8 +1,5 @@
 import subprocess
 from flask_login import login_required
-from ruamel import yaml
-from ruamel.yaml import YAML
-
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request, current_app
