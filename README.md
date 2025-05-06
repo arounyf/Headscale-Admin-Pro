@@ -60,6 +60,7 @@ headscale 0.25.1
 
 
 # 系统截图
+<img width="1280" alt="runyf_20250506230722" src="https://github.com/user-attachments/assets/d4c35e9e-d17a-46be-886d-50dd5a2425e9" />
 
 ![console](https://github.com/user-attachments/assets/6e25da2f-39f9-4217-b79e-344221c8f816)
 ![user](https://github.com/user-attachments/assets/1906c6ec-eb6f-44b1-af88-237ec16f1e99)
