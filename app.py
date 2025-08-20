@@ -3,6 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from login_setup import init_login_manager
 from utils import get_data_record, start_headscale, to_init_db
 import config_loader
+from werkzeug.middleware.proxy_fix import ProxyFix  # 导入中间件 解决https带端口登录跳转问题
 
 # 导入蓝图
 from blueprints.auth import bp as auth_bp
@@ -22,6 +23,8 @@ app = Flask(__name__)
 # 应用配置
 app.config.from_object(config_loader)
 app.json.ensure_ascii = False  # 让接口返回的中文不转码
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)   # 解决https带端口登录跳转问题
+app.config['USE_X_FORWARDED_PROTO'] = True   # 解决https带端口登录跳转问题
 
 # 初始化 Flask-login
 init_login_manager(app)
@@ -59,4 +62,4 @@ def page_not_found(e):
     return render_template('auth/error.html', message="404")
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=True)

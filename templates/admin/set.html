@@ -219,7 +219,13 @@ layui.use(function(){
   form.on('submit(set_config)', function(data){
     var field = data.field; // 获取表单字段值
 
-    console.log(field);
+    // 解决关闭对外注册时，字段值为空的问题
+    console.log(field.openUserReg);
+    if (field.openUserReg == undefined){
+      field.openUserReg = "off"
+    }
+
+    console.log(field.openUserReg);
 
     $.ajax({
       url:'/api/set/upset',
