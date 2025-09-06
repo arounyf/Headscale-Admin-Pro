@@ -21,7 +21,7 @@ def getUsers():
             SELECT COUNT(*) OVER() as total_count, id, name, 
             strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
             cellphone, 
-            strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable
+            strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable ,email
             FROM users
             LIMIT? OFFSET?
         """
@@ -41,7 +41,8 @@ def getUsers():
                 'role': row['role'],
                 'node': row['node'],
                 'route': row['route'],
-                'enable': row['enable']
+                'enable': row['enable'],
+                'email': row['email']
             }
             for row in rows
         ]

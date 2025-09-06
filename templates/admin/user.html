@@ -125,12 +125,12 @@
         //{type: 'checkbox', fixed: 'left'}
         {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
         ,{field:'userName', width:150, title: '用户名', sort: true, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-        ,{field:'createTime', title:'注册时间', width: 180,templet: function(d){
-            var ago = util.timeAgo(d.createTime);
-            return ago;
-          }
-        }
-        ,{field:'cellphone', title:'手机号码', width: 150, sort: true}
+        // ,{field:'createTime', title:'注册时间', width: 180,templet: function(d){
+        //     var ago = util.timeAgo(d.createTime);
+        //     return ago;
+        //   }
+        // }
+
         ,{field:'role', title:'角色', width: 120, sort: true,templet: function(d){
             if (d.role == "manager"){
               return "超级管理员"
@@ -275,14 +275,16 @@
           
         });
       }else if(obj.event === 'detail'){
+        console.log(data)
         layer.open({
           title: '用户信息',
           type: 1,
           area: ['600px','400px'],
-          content: `
-
-
-          `
+          content: '<div style="padding: 20px;">'+
+              '手机号码：'+ data.cellphone+ '<br>'+
+              '邮箱地址：'+ data.email+ '<br>'+
+              '注册时间：'+ data.createTime+
+            '</div>'
         });
       }
     });

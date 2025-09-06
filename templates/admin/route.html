@@ -25,6 +25,7 @@
             <script type="text/html" id="toolbarDemo">
               <div class="layui-btn-container">
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
+                <button class="layui-btn layui-btn-sm" lay-event="add">路由通告</button>
               </div>
             </script>
              
@@ -81,9 +82,9 @@
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }
-            ,{field:'route', title:'路由',width:180}
-            ,{field:'createTime', title: '创建时间', width:300, sort: true}
-            ,{field:'enable', title:'启用', width:160, templet: '#test-table-switchTpl', unresize: true}
+            ,{field:'route', title:'路由',width:280}
+            ,{field:'createTime', title: '创建时间', width:200, sort: true}
+        
         ]]
       ,error: function(res, msg){
         console.log(res, msg)
@@ -91,78 +92,167 @@
     });
 
 
-    //事件-开关操作
-    form.on('switch(test-table-sexDemo)', function(obj){
-      var $ = layui.$;
-      var json = JSON.parse(decodeURIComponent($(this).data('json')));
-      //layer.tips(this.value + ' ' + this.name + '：'+ obj.elem.checked, obj.othis);
-      
-      json = table.clearCacheKey(json);
-      console.log(obj.elem.checked);
-
-      $.ajax({
-          url:'/api/route/route_enable',
-          type: 'post',
-          dataType: 'json',
-          data: {routeId: json.id,Enable:obj.elem.checked},
-          success:function(res){
-              console.log(res)
-              if(res.code == 0){
-                layer.msg(res.msg, {icon: 6});
-              }else{
-                layer.msg(res.msg, {icon: 7});
-              }
-            }
-      });
-    });
-    
-    // 工具栏事件
-    table.on('toolbar(test-table-index)', function(obj){
-      var $ = layui.$;
-      var util = layui.util;
-      var id = obj.config.id;
-      var checkStatus = table.checkStatus(id);
-      var othis = lay(this);
-      switch(obj.event){
-        case 'reload':
-          var data = checkStatus.data;
-          table.reload('test-table-index',true);
-        break;
-
-      
-      };
-    });
    
-    //触发单元格工具事件
-    table.on('tool(test-table-index)', function(obj){ // 双击 toolDouble
-      var $ = layui.$;
-      var data = obj.data;
-      // console.log(obj)
-      if(obj.event === 'del'){
-        layer.confirm('真的删除行么', function(index){
-          obj.del();
-          layer.close(index);
-
-          $.ajax({
-            url:'/api/delRoute',
-            type: 'post',
-            dataType: 'json',
-            data: {route_id: obj.data.id},
-            success:function(res){
-              if(res.code == 0){
-                layer.msg('删除成功', {icon: 6});
-              }else{
-                layer.msg('删除失败', {icon: 7});
-              }
+// 工具栏事件
+table.on('toolbar(test-table-index)', function(obj){
+  var $ = layui.$;
+  var form = layui.form; // 确保引入form模块
+  var util = layui.util;
+  var id = obj.config.id;
+  var checkStatus = table.checkStatus(id);
+  var othis = lay(this);
+  switch(obj.event){
+    case 'reload':
+      var data = checkStatus.data;
+      table.reload('test-table-index',true);
+    break;
+    case 'add':
+       layer.open({
+      type: 1,
+      content: `
+        <div class="layui-form" lay-filter="filter-test-layer" style="margin: 20px 35px 30px 0; padding: 10px 0;">
+      <div class="demo-login-container">
+        <!-- 第一个下拉选择框 - 动态加载节点 -->
+        <div class="layui-form-item">
+          <label class="layui-form-label">节点选择</label>
+          <div class="layui-input-block">
+            <select name="nodeId" lay-verify="required" lay-reqtext="请选择节点" lay-filter="nodeIdFilter">
+              <option value="">加载中...</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- 第二个下拉选择框 - 根据节点动态加载路由 -->
+        <div class="layui-form-item">
+          <label class="layui-form-label">路由选择</label>
+          <div class="layui-input-block">
+            <select name="routes" lay-verify="required" lay-reqtext="请选择路由">
+              <option value="">请先选择节点</option>
+            </select>
+          </div>
+        </div>
+      
+        <div class="layui-form-item">
+          <div class="layui-input-block">
+            <button class="layui-btn" lay-submit lay-filter="demo-login">提交</button>
+          </div>
+        </div>
+      </div>
+    </div>
+      `,
+  
+      area: ['320px', '195px'], // 初始宽高
+      maxmin: true,
+      success: function(layero, index){
+        layer.full(index); // 最大化
+        
+        // 通过AJAX请求获取节点数据
+        $.ajax({
+          url: '/api/node/getNodes?page=1&limit=1000', // 节点列表接口
+          type: 'get',
+          dataType: 'json',
+          success: function(res) {
+            if (res.code === "0" && res.data && res.data.length > 0) {
+              // 渲染节点选择框
+              var nodeId = layero.find('select[name="nodeId"]');
+              nodeId.html('<option value="">请选择节点</option>');
+              res.data.forEach(function(node) {
+                var displayText = `${node.name} (${node.ip})`;
+                nodeId.append(`<option value="${node.id}">${displayText}</option>`);
+              });
+              // 重新渲染节点选择框
+              form.render('select', 'filter-test-layer');
               
+              // 关键修复：使用layui的form事件监听节点选择变化（而非原生change）
+              form.on('select(nodeIdFilter)', function(data){
+                var nodeId = data.value; // 获取选中的节点ID
+                var routes = layero.find('select[name="routes"]');
+                
+                if (!nodeId) {
+                  // 未选择节点时重置路由选择框
+                  routes.html('<option value="">请先选择节点</option>');
+                  form.render('select', 'filter-test-layer');
+                  return;
+                }
+                
+                // 显示加载状态
+                routes.html('<option value="">路由加载中...</option>');
+                form.render('select', 'filter-test-layer');
+                
+                // 请求节点路由信息
+                $.ajax({
+                  url: '/api/node/node_info', // 节点详情接口
+                  type: 'post',
+                  data: { NodeId: nodeId }, // 传递节点ID（注意：参数名可能需要和后端保持一致）
+                  dataType: 'json',
+                  success: function(routeRes) {
+                    if (routeRes.code === "0" && routeRes.data && routeRes.data.length > 0) {
+                      var availableRoutes = routeRes.data[0].availableRoutes || [];
+                      
+                      if (availableRoutes.length > 0) {
+                        routes.html('<option value="">请选择需要通告路由</option>');
+                        availableRoutes.forEach(function(route) {
+                          routes.append(`<option value="${route}">${route}</option>`);
+                        });
+                      } else {
+                        routes.html('<option value="">该节点无可用路由</option>');
+                      }
+                    } else {
+                      routes.html(`<option value="">${routeRes.msg || '路由数据获取失败'}</option>`);
+                    }
+                    form.render('select', 'filter-test-layer');
+                  },
+                  error: function(xhr) {
+                    console.error('路由请求失败：', xhr); // 打印错误信息用于调试
+                    routes.html('<option value="">路由请求失败（网络错误）</option>');
+                    form.render('select', 'filter-test-layer');
+                  }
+                });
+              });
+            } else {
+              layero.find('select[name="nodeId"]').html(
+                `<option value="">${res.msg || '暂无节点数据'}</option>`
+              );
+              form.render('select', 'filter-test-layer');
+            }
+          },
+          error: function(xhr) {
+            console.error('节点请求失败：', xhr); // 打印错误信息用于调试
+            layero.find('select[name="nodeId"]').html(
+              '<option value="">节点数据加载失败（网络错误）</option>'
+            );
+            form.render('select', 'filter-test-layer');
+          }
+        });
+        
+        // 监听表单提交
+        form.on('submit(demo-login)', function(data) {
+
+          
+          // AJAX提交逻辑
+          
+          $.ajax({
+            url: '/api/node/approve_routes',
+            type: 'post',
+            data: data.field,
+            success: function(res) {
+              if (res.code === "0") {
+                layer.msg(res.msg, {icon: 6});
+                // layer.closeAll();
+              } else {
+                layer.msg(res.msg || '操作失败', {icon: 7});
+              }
             }
           });
           
+          return false; // 阻止默认表单提交
         });
       }
     });
 
-
+    break;
+  };
+});
    
 
   });

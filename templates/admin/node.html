@@ -50,6 +50,7 @@
             {% endraw %}
 
             <script type="text/html" id="barDemo">
+              <a class="layui-btn layui-btn-info layui-btn-xs" lay-event="detail">查看</a>
               <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
             </script>  
           </div>
@@ -124,10 +125,7 @@
             }
             ,{field:'ip', width: 160, title: 'ip地址'}
             ,{field:'createTime', title:'创建时间', width: 180, sort: true}
-            ,{field:'lastTime', title:'最近连接', width: 180, sort: true,templet:'#TPL-lastTime'}
-            ,{field:'Client', title:'客户端', width: 90}
-            ,{field:'OS', title:'操作系统', width: 220}
-            ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
+            ,{fixed: 'right', title:'操作', width: 120, minWidth: 120, toolbar: '#barDemo'}
         ]]
 
       ,error: function(res, msg){
@@ -298,6 +296,53 @@
           });
           
         });
+      }else if(obj.event === 'detail'){
+
+        // 先定义弹窗内容的容器（用唯一ID标识，方便后续修改）
+        var dialogContent = `<div id="node-detail-content" style="padding: 20px;"></div>`;
+   
+          // 打开弹窗（无需保存索引，通过ID定位DOM）
+        layer.open({
+          title: '节点信息',
+          type: 1,
+          area: ['600px','400px'],
+          content: dialogContent // 传入带ID的容器
+        });
+
+
+
+        $.ajax({
+            url:'/api/node/node_info',
+            type: 'post',
+            dataType: 'json',
+            data: {NodeId: obj.data.id},
+            success:function(res){
+              if (res.code === "0") {
+                // 直接使用接口返回的data数组，取第一个元素
+                const dataList = res.data;
+                const post_data = dataList.length > 0 ? dataList[0] : {};
+                
+                let node_online = post_data.online;
+                node_online = node_online == 'true' ? "在线" : "离线";
+
+                // 处理路由通告
+                const availableRoutes = post_data.availableRoutes || [];
+                const routesStr = availableRoutes.length > 0 
+                    ? '<br>&nbsp;&nbsp;&nbsp;&nbsp;' + availableRoutes.join('<br>&nbsp;&nbsp;&nbsp;&nbsp;') 
+                    : '无可用路由';
+
+                // 只保留指定的四个信息
+                $('#node-detail-content').html(`
+                    客户端: ${data.Client}<br>
+                    操作系统: ${data.OS}<br>
+                    状态: ${node_online}<br>
+                    路由通告: ${routesStr}
+                `);
+              } else {
+                  layer.msg(res.msg, {icon: 7});
+              }
+            }
+          });
       }
     });
    
