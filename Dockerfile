@@ -8,7 +8,7 @@ WORKDIR /init_data
 RUN apt-get update && \
     apt-get install pip wget -y && \
     pip3 install flask wtforms captcha psutil flask_login requests apscheduler ruamel.yaml email_validator && \
-    wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.25.1/headscale_0.25.1_linux_amd64 
+    wget -O headscale https://github.com/juanfont/headscale/releases/download/v0.26.1/headscale_0.26.1_linux_amd64 
 
 # 将当前目录下的内容复制到工作目录中
 COPY . /init_data
