@@ -1,6 +1,6 @@
 services:  
   hs-admin:
-    image: runyf/hs-admin:v2.6
+    image: runyf/hs-admin:v2.7
     # image: hs-admin
     container_name: hs-admin  
     network_mode: host
