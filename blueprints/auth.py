@@ -161,7 +161,7 @@ def reg():
                 cursor.execute(update_query, values)
 
                 # 初始化用户ACL规则
-                init_acl = f'{{"action": "accept","src": ["@{username}"],"dst": ["@{username}:*"]}}'
+                init_acl = f'{{"action": "accept","src": ["{username}@"],"dst": ["{username}@:*"]}}'
                 insert_query = "INSERT INTO acl (acl, user_id) VALUES (?,?);"
                 cursor.execute(insert_query, (init_acl, user_id))
 
