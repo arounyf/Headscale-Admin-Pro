@@ -13,7 +13,7 @@
 
 官方qq群： 892467054
 # 时间线
-2024年6月开始接触 headscale
+2024年6月开始接触 headscale   
 2024年9月8日 headscale-Admin 首个版本正式发布   
 2025年3月26日 Headscale-Admin-Pro 基于python重构新版本正式发布  
 
