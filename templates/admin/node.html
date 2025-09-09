@@ -324,7 +324,9 @@
                 
                 let node_online = post_data.online;
                 node_online = node_online == 'true' ? "在线" : "离线";
-
+                
+                console.log(node_online)
+                
                 // 处理路由通告
                 const availableRoutes = post_data.availableRoutes || [];
                 const routesStr = availableRoutes.length > 0 
