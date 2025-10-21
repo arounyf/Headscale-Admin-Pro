@@ -68,7 +68,7 @@ def getPreAuthKey():
 @login_required
 def addKey():
 
-    user_name = current_user.name
+    user_name = current_user.id
     expire_date = datetime.now() + timedelta(days=7)
 
     url =  f'/api/v1/preauthkey'
@@ -100,3 +100,4 @@ def delKey():
     except Exception as e:
         print(f"发生未知错误: {e}")
         return res('1', '删除失败')
+
