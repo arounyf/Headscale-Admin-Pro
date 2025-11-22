@@ -1,5 +1,4 @@
 __pycache__/
 migrations/
 blueprints/__pycache__/
-headscale
 .*
