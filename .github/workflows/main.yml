@@ -26,11 +26,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: username/headscale-custom
+          images: runyf/hs-admin
           tags: |
             type=ref,event=branch
             type=ref,event=tag
-            type=sha,format=short
+            # 已移除 type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
         uses: docker/build-push-action@v5
