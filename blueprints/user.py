@@ -163,7 +163,8 @@ def init_data():
         # 查询节点数量
         node_count = cursor.execute("SELECT COUNT(*) as count FROM nodes").fetchone()[0]
         # 查询路由数量
-        route_count = cursor.execute("SELECT COUNT(*) as count FROM routes").fetchone()[0]
+        route_count = cursor.execute("SELECT COUNT(*) as count FROM nodes where approved_routes IS NOT NULL").fetchone()[0]
+  
 
     data = {
         "created_at": created_at,

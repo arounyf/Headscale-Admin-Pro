@@ -53,12 +53,13 @@ docker-compose up -d
 - 自动更新apikey
 
 
-# 适配版本
- 
+# 版本关系
+ 注意 runyf代表非官方原版headscale，因数据库适配问题不得不对headscale代码进行修改
 | Headscale-Admin-Pro | headscale |
 | --- | --- |
-| v2.7 | v0.25.0    v0.25.1 |
-| v2.8 | v0.26.0    v0.26.1 |
+| v2.7 | v0.25.1 |
+| v2.8 | v0.26.1 |
+| v3.0 | v0.27.1-runyf |
 
 
 

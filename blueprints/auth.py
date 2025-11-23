@@ -236,9 +236,6 @@ def password():
     return res(res_code, res_msg, res_data)
 
 
-@bp.route('/derp')
-def derp():
-    return current_app.config['DERP_CONFIG']
 
 @bp.route('/error')
 @login_required

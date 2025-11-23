@@ -87,20 +87,7 @@
               </div>
 
               
-              <div class="layui-form-item layui-form-text">
-                <label class="layui-form-label">服务器分布代码</label>
-                <div class="layui-input-block">
-                  <textarea name="regionHtml" class="layui-textarea"  lay-verify="required" >{{ region_html }}</textarea>
-                </div>
-              </div>
 
-
-              <div class="layui-form-item layui-form-text">
-                <label class="layui-form-label">服务器分布数据</label>
-                <div class="layui-input-block">
-                  <textarea name="regionData" class="layui-textarea"  lay-verify="required" >{{ region_data }}</textarea>
-                </div>
-              </div>
 
 
 
@@ -115,9 +102,6 @@
       </div>
 
 
-
-
-
         <div class="layui-col-md4">
             <div class="layui-card layui-form" lay-filter="component-form-element">
                 <div class="layui-card-header">headscale 进程管理</div>
@@ -130,36 +114,8 @@
         </div>
 
 
-
-
-        <div class="layui-col-md4">
-            <div class="layui-card layui-form" lay-filter="component-form-element">
-                <div class="layui-card-header">derp配置</div>
-                    <div class="layui-card-body layui-row layui-col-space10">
-                    <div class="layui-col-md12">
-
-                       <div class="layui-form-item">
-
-
-                    <div class="layui-form-item layui-form-text">
-                        <textarea name="derpConfig" class="layui-textarea"  lay-verify="required"  style="height: 380px">{{ derp_config  }}</textarea>
-                    </div>
-
-                  <div class="layui-form-item">
-
-                      <button class="layui-btn" lay-submit lay-filter="set_derp_config">确认保存</button>
-
-                  </div>
-
-                     </div>
-                </div>
-            </div>
-            </div>
-
-
         </div>
     </div>
-
 
     </div>
   </div>
@@ -246,29 +202,7 @@ layui.use(function(){
   });
 
 
-    // 提交事件
-  form.on('submit(set_derp_config)', function(data){
-    var field = data.field; // 获取表单字段值
-
-    console.log(field);
-
-    $.ajax({
-      url:'/api/set/upset',
-      type: 'post',
-      data:field,
-      dataType: 'json',
-      success:function(res){
-        if(res.code == 0){
-          layer.msg(res.msg, {icon: 6});
-        }else{
-          layer.msg(res.msg, {icon: 7});
-        }
-
-      }
-    });
-
-    return false; // 阻止默认 form 跳转
-  });
+  
 
 
 });

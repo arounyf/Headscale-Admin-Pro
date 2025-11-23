@@ -20,12 +20,9 @@ def upset():
         'BEARER_TOKEN': 'apiKey',
         'SERVER_NET': 'serverNet',
         'SERVER_URL':'serverUrl',
-        'REGION_HTML':'regionHtml',
-        'REGION_DATA':'regionData',
         'DEFAULT_NODE_COUNT': 'defaultNodeCount',
         'OPEN_USER_REG': 'openUserReg',
         'DEFAULT_REG_DAYS': 'defaultRegDays',
-        'DERP_CONFIG': 'derpConfig'
     }
 
     # 构建字典
@@ -33,15 +30,6 @@ def upset():
 
     for config_key, form_value in form_fields.items():
         value = request.form.get(form_value)
-        if value is not None:
-            if config_key =='DERP_CONFIG':   # 这里对derp url做特殊处理
-
-                with open(current_app.config['DERP_PATH'], 'w') as f:
-                    f.write(value)
-                print(value)
-            else:
-                config_mapping[config_key] = value
-
     return save_config_yaml(config_mapping)
 
 

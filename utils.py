@@ -322,39 +322,7 @@ def to_refresh_apikey():
     return res(code, msg, data)
 
 
-
-def get_headscale_status(app):
-    with app.app_context():
-        url = current_app.config['SERVER_HOST'] + '/health'
-    max_attempts = 5
-    attempt = 0
-    while attempt < max_attempts:
-        try:
-            response = requests.get(url)
-            if response.json() == {"status": "pass"}:
-                print("The headscale health status is pass!")
-                return True
-            else:
-                print(f"The headscale health status is error!")
-        except (requests.RequestException, ValueError):
-            print("The status of headscale is being retrieved. Please wait.")
-        attempt += 1
-        time.sleep(1)
-    print("Failed to get a valid headscale status after multiple attempts.")
-    with open('/var/lib/headscale/headscale.log', 'r') as file:
-        lines = file.readlines()
-        last_five_lines = lines[-5:]
-        print("------------------------headscale failed to boot. Here are some boot logs-----------------------------")
-        for line in last_five_lines:
-            print(line.strip())
-    sys.exit(1)
-
-
-
-
-def to_init_db(app):
-    get_headscale_status(app)
-
+def sqlite_data_add():
     # 要添加的字段列表
     fields = [
         ('password', 'TEXT'),
@@ -431,3 +399,82 @@ def to_init_db(app):
             cursor.execute(create_index_query)
 
             print("create log db table is success")
+
+
+
+
+def get_headscale_status(app):
+    """
+    检查 headscale 的健康状态。
+    如果启动失败，抓取并显示本次启动尝试产生的所有日志。
+    """
+    with app.app_context():
+        url = current_app.config['SERVER_HOST'] + '/health'
+        log_file_path = '/var/lib/headscale/headscale.log'
+
+    # 记录日志文件初始大小
+    log_start_pos = 0
+    if os.path.exists(log_file_path):
+        try:
+            log_start_pos = os.path.getsize(log_file_path)
+        except OSError as e:
+            print(f"Warning: Could not get size of log file: {e}")
+
+    print(f"Health check started. Monitoring log file from position: {log_start_pos}")
+
+    max_attempts = 5
+    attempt = 0
+    while attempt < max_attempts:
+        try:
+            response = requests.get(url, timeout=2)
+            if response.status_code == 200 and response.json() == {"status": "pass"}:
+                print("Success: Headscale is healthy and running.")
+                return True
+            else:
+                print(f"Attempt {attempt + 1} failed. Status code: {response.status_code}")
+        except requests.exceptions.RequestException:
+            print(f"Attempt {attempt + 1}/{max_attempts}: Headscale not ready yet...")
+
+        attempt += 1
+        time.sleep(1)
+
+    # 从初始位置读取新日志
+    print("\n" + "="*60)
+    print("Error: Headscale failed to start properly.")
+    print("="*60)
+    print("Fetching all logs since health check started:")
+    print("-" * 60)
+
+    startup_logs = []
+    if os.path.exists(log_file_path):
+        try:
+            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                f.seek(log_start_pos)
+                startup_logs = f.readlines()
+        except OSError as e:
+            print(f"Error reading log file: {e}")
+    else:
+        print(f"Error: Log file not found at: {log_file_path}")
+
+    if startup_logs:
+        # 打印所有新日志，并设置为红色
+        for line in startup_logs:
+            # \033[91m 开启红色，\033[0m 恢复默认颜色
+            print("\033[91m" + line.strip() + "\033[0m")
+    else:
+        print("Warning: No new logs were generated during the health check.")
+        print("This could mean headscale didn't start at all or the log path is incorrect.")
+
+    print("="*60)
+    print("Suggestions:")
+    print(f"1. Check the full log for more context: `tail -n 200 {log_file_path}`")
+    print("2. Verify the database migrations and integrity.")
+    print("="*60)
+
+    sys.exit(1)
+
+
+def to_init_db(app):
+    get_headscale_status(app)
+    # sqlite_data_add() #数据库修改已经集成到了headscale中
+    

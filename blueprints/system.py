@@ -50,7 +50,4 @@ def data_usage():
 def traffic_debug():
     return get_data_record()
 
-@bp.route('visitor_distribution', methods=['GET'])
-@login_required
-def visitor_distribution():
-    return current_app.config['REGION_DATA']
+

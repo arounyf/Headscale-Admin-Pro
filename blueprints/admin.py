@@ -44,8 +44,7 @@ def admin():
 @login_required
 @role_required("manager")
 def console():
-    region_html = current_app.config['REGION_HTML']
-    return render_template('admin/console.html',region_html = region_html)
+    return render_template('admin/console.html')
 
 
 
@@ -140,7 +139,6 @@ def set():
     default_reg_days = current_app.config['DEFAULT_REG_DAYS']
     default_node_count = current_app.config['DEFAULT_NODE_COUNT']
     open_user_reg = current_app.config['OPEN_USER_REG']
-    region_data = current_app.config['REGION_DATA']
 
     options_html = ""
     for interface in get_server_net()["network_interfaces"]:
@@ -149,10 +147,8 @@ def set():
         else:
             options_html += f'<option value="{interface}">{interface}</option>\n'
 
-    region_html = current_app.config['REGION_HTML']
 
-    with open(current_app.config['DERP_PATH'], 'r') as f:
-        derp_config = f.read()
+
 
 
     if get_headscale_pid():
@@ -170,14 +166,12 @@ def set():
     return render_template('admin/set.html',apikey = apikey,
                                server_url = server_url,
                                server_net = options_html,
-                               region_html = region_html,
                                headscale_status = headscale_status,
                                default_reg_days = default_reg_days,
                                default_node_count = default_node_count,
                                open_user_reg = open_user_reg,
-                               region_data = region_data,
                                version = get_headscale_version(),
-                               derp_config = derp_config
+
                            )
 
 
