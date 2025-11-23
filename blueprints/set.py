@@ -30,6 +30,10 @@ def upset():
 
     for config_key, form_value in form_fields.items():
         value = request.form.get(form_value)
+        # 关键修复：将获取到的值存入 config_mapping 字典
+        if value is not None:  # 确保值不是None，避免覆盖现有配置为None
+            config_mapping[config_key] = value
+
     return save_config_yaml(config_mapping)
 
 

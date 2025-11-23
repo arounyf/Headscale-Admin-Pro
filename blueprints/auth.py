@@ -196,6 +196,7 @@ def login():
             res_code,res_msg,res_data = '0', '登录成功',''
 
             record_log(user.id,"登录成功")
+ 
         else:
             # return form.errors
             first_key = next(iter(form.errors.keys()))

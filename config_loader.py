@@ -27,7 +27,6 @@ SERVER_HOST = f'http://127.0.0.1:{port_str}'  #从headscale配置文件中获取
 SERVER_URL = config_yaml.get('server_url', {})
 DATABASE_URI =  config_yaml.get('database', {}).get('sqlite', {}).get('path')
 ACL_PATH = "/etc/headscale/"+config_yaml.get('policy', {}).get('path')
-DERP_PATH = config_yaml.get('derp', {}).get('paths',"/etc/headscale/derp.yaml")
 
 
 

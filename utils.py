@@ -9,7 +9,7 @@ import psutil
 
 from flask import current_app
 from ruamel.yaml import YAML
-from datetime import datetime
+from datetime import datetime,timezone
 from exts import SqliteDB
 
 
@@ -70,23 +70,23 @@ def to_request(method,url_path,data=None,flag = True):
 
 
 
-def record_log(user_id,log_content):
+def record_log(user_id, log_content):
     """
-    记录日志到数据库
+    记录日志到数据库（使用 UTC 时间）
     :param user_id: 用户 ID
     :param log_content: 日志内容
     :return: 成功返回 True，失败返回 False
     """
-
-    with SqliteDB() as cursor:
-        # 获取当前时间
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # 插入日志记录的 SQL 语句
-        insert_query = "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);"
-        cursor.execute(insert_query, (user_id, log_content, current_time))
-        return True
-
-
+    try:
+        with SqliteDB() as cursor:
+            # 获取当前 UTC 时间
+            current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            insert_query = "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);"
+            cursor.execute(insert_query, (user_id, log_content, current_time))
+            return True
+    except Exception as e:
+        print(f"记录日志失败: {e}")
+        return False
 
 
 
@@ -322,86 +322,6 @@ def to_refresh_apikey():
     return res(code, msg, data)
 
 
-def sqlite_data_add():
-    # 要添加的字段列表
-    fields = [
-        ('password', 'TEXT'),
-        ('expire', 'DATETIME'),
-        ('cellphone', 'TEXT'),
-        ('role', 'TEXT'),
-        ('enable', 'TEXT'),
-        ('route', 'TEXT'),
-        ('node', 'TEXT')
-    ]
-
-    with SqliteDB() as cursor:
-        # 获取 users 表的所有列名
-        cursor.execute("PRAGMA table_info(users);")
-        existing_columns = [row[1] for row in cursor.fetchall()]
-
-        for field, field_type in fields:
-            if field not in existing_columns:
-                # 若字段不存在，则添加该字段
-                alter_query = f"ALTER TABLE users ADD COLUMN {field} {field_type};"
-                try:
-                    cursor.execute(alter_query)
-                    print(f"add {field} to users db table")
-                except Exception as e:
-                    print(f"add {field} error: {e}")
-
-
-
-    with SqliteDB() as cursor:
-
-        # 检查 acl 表是否存在
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='acl';")
-        acl_table_exists = cursor.fetchone()
-
-        if not acl_table_exists:
-            # 若 acl 表不存在，则创建该表
-            create_table_query = """
-            CREATE TABLE acl (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                acl TEXT,
-                user_id INTEGER,
-                CONSTRAINT `fk_acl_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-            );
-            """
-            cursor.execute(create_table_query)
-
-            # 创建索引
-            create_index_query = "CREATE INDEX idx_acl_user_id ON acl (user_id);"
-            cursor.execute(create_index_query)
-
-            print("create acl db table is success")
-
-
-
-        # 检查 log 表是否存在
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='log';")
-        log_table_exists = cursor.fetchone()
-
-        if not log_table_exists:
-            # 若 log 表不存在，则创建该表
-            create_table_query = """
-            CREATE TABLE log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                content TEXT,
-                created_at DATETIME,
-                CONSTRAINT `fk_log_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-            );
-            """
-            cursor.execute(create_table_query)
-
-            # 创建索引
-            create_index_query = "CREATE INDEX idx_log_user_id ON log (user_id);"
-            cursor.execute(create_index_query)
-
-            print("create log db table is success")
-
-
-
 
 def get_headscale_status(app):
     """
@@ -476,5 +396,5 @@ def get_headscale_status(app):
 
 def to_init_db(app):
     get_headscale_status(app)
-    # sqlite_data_add() #数据库修改已经集成到了headscale中
+    #数据库修改已经集成到了headscale中
     
