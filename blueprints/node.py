@@ -33,72 +33,54 @@ def register():
     return res(code,msg,data)
 
 
+
+
 @bp.route('/getNodes')
 @login_required
 def getNodes():
-    page = request.args.get('page', default=1, type=int)
-    per_page = request.args.get('limit', default=10, type=int)
-    offset = (page - 1) * per_page
+    search_name= request.args.get('search_name',default='')
+    print(search_name)
 
-    with SqliteDB() as cursor:
-        # 构建基础查询语句
-        base_query = """
-            SELECT 
-                nodes.id,
-                users.name,
-                nodes.given_name,
-                nodes.user_id,
-                nodes.ipv4,
-                nodes.host_info,
-                strftime('%Y-%m-%d %H:%M:%S', nodes.last_seen, 'localtime') as last_seen,
-                strftime('%Y-%m-%d %H:%M:%S', nodes.expiry, 'localtime') as expiry,
-                strftime('%Y-%m-%d %H:%M:%S', nodes.created_at, 'localtime') as created_at,
-                strftime('%Y-%m-%d %H:%M:%S', nodes.updated_at, 'localtime') as updated_at,
-                strftime('%Y-%m-%d %H:%M:%S', nodes.deleted_at, 'localtime') as deleted_at
-            FROM 
-                nodes
-            JOIN 
-                users ON nodes.user_id = users.id
-        """
-
-        # 判断用户角色
-        if current_user.role != 'manager':
-            base_query += " WHERE nodes.user_id =? "
-            params = (current_user.id,)
+    if current_user.name == 'admin':
+        if search_name != "":
+            user_name = search_name
         else:
-            params = ()
+            user_name = ""
+    else:
+        user_name = current_user.name
 
-        # 查询总记录数
-        count_query = f"SELECT COUNT(*) as total FROM ({base_query})"
-        cursor.execute(count_query, params)
-        total_count = cursor.fetchone()['total']
-
-        # 分页查询
-        paginated_query = f"{base_query} LIMIT? OFFSET? "
-        paginated_params = params + (per_page, offset)
-        cursor.execute(paginated_query, paginated_params)
-        nodes = cursor.fetchall()
-
-    # 数据格式化
-    nodes_list = []
-    for node in nodes:
-        host_info = json.loads(node['host_info'])
-        nodes_list.append({
-            'id': node['id'],
-            'userName': node['name'],
-            'name': node['given_name'],
-            'ip': node['ipv4'],
-            'lastTime': node['last_seen'],
-            'createTime': node['created_at'],
-            'OS': (host_info.get("OS") or "") + (host_info.get("OSVersion") or ""),
-            'Client': host_info.get("IPNVersion") or ""
-        })
+    
 
 
+    url = f'/api/v1/node?user={user_name}'
+    response = to_request('GET', url)
 
-    return table_res('0', '获取成功',nodes_list,total_count,len(nodes_list))
-
-
+    if response['code'] == '0':
+        # 解析返回的节点数据
+        data = json.loads(response['data'])
+        nodes = data.get('nodes', [])
+        total_count = len(nodes)
+        
+        # 数据格式化
+        nodes_list = []
+        for node in nodes:
+            nodes_list.append({
+                'id': node['id'],
+                'userName': node['user']['name'],  # 从user对象中获取用户名
+                'name': node['givenName'],
+                'ip': ', '.join(node['ipAddresses']),  # 拼接IPv4和IPv6地址
+                'lastTime': node['lastSeen'],
+                'createTime': node['createdAt'],
+                'OS': '',  # 原数据中未包含host_info，暂时留空
+                'Client': '',  # 原数据中未包含IPNVersion，暂时留空
+                'online': node['online'],
+                'approvedRoutes': ', '.join(node['approvedRoutes']),
+                'availableRoutes': ', '.join(node['availableRoutes'])
+            })
+        
+        return table_res('0', '获取成功', nodes_list, total_count, len(nodes_list))
+    else:
+        return res(response['code'], response['msg'])
 
 
 
@@ -169,74 +151,72 @@ def rename():
     else:
         return res('1', '非法请求')
 
-import json
-
-import json
-
 @bp.route('/node_info', methods=['GET', 'POST'])
 @login_required
 def node_info():
-    node_id = request.form.get('NodeId')
-    url = f'/api/v1/node/{node_id}'
+    """
+    通过节点ID从本地SQLite数据库获取节点详细信息
+    (使用封装的 SqliteDB，并严格参考 getNodes 函数中的字段)
+    """
+    # 1. 获取请求中的 NodeId
+    node_id = request.args.get('NodeId') or request.form.get('NodeId')
+    
+    if not node_id:
+        return res("1", "缺少参数: NodeId", [])
 
-    response = to_request('GET', url)
+    try:
+        node_id = int(node_id)
+    except ValueError:
+        return res("1", "NodeId 必须是整数", [])
 
-    if response['code'] == '0':
-        try:
-            # 解析原始响应数据
-            raw_data = json.loads(response['data'])
-            node_data = raw_data['node']  # 提取node对象
-        except (json.JSONDecodeError, KeyError) as e:
-            return res("1", f"数据解析错误: {str(e)}", [])
+    # 2. 构建查询SQL语句和参数
+    # 严格参考 getNodes 函数中的字段
+    base_query = """
+        SELECT 
+            nodes.host_info
+        FROM 
+            nodes
+        JOIN 
+            users ON nodes.user_id = users.id
+    """
+    
+    conditions = []
+    params = []
 
-        # 时间格式化：仅替换T为空格，去除Z
-        def format_time(utc_time_str):
-            if not utc_time_str:
-                return ""
-            return utc_time_str.replace('T', ' ').replace('Z', '')
+    # 根据角色添加用户ID过滤
+    if current_user.role != 'manager':
+        conditions.append("nodes.user_id = ?")
+        params.append(current_user.id)
+    
+    # 添加节点ID过滤
+    conditions.append("nodes.id = ?")
+    params.append(node_id)
 
-        # 提取并保留一级路由字段（approvedRoutes和availableRoutes）
-        formatted_item = {
-            # 基础信息
-            "id": int(node_data['id']),
-            "name": node_data.get('name', ''),
-            "givenName": node_data.get('givenName', ''),
-            "online": node_data.get('online', False),
-            "registerMethod": node_data.get('registerMethod', ''),
-            
-            # 关键路由字段（一级主要字段，突出显示）
-            "approvedRoutes": node_data.get('approvedRoutes', []),  # 已批准路由
-            "availableRoutes": node_data.get('availableRoutes', []),  # 可用路由
-            
-            # 其他网络信息
-            "ipAddresses": node_data.get('ipAddresses', []),
-            "subnetRoutes": node_data.get('subnetRoutes', []),
-            
-            # 时间信息
-            "createdAt": format_time(node_data.get('createdAt')),
-            "lastSeen": format_time(node_data.get('lastSeen')),
-            "expiry": format_time(node_data.get('expiry')) if node_data.get('expiry') else '',
-            
-            # 密钥信息
-            "machineKey": node_data.get('machineKey', ''),
-            "nodeKey": node_data.get('nodeKey', ''),
-            "discoKey": node_data.get('discoKey', ''),
-            "preAuthKey": node_data.get('preAuthKey') or '',
-            
-            # 标签信息
-            "forcedTags": node_data.get('forcedTags', []),
-            "invalidTags": node_data.get('invalidTags', []),
-            "validTags": node_data.get('validTags', []),
-            
-            # 嵌套用户信息（保持原始结构）
-            "user": node_data.get('user', {})
-        }
+    # 拼接 WHERE 子句
+    if conditions:
+        base_query += " WHERE " + " AND ".join(conditions)
 
-        data_list = [formatted_item]
-        return res("0", "获取成功", data_list)
+    # 3. 使用封装的 SqliteDB 执行查询
+    with SqliteDB() as cursor:
+        cursor.execute(base_query, params)
+        node = cursor.fetchone()
 
-    else:
-        return res("1", "请求失败", [])
+    # 4. 检查查询结果
+    if not node:
+        return res("1", f"未找到ID为 {node_id} 的节点，或您没有权限查看。", [])
+
+    # 5. 数据格式化
+    # 这里的格式化逻辑也参考了 getNodes 函数
+    host_info = json.loads(node['host_info']) if node['host_info'] else {}
+    
+    formatted_item = {
+        "OS": (host_info.get("OS") or "") + (host_info.get("OSVersion") or ""),
+        "Client": host_info.get("IPNVersion") or "",
+        # 你可以根据需要，从 host_info 中提取更多字段
+    }
+
+    # 6. 返回格式化后的结果
+    return res("0", "获取成功", [formatted_item])
 
 
 @bp.route('/approve_routes', methods=['GET','POST'])

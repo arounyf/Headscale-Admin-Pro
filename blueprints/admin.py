@@ -62,7 +62,7 @@ def user():
 @login_required
 def node():
     print(request.url)
-    return render_template('admin/node.html')
+    return render_template('admin/node.html',current_user=current_user )
 
 
 @bp.route('/route')

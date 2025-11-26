@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,32 +11,43 @@
 </head>
 <body>
 
-
-  
   <div class="layui-fluid">
     <div class="layui-row layui-col-space15">
       <div class="layui-col-md12">
         <div class="layui-card">
           <div class="layui-card-header">节点中心</div>
           <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
+            
+            {% if current_user.role == 'manager' %}
+                    <!-- 搜索框：嵌套在layui-form中，添加margin-bottom避免与表格重叠 -->
+            <div class="layui-form" lay-filter="searchForm" style="margin-bottom: 5px;">
+              <div class="layui-input-inline" style="width: 300px;">
+  
+                <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
+              </div>
+              <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
+                <i class="layui-icon layui-icon-search"></i> 搜索
+              </button>
+            </div>
+            {% endif %}
+            
 
+            <!-- 表格：保留原有的所有配置 -->
+            <table class="layui-table" id="test-table-index" lay-filter="test-table-index"></table>
+
+            <!-- 工具栏模板 -->
             <script type="text/html" id="toolbarDemo">
               <div class="layui-btn-container">
                 <button id="switchButton" class="layui-btn layui-btn-sm" lay-event=""></button>
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                
-                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">
-                  多行
-                </button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="default-row">
-                  单行
-                </button>
-
+                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">多行</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="default-row">单行</button>
+     
               </div>
             </script>
-              {% raw %}
 
+            <!-- 时间模板 -->
+            {% raw %}
             <script type="text/html" id="TPL-lastTime">  
                 {{#  
                   var util = layui.util;
@@ -49,6 +59,7 @@
             </script>               
             {% endraw %}
 
+            <!-- 操作列模板 -->
             <script type="text/html" id="barDemo">
               <a class="layui-btn layui-btn-info layui-btn-xs" lay-event="detail">查看</a>
               <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
@@ -63,57 +74,43 @@
 
   <script>
   layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown'], function(){
+    base: '/static/'
+  }).use(['index', 'table', 'dropdown', 'form'], function(){
     var table = layui.table;
     var $ = layui.$;
+    var util = layui.util;
+    var form = layui.form;
 
-    // 通过判断后端是否返回ip_address弹出节点信息
-
-    ip_address = '{{ ip_address }}';
-
-
+    // 节点添加结果提示（保留原有逻辑）
+    var ip_address = '{{ ip_address }}';
     if (ip_address == "error"){
         layer.alert('{{ error_info }}', {
-            icon: 7,
-            shadeClose: true,
-            title: '节点添加失败'
-            }, function(){
-                // 跳转到新的页面是为了放在页面刷新导致重复添加节点
-                window.location.href = '/admin/node';
-            }
-        )
+            icon: 7, shadeClose: true, title: '节点添加失败'
+        }, function(){
+            window.location.href = '/admin/node';
+        });
     } else if(ip_address && ip_address != "error"){
         layer.alert('ip地址: '+ ip_address, {
-            icon: 1,
-            shadeClose: true,
-            title: '节点添加成功'
-            }, function(){
-                // 跳转到新的页面是为了放在页面刷新导致重复添加节点
-                window.location.href = '/admin/node';
-            }
-        )
+            icon: 1, shadeClose: true, title: '节点添加成功'
+        }, function(){
+            window.location.href = '/admin/node';
+        });
     }
 
-  
-
-    // 创建渲染实例
-    table.render({
+    // 表格渲染（保留原有所有配置，仅调整height适配搜索框）
+    var tableIns = table.render({
       elem: '#test-table-index'
-      ,url: '/api/node/getNodes' // 此处为静态模拟数据，实际使用时需换成真实接口
+      ,url: '/api/node/getNodes'
       ,toolbar: '#toolbarDemo'
       ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
+        title: '帮助', layEvent: 'LAYTABLE_TIPS', icon: 'layui-icon-tips'
       }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
+      ,height: {% if current_user.role == 'user' %}'full-100'{% else %}'full-150'{% endif %}
       ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: true
-
+      ,totalRow: true
+      ,page: false
+      ,where: {} // 存储搜索条件
       ,cols: [[
-            //{type: 'checkbox', fixed: 'left'}
             {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
             {% if current_user.role == 'manager' %}
                 ,{field:'userName', width:180, title: '用户名', sort: true, edit: 'text',totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
@@ -123,57 +120,74 @@
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }
-            ,{field:'ip', width: 160, title: 'ip地址'}
-            ,{field:'createTime', title:'创建时间', width: 180, sort: true}
-            ,{fixed: 'right', title:'操作', width: 120, minWidth: 120, toolbar: '#barDemo'}
+            ,{
+                field: 'ip', 
+                width: 160, 
+                title: 'IP地址',
+                templet: function(d) {
+                    return d.ip.split(', ').join('<br>');
+                }
+            }
+            ,{
+                field: 'online', 
+                width: 100, 
+                title: '状态',
+                templet: function(d) {
+                    return d.online ? '<span class="layui-badge layui-bg-green">在线</span>' : '<span class="layui-badge layui-bg-gray">离线</span>';
+                }
+            }
+            ,{
+                field: 'createTime', 
+                title: '创建时间', 
+                width: 180, 
+                sort: true,
+                templet: function(d) {
+                    return util.timeAgo(d.createTime);
+                }
+            }
+            ,{fixed: 'right', title:'操作', width: 120, toolbar: '#barDemo'}
         ]]
-
       ,error: function(res, msg){
         console.log(res, msg)
       }
     });
 
+    // 保留按钮状态逻辑
     function keepButtonStatus(){
-        // 判断是否在iframe内，如果不在则显示主页按钮
         if (window.top !== window) {
-            $('#switchButton').attr('lay-event', 'addNode');
-            $('#switchButton').text('添加节点');
+            $('#switchButton').attr('lay-event', 'addNode').text('添加节点');
         }else{
-            $('#switchButton').attr('lay-event', 'goHome');
-            $('#switchButton').text('返回主页');
+            $('#switchButton').attr('lay-event', 'goHome').text('返回主页');
         }
     }
+    keepButtonStatus();
 
-    keepButtonStatus()
+    // 搜索表单提交事件
+    form.on('submit(demo-table-search)', function(data){
+      var field = data.field;
+      // 重载表格，传递搜索条件
+      table.reload('test-table-index', {
+        where: field, // 搜索条件：{username: "输入的用户名"}
+        page: false // 重置页码
+      });
+      keepButtonStatus();
 
+      return false; // 阻止表单默认提交
+    });
 
-
-
-    //事件-单元格编辑
+    // 单元格编辑事件（保留原有逻辑）
     table.on('edit(test-table-index)', function(obj){
-      var value = obj.value //得到修改后的值
-      ,data = obj.data //得到所在行所有键值
-      ,field = obj.field; //得到字段
-
-      console.log(field)
-
-
+      var value = obj.value, data = obj.data, field = obj.field;
       if (field == "name"){
         $.ajax({
-        url:'/api/node/rename',
-        type: 'post',
-        dataType: 'json',
-        data: {nodeId: obj.data.id,nodeName: obj.value},
-        success:function(res){
-            // console.log(res.code)
+          url:'/api/node/rename',
+          type: 'post',
+          dataType: 'json',
+          data: {nodeId: obj.data.id, nodeName: obj.value},
+          success:function(res){
             if(res.code == 0){
               layer.msg(res.msg, {icon: 6});
-              var field = 'name' //得到字段
-              ,value = obj.value //得到修改后的值
-              ,data = obj.data; //得到所在行所有键值
-              var update = {};
-              update[field] = value;
-              obj.update(update);
+              obj.update({name: value});
             }else{
               layer.msg(res.msg, {icon: 7});
             }
@@ -181,12 +195,11 @@
         });
       }else if(field == "userName"){
         $.ajax({
-        url:'/api/node/new_owner',
-        type: 'post',
-        dataType: 'json',
-        data: {nodeId: data.id,userName: value},
-        success:function(res){
-            // console.log(res.code)
+          url:'/api/node/new_owner',
+          type: 'post',
+          dataType: 'json',
+          data: {nodeId: data.id, userName: value},
+          success:function(res){
             if(res.code == 0){
               layer.msg(res.msg, {icon: 6});
             }else{
@@ -195,97 +208,68 @@
           }
         });
       }
-      
     });
 
-
-
-
-
-
-    
-    // 工具栏事件
+    // 工具栏事件（保留原有逻辑）
     table.on('toolbar(test-table-index)', function(obj){
-      var $ = layui.$;
-      var util = layui.util;
-      var id = obj.config.id;
-      var checkStatus = table.checkStatus(id);
-      var othis = lay(this);
+      var checkStatus = table.checkStatus(obj.config.id);
       switch(obj.event){
         case 'goHome':
           window.location.href = '/admin';
-
-        break;
+          break;
         case 'addNode':
-          layer.prompt({title: '请输入节点id'}, function(value, index, elem){
+          layer.prompt({title: '请输入节点id'}, function(value, index){
             if(value === '') return elem.focus();
-
-
             $.ajax({
               url:'/api/node/register',
               type: 'post',
               dataType: 'json',
               data: {nodekey: util.escape(value)},
               success:function(res){
-                  console.log(res)
-                  if(res.code == 0){
-                    layer.msg(res.msg, {icon: 6});
-                    table.reload('test-table-index',true);
-                    keepButtonStatus()
-                  }else{
-                      layer.msg(res.msg, {icon: 7});
-                  }
-
+                if(res.code == 0){
+                  layer.msg(res.msg, {icon: 6});
+                  table.reload('test-table-index', true);
+                }else{
+                  layer.msg(res.msg, {icon: 7});
+                }
               }
             });
-
-            // 关闭 prompt
             layer.close(index);
           });
-        break;
+          break;
         case 'reload':
-          var data = checkStatus.data;
-          table.reload('test-table-index',true);
-        break;
-
+          // 刷新时保留搜索条件
+          table.reload('test-table-index', {
+            where: tableIns.config.where
+          });
+          layer.msg('已刷新', {icon: 1});
+          break;
         case 'multi-row':
-          table.reload('test-table-index', {
-            // 设置行样式，此处以设置多行高度为例。若为单行，则没必要设置改参数 - 注：v2.7.0 新增
-            lineStyle: 'height: 95px;' 
-          });
+          table.reload('test-table-index', {lineStyle: 'height: 95px;'});
           layer.msg('已设为多行显示');
-        break;
+          break;
         case 'default-row':
-          table.reload('test-table-index', {
-            lineStyle: null // 恢复单行
-          });
+          table.reload('test-table-index', {lineStyle: null});
           layer.msg('已设为单行显示');
-        break;
+          break;
         case 'LAYTABLE_TIPS':
           layer.alert('Table for layui-v'+ layui.v);
-        break;
-      };
-        keepButtonStatus()
+          break;
+      }
+      keepButtonStatus();
     });
-   
-    //触发单元格工具事件
-    table.on('tool(test-table-index)', function(obj){ // 双击 toolDouble
-      var $ = layui.$;
+
+    // 单元格工具事件（保留原有逻辑）
+    table.on('tool(test-table-index)', function(obj){
       var data = obj.data;
-      // console.log(obj)
       if(obj.event === 'del'){
-        layer.confirm('真的删除行么', function(index){
-
-          layer.close(index);
-
+        layer.confirm('真的删除该节点吗？', function(index){
           $.ajax({
             url:'/api/node/delete',
             type: 'post',
             dataType: 'json',
             data: {NodeId: obj.data.id},
             success:function(res){
-
-
               if(res.code == 0){
                 layer.msg(res.msg, {icon: 6});
                 obj.del();
@@ -294,66 +278,39 @@
               }
             }
           });
-          
+          layer.close(index);
         });
       }else if(obj.event === 'detail'){
-
-        // 先定义弹窗内容的容器（用唯一ID标识，方便后续修改）
         var dialogContent = `<div id="node-detail-content" style="padding: 20px;"></div>`;
-   
-          // 打开弹窗（无需保存索引，通过ID定位DOM）
         layer.open({
           title: '节点信息',
           type: 1,
           area: ['600px','400px'],
-          content: dialogContent // 传入带ID的容器
+          content: dialogContent
         });
-
-
-
         $.ajax({
-            url:'/api/node/node_info',
-            type: 'post',
-            dataType: 'json',
-            data: {NodeId: obj.data.id},
-            success:function(res){
-              if (res.code === "0") {
-                // 直接使用接口返回的data数组，取第一个元素
-                const dataList = res.data;
-                const post_data = dataList.length > 0 ? dataList[0] : {};
-                
-                let node_online = post_data.online;
-                // console.log(typeof node_online);
-
-                node_online = node_online ? "在线" : "离线";
-    
-                
-                // 处理路由通告
-                const availableRoutes = post_data.availableRoutes || [];
-                const routesStr = availableRoutes.length > 0 
-                    ? '<br>&nbsp;&nbsp;&nbsp;&nbsp;' + availableRoutes.join('<br>&nbsp;&nbsp;&nbsp;&nbsp;') 
-                    : '无可用路由';
-
-                // 只保留指定的四个信息
-                $('#node-detail-content').html(`
-                    客户端: ${data.Client}<br>
-                    操作系统: ${data.OS}<br>
-                    状态: ${node_online}<br>
-                    路由通告: ${routesStr}
-                `);
-              } else {
-                  layer.msg(res.msg, {icon: 7});
-              }
+          url:'/api/node/node_info',
+          type: 'post',
+          dataType: 'json',
+          data: {NodeId: obj.data.id},
+          success:function(res){
+            if (res.code === "0") {
+              const dataList = res.data;
+              const post_data = dataList.length > 0 ? dataList[0] : {};
+              $('#node-detail-content').html(`
+                <p><strong>客户端:</strong> ${post_data.Client || '未知'}</p>
+                <p><strong>操作系统:</strong> ${post_data.OS || '未知'}</p>
+                <p><strong>路由列表:</strong> ${data.availableRoutes || '无'}</p>
+                <p><strong>可用路由:</strong> ${data.approvedRoutes || '无'}</p>
+              `);
+            } else {
+              layer.msg(res.msg, {icon: 7});
             }
-          });
+          }
+        });
       }
     });
-   
-
-
   });
   </script>
 </body>
 </html>
-
-
