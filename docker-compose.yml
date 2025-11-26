@@ -11,3 +11,4 @@ services:
       - ~/hs-admin/data:/var/lib/headscale
     environment:
       - TZ=Asia/Shanghai
+      - FLASK_DEBUG=False
