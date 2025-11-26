@@ -2,7 +2,7 @@ from flask import Flask, render_template
 from apscheduler.schedulers.background import BackgroundScheduler
 from login_setup import init_login_manager
 from utils import get_data_record, start_headscale, to_init_db
-import config_loader
+import config_loader,os
 from werkzeug.middleware.proxy_fix import ProxyFix  # 导入中间件 解决https带端口登录跳转问题
 
 # 导入蓝图
@@ -62,4 +62,6 @@ def page_not_found(e):
     return render_template('auth/error.html', message="404")
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
+    
+    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
