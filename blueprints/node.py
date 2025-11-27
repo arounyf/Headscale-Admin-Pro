@@ -84,6 +84,61 @@ def getNodes():
 
 
 
+
+@bp.route('/topNodes')
+@login_required
+@role_required("manager")
+def topNodes():
+    url = f'/api/v1/node'
+    response = to_request('GET', url)
+
+    if response['code'] == '0':
+        # 解析返回的节点数据
+        data = json.loads(response['data'])
+        nodes = data.get('nodes', [])
+        
+        # 使用字典来按用户名分组统计
+        # 字典的键是用户名，值是一个包含统计信息的字典
+        user_stats = {}
+        
+        for node in nodes:
+            # 安全地获取用户名，如果用户信息不存在则使用'未知用户'
+            user_name = node.get('user', {}).get('name', '未知用户')
+            
+            # 如果该用户是第一次出现，则初始化其统计信息
+            if user_name not in user_stats:
+                user_stats[user_name] = {
+                    'name': user_name,
+                    'online': 0,
+                    'nodes': 0,
+                    'routes': 0
+                }
+            
+            # 更新该用户的统计数据
+            user_stats[user_name]['nodes'] += 1  # 累计节点数加1
+            
+            # 如果节点在线，在线节点数加1
+            if node.get('online', False):
+                user_stats[user_name]['online'] += 1
+                
+            # 累加该节点的路由数量
+            # 路由列表可能不存在，所以要做安全检查
+            approved_routes = node.get('approvedRoutes', [])
+            user_stats[user_name]['routes'] += len(approved_routes)
+
+        # 将字典的值（统计信息）转换为列表，以便前端表格展示
+        # 并按累计节点数降序排序
+        result_list = sorted(user_stats.values(), key=lambda x: x['nodes'], reverse=True)
+        
+        # 计算总节点数，用于表格分页等功能
+        total_nodes_count = len(nodes)
+        
+        # 返回数据给前端
+        return table_res('0', '获取成功', result_list, total_nodes_count, len(result_list))
+    else:
+        return res(response['code'], response['msg'])
+
+
 @bp.route('/delete', methods=['POST'])
 @login_required
 def delete():

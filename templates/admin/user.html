@@ -131,7 +131,7 @@
         //   }
         // }
 
-        ,{field:'role', title:'角色', width: 120, sort: true,templet: function(d){
+        ,{field:'role', title:'角色', width: 120,templet: function(d){
             if (d.role == "manager"){
               return "超级管理员"
             }else{
@@ -140,7 +140,7 @@
            
           }
         }
-        ,{field:'expire', title:'到期时间',width:200,edit: 'text',templet: '#TPL-expire'}
+        ,{field:'expire', title:'到期时间', sort: true,width:200,edit: 'text',templet: '#TPL-expire'}
         ,{field:'node', title:'节点限制', width: 100,edit: 'text'}
         ,{field: 'route', title:'路由', width: 100, minWidth: 100, toolbar: '#route-table-toolbar'}
         ,{field: 'enable', title:'是否启用', width: 100, minWidth: 100, toolbar: '#enable-table-toolbar'}

@@ -190,73 +190,67 @@ layui.define(function(exports){
   });
 
 
+//最新订单
+  layui.use('table', function(){
+    var $ = layui.$
+    ,table = layui.table;
+    
 
- //地图
-    layui.use(['carousel', 'echarts'], function () {
-        var $ = layui.$
-            , carousel = layui.carousel
-            , echarts = layui.echarts;
+layui.use(['table', 'jquery', 'layer'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
 
-        var echartsApp = [], options = [
-            {
-                title: {
-                    text: '服务器地区分布',
-                    subtext: '敬请期待更多服务器'
-                },
-                tooltip: {
-                    trigger: 'item'
-                },
-                dataRange: {
-                    orient: 'horizontal',
-                    min: 0,
-                    max: 300,
-                    text: ['高', '低'],
-                    splitNumber: 0
-                },
-                series: [
-                    {
-                        name: '访客地区分布',
-                        type: 'map',
-                        mapType: 'china',
-                        selectedMode: 'multiple',
-                        itemStyle: {
-                            normal: { label: { show: true } },
-                            emphasis: { label: { show: true } }
-                        },
-                        data: [] // 初始为空，等待 AJAX 数据填充
-                    }
-                ]
-            }
-        ]
-            , elemDataView = $('#LAY-index-pagethree-home').children('div')
-            , renderDataView = function (index) {
-                echartsApp[index] = echarts.init(elemDataView[index], layui.echartsTheme);
-                echartsApp[index].setOption(options[index]);
-                window.onresize = echartsApp[index].resize;
-            };
-        //没找到DOM，终止执行
-        if (!elemDataView[0]) return;
+  // 今日热贴 - 前端分页实现
+  // 1. 手动发起AJAX请求，获取全部数据
+  $.get('/api/node/topNodes', function(res) {
+    // 2. 检查数据是否获取成功
+    if (res && res.code === '0' && res.data && res.data.length > 0) {
+      // 3. 渲染表格，直接将获取到的数据传给 data 参数
+      table.render({
+        elem: '#LAY-index-topCard',
+        data: res.data,                // 核心：使用已获取的完整数据
+        page: true,                    // 开启分页
+        limit: 10,                     // 每页显示10条
+        limits: [10, 20, 30, 50],      // 可选的每页数量
+        cellMinWidth: 120,
+        cols: [[
+          {type: 'numbers', fixed: 'left'},
+          {field: 'name', title: '用户名', minWidth: 200, sort: true},
+          {field: 'online', title: '在线节点', sort: true},
+          {field: 'nodes', title: '累计节点', sort: true},
+          {field: 'routes', title: '路由数量', sort: true}
+        ]],
+        skin: 'line',
+        // 注意：这里不需要 url 参数了
+      });
+    } else {
+      // 数据为空或请求失败
+      table.render({
+        elem: '#LAY-index-topCard',
+        data: [],
+        page: false,
+        cols: [[
+          {type: 'numbers', fixed: 'left'},
+          {field: 'name', title: '用户名', minWidth: 200},
+          {field: 'online', title: '在线节点'},
+          {field: 'nodes', title: '累计节点'},
+          {field: 'routes', title: '路由数量'}
+        ]],
+        skin: 'line'
+      });
+      layer.msg(res.msg || '暂无数据', {icon: 7});
+    }
+  }).fail(function() {
+    layer.msg('网络错误，无法获取数据', {icon: 5});
+  });
+});
 
-        function loadVisitorData() {
-            $.ajax({
-                url: '/api/system/visitor_distribution', // 替换为实际的 API 地址
-                type: 'get',
-                dataType: 'json',
-                success: function (res) {
-                    options[0].series[0].data = res; // 更新访客分布数据
-                    renderDataView(0); // 重新渲染图表
-                },
-                error: function (error) {
-                    console.error('获取访客分布数据出错:', error);
-                }
-            });
-        }
 
-        // 加载访客分布数据
-        loadVisitorData();
 
-    });
+  });
+    
 
+  
   
   exports('console', {})
 });
