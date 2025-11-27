@@ -238,7 +238,7 @@ layui.use(['table', 'jquery', 'layer'], function(){
         ]],
         skin: 'line'
       });
-      layer.msg(res.msg || '暂无数据', {icon: 7});
+      // layer.msg(res.msg || '暂无数据', {icon: 7});
     }
   }).fail(function() {
     layer.msg('网络错误，无法获取数据', {icon: 5});
