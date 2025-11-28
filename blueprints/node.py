@@ -274,6 +274,45 @@ def node_info():
     return res("0", "获取成功", [formatted_item])
 
 
+
+
+
+@bp.route('/node_route_info', methods=['GET', 'POST'])
+@login_required
+def node_route_info():
+    node_id = request.form.get('NodeId')
+    url = f'/api/v1/node/{node_id}'
+
+    response = to_request('GET', url)
+
+    if response['code'] == '0':
+        try:
+            # 解析原始响应数据
+            raw_data = json.loads(response['data'])
+            node_data = raw_data['node']  # 提取node对象
+        except (json.JSONDecodeError, KeyError) as e:
+            return res("1", f"数据解析错误: {str(e)}", [])
+
+        # 时间格式化：仅替换T为空格，去除Z
+        def format_time(utc_time_str):
+            if not utc_time_str:
+                return ""
+            return utc_time_str.replace('T', ' ').replace('Z', '')
+
+        # 提取并保留一级路由字段（approvedRoutes和availableRoutes）
+        formatted_item = { 
+            # 关键路由字段（一级主要字段，突出显示）
+            "approvedRoutes": node_data.get('approvedRoutes', []),  # 已批准路由
+            "availableRoutes": node_data.get('availableRoutes', []),  # 可用路由 
+     
+        }
+
+        data_list = [formatted_item]
+        return res("0", "获取成功", data_list)
+
+    else:
+        return res("1", "请求失败", [])
+
 @bp.route('/approve_routes', methods=['GET','POST'])
 @login_required
 def approve_routes():

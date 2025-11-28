@@ -181,7 +181,7 @@ table.on('toolbar(test-table-index)', function(obj){
                 
                 // 请求节点路由信息
                 $.ajax({
-                  url: '/api/node/node_info', // 节点详情接口
+                  url: '/api/node/node_route_info', // 节点详情接口
                   type: 'post',
                   data: { NodeId: nodeId }, // 传递节点ID（注意：参数名可能需要和后端保持一致）
                   dataType: 'json',
