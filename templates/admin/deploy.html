@@ -99,14 +99,18 @@ layui.use(['form', 'laydate', 'util'], function(){
       });
     }
 
-  show_code(tailscale_up)
+
+    
+  tailscale_up[1] = "--accept-dns=false"; // 去掉前面多余的空格
+  show_code(tailscale_up.join(' '));
+
 
     // 接收DNS
   form.on('switch(AcceptDNS)', function(data){
     if(this.checked){
       tailscale_up[1] = "--accept-dns"
     }else{
-      tailscale_up[1] = ""
+      tailscale_up[1] = "--accept-dns=false"
     }
     show_code(tailscale_up.join(' '))
   });
