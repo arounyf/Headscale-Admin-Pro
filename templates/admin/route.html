@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -112,7 +111,19 @@ table.on('toolbar(test-table-index)', function(obj){
       content: `
         <div class="layui-form" lay-filter="filter-test-layer" style="margin: 20px 35px 30px 0; padding: 10px 0;">
       <div class="demo-login-container">
-        <!-- 第一个下拉选择框 - 动态加载节点 -->
+        {% if current_user.role == 'manager' %}
+        <!-- 用户选择下拉框 - 仅管理员显示 -->
+        <div class="layui-form-item">
+          <label class="layui-form-label">用户选择</label>
+          <div class="layui-input-block">
+            <select name="userId" lay-verify="required" lay-reqtext="请选择用户" lay-filter="userIdFilter">
+              <option value="">加载中...</option>
+            </select>
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- 节点选择下拉框 -->
         <div class="layui-form-item">
           <label class="layui-form-label">节点选择</label>
           <div class="layui-input-block">
@@ -122,7 +133,7 @@ table.on('toolbar(test-table-index)', function(obj){
           </div>
         </div>
         
-        <!-- 第二个下拉选择框 - 根据节点动态加载路由 -->
+        <!-- 路由选择下拉框 -->
         <div class="layui-form-item">
           <label class="layui-form-label">路由选择</label>
           <div class="layui-input-block">
@@ -141,95 +152,160 @@ table.on('toolbar(test-table-index)', function(obj){
     </div>
       `,
   
-      area: ['320px', '195px'], // 初始宽高
+      // 根据角色调整弹窗高度（管理员多一个用户选择框，高度增加50px）
+      area: ['320px', {% if current_user.role == 'manager' %}'295px'{% else %}'245px'{% endif %}],
       maxmin: true,
       success: function(layero, index){
         layer.full(index); // 最大化
         
-        // 通过AJAX请求获取节点数据
+        // 存储用户列表数据（仅管理员需要）
+        var userList = [];
+        // 当前用户信息（普通用户直接使用）
+        var currentUser = {
+          id: '{{ current_user.id }}',
+          username: '{{ current_user.username }}'
+        };
+        
+        // 仅管理员加载用户列表
+        {% if current_user.role == 'manager' %}
         $.ajax({
-          url: '/api/node/getNodes?page=1&limit=1000', // 节点列表接口
+          url: '/api/user/getUsers', // 用户列表接口
           type: 'get',
           dataType: 'json',
           success: function(res) {
             if (res.code === "0" && res.data && res.data.length > 0) {
-              // 渲染节点选择框
-              var nodeId = layero.find('select[name="nodeId"]');
-              nodeId.html('<option value="">请选择节点</option>');
-              res.data.forEach(function(node) {
-                var displayText = `${node.name} (${node.ip})`;
-                nodeId.append(`<option value="${node.id}">${displayText}</option>`);
-              });
-              // 重新渲染节点选择框
-              form.render('select', 'filter-test-layer');
-              
-              // 关键修复：使用layui的form事件监听节点选择变化（而非原生change）
-              form.on('select(nodeIdFilter)', function(data){
-                var nodeId = data.value; // 获取选中的节点ID
-                var routes = layero.find('select[name="routes"]');
-                
-                if (!nodeId) {
-                  // 未选择节点时重置路由选择框
-                  routes.html('<option value="">请先选择节点</option>');
-                  form.render('select', 'filter-test-layer');
-                  return;
-                }
-                
-                // 显示加载状态
-                routes.html('<option value="">路由加载中...</option>');
-                form.render('select', 'filter-test-layer');
-                
-                // 请求节点路由信息
-                $.ajax({
-                  url: '/api/node/node_route_info', // 节点详情接口
-                  type: 'post',
-                  data: { NodeId: nodeId }, // 传递节点ID（注意：参数名可能需要和后端保持一致）
-                  dataType: 'json',
-                  success: function(routeRes) {
-                    if (routeRes.code === "0" && routeRes.data && routeRes.data.length > 0) {
-                      var availableRoutes = routeRes.data[0].availableRoutes || [];
-                      
-                      if (availableRoutes.length > 0) {
-                        routes.html('<option value="">请选择需要通告路由</option>');
-                        availableRoutes.forEach(function(route) {
-                          routes.append(`<option value="${route}">${route}</option>`);
-                        });
-                      } else {
-                        routes.html('<option value="">该节点无可用路由</option>');
-                      }
-                    } else {
-                      routes.html(`<option value="">${routeRes.msg || '路由数据获取失败'}</option>`);
-                    }
-                    form.render('select', 'filter-test-layer');
-                  },
-                  error: function(xhr) {
-                    console.error('路由请求失败：', xhr); // 打印错误信息用于调试
-                    routes.html('<option value="">路由请求失败（网络错误）</option>');
-                    form.render('select', 'filter-test-layer');
-                  }
-                });
+              userList = res.data;
+              var userIdSelect = layero.find('select[name="userId"]');
+              userIdSelect.html('<option value="">请选择用户</option>');
+              res.data.forEach(function(user) {
+                userIdSelect.append(`<option value="${user.id}">${user.userName}</option>`);
               });
             } else {
-              layero.find('select[name="nodeId"]').html(
-                `<option value="">${res.msg || '暂无节点数据'}</option>`
-              );
-              form.render('select', 'filter-test-layer');
+              layero.find('select[name="userId"]').html(`<option value="">${res.msg || '暂无用户数据'}</option>`);
             }
+            form.render('select', 'filter-test-layer');
           },
           error: function(xhr) {
-            console.error('节点请求失败：', xhr); // 打印错误信息用于调试
-            layero.find('select[name="nodeId"]').html(
-              '<option value="">节点数据加载失败（网络错误）</option>'
-            );
+            console.error('用户请求失败：', xhr);
+            layero.find('select[name="userId"]').html('<option value="">用户数据加载失败（网络错误）</option>');
             form.render('select', 'filter-test-layer');
           }
         });
+        {% endif %}
         
-        // 监听表单提交
-        form.on('submit(demo-login)', function(data) {
-
+        // 加载节点列表（管理员需选择用户后加载，普通用户直接加载）
+        var loadNodes = function(userId, userName) {
+          var nodeSelect = layero.find('select[name="nodeId"]');
+          var routeSelect = layero.find('select[name="routes"]');
           
-          // AJAX提交逻辑
+          // 重置节点和路由选择框状态
+          nodeSelect.html('<option value="">节点加载中...</option>');
+          routeSelect.html('<option value="">请先选择节点</option>');
+          form.render('select', 'filter-test-layer');
+          
+          // 请求节点列表接口（保持原接口地址不变）
+          $.ajax({
+            url: '/api/node/getNodes',
+            type: 'get',
+            data: { 
+              userId: userId,
+              search_name: userName // 保持原参数传递逻辑
+            },
+            dataType: 'json',
+            success: function(res) {
+              if (res.code === "0" && res.data && res.data.length > 0) {
+                nodeSelect.html('<option value="">请选择节点</option>');
+                res.data.forEach(function(node) {
+                  var displayText = `${node.name} (${node.ip})`;
+                  nodeSelect.append(`<option value="${node.id}">${displayText}</option>`);
+                });
+              } else {
+                nodeSelect.html(`<option value="">${res.msg || '该用户无可用节点'}</option>`);
+              }
+              form.render('select', 'filter-test-layer');
+            },
+            error: function(xhr) {
+              console.error('节点请求失败：', xhr);
+              nodeSelect.html('<option value="">节点数据加载失败（网络错误）</option>');
+              form.render('select', 'filter-test-layer');
+            }
+          });
+        };
+        
+        // 管理员监听用户选择变化
+        {% if current_user.role == 'manager' %}
+        form.on('select(userIdFilter)', function(data){
+          var userId = data.value;
+          if (!userId) {
+            layero.find('select[name="nodeId"]').html('<option value="">请先选择用户</option>');
+            form.render('select', 'filter-test-layer');
+            return;
+          }
+          // 根据用户ID查找用户名
+          var userName = '';
+          for (var i = 0; i < userList.length; i++) {
+            if (userList[i].id == userId) {
+              userName = userList[i].userName;
+              break;
+            }
+          }
+          // 加载该用户的节点
+          loadNodes(userId, userName);
+        });
+        {% else %}
+        // 普通用户直接加载自己的节点
+        loadNodes(currentUser.id, currentUser.username);
+        {% endif %}
+        
+        // 监听节点选择变化（保持原逻辑不变）
+        form.on('select(nodeIdFilter)', function(data){
+          var nodeId = data.value;
+          var routesSelect = layero.find('select[name="routes"]');
+          
+          if (!nodeId) {
+            routesSelect.html('<option value="">请先选择节点</option>');
+            form.render('select', 'filter-test-layer');
+            return;
+          }
+          
+          routesSelect.html('<option value="">路由加载中...</option>');
+          form.render('select', 'filter-test-layer');
+          
+          $.ajax({
+            url: '/api/node/node_route_info',
+            type: 'post',
+            data: { NodeId: nodeId },
+            dataType: 'json',
+            success: function(routeRes) {
+              if (routeRes.code === "0" && routeRes.data && routeRes.data.length > 0) {
+                var availableRoutes = routeRes.data[0].availableRoutes || [];
+                if (availableRoutes.length > 0) {
+                  routesSelect.html('<option value="">请选择需要通告路由</option>');
+                  availableRoutes.forEach(function(route) {
+                    routesSelect.append(`<option value="${route}">${route}</option>`);
+                  });
+                } else {
+                  routesSelect.html('<option value="">该节点无可用路由</option>');
+                }
+              } else {
+                routesSelect.html(`<option value="">${routeRes.msg || '路由数据获取失败'}</option>`);
+              }
+              form.render('select', 'filter-test-layer');
+            },
+            error: function(xhr) {
+              console.error('路由请求失败：', xhr);
+              routesSelect.html('<option value="">路由请求失败（网络错误）</option>');
+              form.render('select', 'filter-test-layer');
+            }
+          });
+        });
+        
+        // 监听表单提交（保持原逻辑不变）
+        form.on('submit(demo-login)', function(data) {
+          // 普通用户补充userId参数
+          {% if current_user.role != 'manager' %}
+          data.field.userId = currentUser.id;
+          {% endif %}
           
           $.ajax({
             url: '/api/node/approve_routes',
@@ -238,14 +314,15 @@ table.on('toolbar(test-table-index)', function(obj){
             success: function(res) {
               if (res.code === "0") {
                 layer.msg(res.msg, {icon: 6});
-                // layer.closeAll();
+                layer.close(index);
+                table.reload('test-table-index');
               } else {
                 layer.msg(res.msg || '操作失败', {icon: 7});
               }
             }
           });
           
-          return false; // 阻止默认表单提交
+          return false;
         });
       }
     });
@@ -259,4 +336,3 @@ table.on('toolbar(test-table-index)', function(obj){
   </script>
 </body>
 </html>
-
