@@ -323,12 +323,20 @@ def approve_routes():
     url =  f'/api/v1/node/' + str(node_id)+'/approve_routes'
     data = {"routes": [routes]}
 
-    response = to_request('POST',url,data)
 
-    if response['code'] == '0':
-        return res('0', '提交成功', response['data'])
+    with SqliteDB() as cursor:
+        route = cursor.execute("SELECT route FROM users WHERE id =? ",(current_user.id,)).fetchone()[0]
+    
+
+    if route == "0":
+        return res('1', '你当前无此权限！请联系管理员')
     else:
-        return res(response['code'], response['msg'])
+        response = to_request('POST',url,data)
+
+        if response['code'] == '0':
+            return res('0', '提交成功', response['data'])
+        else:
+            return res(response['code'], response['msg'])
 
 
 
