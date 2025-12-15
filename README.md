@@ -29,7 +29,7 @@ docker-compose up -d
    
 1、访问 http://ip:5000，注册admin账户即为系统管理员账户   
 
-2、进入后台设置网卡名、并确认其它配置是否需要修改，修改之后重启headscale
+2、进入后台设置，修改你server url、网卡名等，修改之后点击保存，最后重启headscale
 
 4、配置nginx，配置示例 nginx-example.conf(可选)
 
