@@ -31,6 +31,8 @@ docker-compose up -d
 
 2、进入后台设置，修改你server url、网卡名等，修改之后点击保存，最后重启headscale
 
+3、配置derp中转服务器（headscale配置文件路径 ~/hs-admin/config/config.yaml）
+
 4、配置nginx，配置示例 nginx-example.conf(可选)
 
 
