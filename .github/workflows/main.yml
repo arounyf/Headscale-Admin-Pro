@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    # branches: [ main ]
+    branches: [ main ]
     tags: [ 'v*' ]
 
 jobs:
@@ -27,10 +27,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: runyf/hs-admin
+          images: runyf/hs-admin
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            # 已移除 type=sha,format=short
+            # 删掉 type=ref,event=branch（避免生成main标签）
+            type=ref,event=tag  # 标签触发时生成：runyf/hs-admin:v1.0.0
+            # 仅main分支触发时生成latest标签（无main标签）
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
