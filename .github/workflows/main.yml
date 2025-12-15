@@ -27,7 +27,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: runyf/hs-admin
-          images: runyf/hs-admin
           tags: |
             # 删掉 type=ref,event=branch（避免生成main标签）
             type=ref,event=tag  # 标签触发时生成：runyf/hs-admin:v1.0.0
