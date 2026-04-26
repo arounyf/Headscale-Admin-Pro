@@ -1,14 +1,15 @@
 services:  
-  hs-admin:
-    image: runyf/hs-admin:latest
-    # image: hs-admin
-    container_name: hs-admin  
+  hs-admin3:
+    # image: runyf/hs-admin:latest
+    image: hs-admin3
+    container_name: hs-admin3  
     network_mode: host
     restart: unless-stopped  
     volumes:  
-      - ~/hs-admin/app:/app
-      - ~/hs-admin/config:/etc/headscale
-      - ~/hs-admin/data:/var/lib/headscale
+      - ./app:/app
+      - ./config:/etc/headscale
+      - ./data:/var/lib/headscale
+
     environment:
       - TZ=Asia/Shanghai
       - FLASK_DEBUG=False

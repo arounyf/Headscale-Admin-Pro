@@ -11,9 +11,10 @@ CONTAINER_DB_DIR="/var/lib/headscale"
 CONTAINER_APP_DIR="/app"
 
 
-mkdir /app
-mkdir /etc/headscale
-mkdir /var/lib/headscale
+# 检查并创建目录（如果不存在）
+[ -d "/app" ] || mkdir -p /app
+[ -d "/etc/headscale" ] || mkdir -p /etc/headscale
+[ -d "/var/lib/headscale" ] || mkdir -p /var/lib/headscale
 
 cd /app
 

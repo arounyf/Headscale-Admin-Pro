@@ -6,6 +6,7 @@ import sys
 import time
 import requests
 import psutil
+import sqlite3
 
 from flask import current_app
 from ruamel.yaml import YAML
@@ -395,6 +396,73 @@ def get_headscale_status(app):
 
 
 def to_init_db(app):
+    """
+    初始化数据库，确保所有必要的表和列都存在
+    """
+    # 先检查并更新数据库模式
+    db_path = '/var/lib/headscale/db.sqlite'
+    if os.path.exists(db_path):
+        try:
+            # 连接数据库
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # 检查并创建 acl 表
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='acl';")
+            if not cursor.fetchone():
+                cursor.execute("""
+                CREATE TABLE acl (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    acl TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """)
+                print("Created acl table")
+            
+            # 检查并创建 log 表
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='log';")
+            if not cursor.fetchone():
+                cursor.execute("""
+                CREATE TABLE log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """)
+                print("Created log table")
+            
+            # 检查 users 表是否存在
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
+            if cursor.fetchone():
+                # 检查并添加缺失的列
+                columns_to_add = [
+                    ('expire', 'DATETIME'),
+                    ('cellphone', 'TEXT'),
+                    ('enable', 'TEXT'),
+                    ('node', 'TEXT'),
+                    ('password', 'TEXT'),
+                    ('role', 'TEXT'),
+                    ('route', 'TEXT')
+                ]
+                
+                # 获取当前表结构
+                cursor.execute("PRAGMA table_info(users);")
+                existing_columns = [row[1] for row in cursor.fetchall()]
+                
+                # 添加缺失的列
+                for column_name, column_type in columns_to_add:
+                    if column_name not in existing_columns:
+                        cursor.execute(f"ALTER TABLE users ADD COLUMN {column_name} {column_type} NULL;")
+                        print(f"Added column {column_name} to users table")
+            
+            # 提交更改并关闭连接
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Database migration error: {e}")
+    
+    # 启动并检查 Headscale 状态
     get_headscale_status(app)
-    #数据库修改已经集成到了headscale中
     
