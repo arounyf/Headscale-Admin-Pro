@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>设置我的资料</title>
+  <title>我的资料</title>
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,91 +16,50 @@
       <div class="layui-col-md12">
         <div class="layui-card">
           <div class="layui-card-header">我的资料</div>
-          <div class="layui-card-body" pad15>
-            
-            <div class="layui-form" wid100 lay-filter="">
-              
-              
-              <div class="layui-form-item" >
-                <label class="layui-form-label">用户名</label>
-                <div class="layui-input-inline" >
-                  <input type="text" name="nickname"   readonly  class="layui-input" value="{{ name }}">
-                </div>
-              </div>
-
-              
-              <div class="layui-form-item">
-                <label class="layui-form-label">手机号码</label>
-                <div class="layui-input-inline">
-                  <input type="text" name="cellphone" autocomplete="off" readonly class="layui-input" value="{{ cellphone }}">
-                </div>
-              </div>
-
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">邮箱</label>
-                <div class="layui-input-inline">
-                  <input type="text" name="email"lay-verify=""  readonly autocomplete="off" class="layui-input" value="{{ email }}">
-                </div>
-              </div>
-
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">节点数量支持</label>
-                <div class="layui-input-inline">
-                  <input type="text" name="email" lay-verify="" autocomplete="off" class="layui-input"  value="{{ node }}" readonly>
-                </div>
-              </div>
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">路由权限</label>
-                <div class="layui-input-inline" style="width: 80px">
-                  <input type="checkbox" name="open" lay-skin="switch" lay-filter="switchTest" title="ON|OFF"  {{ route }}>
-                </div>
-              </div>
-
-
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">到期时间</label>
-                <div class="layui-input-inline">
-                  <input type="text" name="expire"  lay-verify="" autocomplete="off" class="layui-input" readonly  value="{{ expire }}">
-                </div>
-              </div>
-
-
-
-
-
-
-              
-{#              <div class="layui-form-item">#}
-{#                <div class="layui-input-block">#}
-{#                  <button class="layui-btn" lay-submit lay-filter="setmyinfo">确认修改</button>#}
-{#                </div>#}
-{#              </div>#}
-            </div>
-            
+          <div class="layui-card-body">
+            <table class="layui-table" lay-skin="nob">
+              <colgroup>
+                <col width="150">
+                <col>
+              </colgroup>
+              <tbody>
+                <tr>
+                  <td>用户名</td>
+                  <td>{{ name }}</td>
+                </tr>
+                <tr>
+                  <td>手机号码</td>
+                  <td>{{ cellphone or '未填写' }}</td>
+                </tr>
+                <tr>
+                  <td>邮箱</td>
+                  <td>{{ email or '未填写' }}</td>
+                </tr>
+                <tr>
+                  <td>可用节点数</td>
+                  <td>{{ node }}</td>
+                </tr>
+                <tr>
+                  <td>路由权限</td>
+                  <td>
+                    {% if route == 'checked' %}
+                    <span style="color:#16baaa;">已启用</span>
+                    {% else %}
+                    <span style="color:#999;">未启用</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>到期时间</td>
+                  <td>{{ expire }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="/static/layui/layui.js"></script>
-  <script>
-  
-    layui.use(function(){
-    var form = layui.form;
-    var layer = layui.layer;
-    var $ = layui.$;
-
-      form.on('submit(setmyinfo)', function(obj){
-        layer.alert(layui.util.escape(JSON.stringify(obj.field)));
-        return false;
-      });
-      
-    });
-
-  </script>
+</body>
 </html>
