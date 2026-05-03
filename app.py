@@ -26,8 +26,8 @@ app = Flask(__name__)
 app.config.from_object(config_loader)
 app.json.ensure_ascii = False  # 让接口返回的中文不转码
 
-# 信任反向代理的 X-Forwarded-* 头（nginx 等）
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+# 信任反向代理的 X-Forwarded-For 和 X-Forwarded-Proto（不信任 X-Forwarded-Host，避免被上游错误 Host 污染）
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=0)
 
 # 初始化 CSRF 保护
 app.config['WTF_CSRF_SSL_STRICT'] = False  # 允许代理终止 HTTPS 后以 HTTP 转发
