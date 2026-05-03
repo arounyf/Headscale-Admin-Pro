@@ -410,14 +410,23 @@ _LOCKOUT_MINUTES = 30
 
 def _load_login_failures():
     if os.path.exists(_LOGIN_FAILURES_FILE):
-        with open(_LOGIN_FAILURES_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(_LOGIN_FAILURES_FILE, 'r') as f:
+                content = f.read().strip()
+                if not content:
+                    return {}
+                return json.loads(content)
+        except (json.JSONDecodeError, OSError):
+            return {}
     return {}
 
 
 def _save_login_failures(data):
-    with open(_LOGIN_FAILURES_FILE, 'w') as f:
-        json.dump(data, f)
+    try:
+        with open(_LOGIN_FAILURES_FILE, 'w') as f:
+            json.dump(data, f)
+    except OSError:
+        pass
 
 
 def check_account_locked(username):
