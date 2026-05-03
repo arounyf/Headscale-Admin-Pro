@@ -134,9 +134,10 @@ def delUser():
     user_id = request.form.get('user_id')
 
     with SqliteDB() as cursor:
-        # 删除用户
-        delete_query = "DELETE FROM users WHERE id =?;"
-        cursor.execute(delete_query, (user_id,))
+        user = cursor.execute("SELECT name FROM users WHERE id =?", (user_id,)).fetchone()
+        if user and user['name'] == 'admin':
+            return res('1', '删除失败，无法删除admin用户')
+        cursor.execute("DELETE FROM users WHERE id =?;", (user_id,))
 
     return res('0', '删除成功')
 

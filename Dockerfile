@@ -16,6 +16,7 @@ RUN apt-get update && \
 RUN pip3 install --break-system-packages \
     flask \
     wtforms \
+    flask-wtf \
     captcha \
     psutil \
     flask_login \

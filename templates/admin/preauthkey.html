@@ -44,13 +44,15 @@
   </div>
   
   <script src="/static/layui/layui.js"></script>
+  <script src="/static/csrf.js"></script>
   <script>
   layui.config({
     base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown','form'], function(){
+  }).use(['index', 'table', 'dropdown', 'form', 'util'], function(){
     var table = layui.table
     ,form = layui.form
-    ,$ = layui.$;
+    ,$ = layui.$
+    ,util = layui.util;
     var dropdown = layui.dropdown;
     
     // 创建渲染实例
@@ -82,8 +84,14 @@
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }
-            ,{field:'create_time', title:'创建时间',width:300, sort: true}
-            ,{field:'expiration', title: '到期时间', width:300, sort: true}
+            ,{field:'create_time', title:'创建时间',width:180, sort: true}
+            ,{field:'expiration', title: '到期时间', width:180, sort: true}
+            ,{field:'reusable', title:'可复用', width:85, templet: function(d){
+                return d.reusable ? '<span class="layui-badge layui-bg-green">是</span>' : '<span class="layui-badge layui-bg-gray">否</span>';
+            }}
+            ,{field:'ephemeral', title:'临时节点', width:95, templet: function(d){
+                return d.ephemeral ? '<span class="layui-badge layui-bg-orange">临时</span>' : '<span class="layui-badge layui-bg-gray">持久</span>';
+            }}
             ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
         ]]
       ,error: function(res, msg){
@@ -106,35 +114,89 @@
         table.reload('test-table-index',true);
       break;
       case 'add':
-        layer.confirm('确认创建新的预授权密钥？', function(index){
-          // ✅ 第一步：先关闭当前确认弹窗
-          layer.close(index);
+        var formHtml = '<div style="padding: 20px 30px 10px 10px;">' +
+          '<form class="layui-form" lay-filter="keyForm">' +
+            '<div class="layui-form-item">' +
+              '<label class="layui-form-label">' +
+                '可复用 <i class="layui-icon layui-icon-about" lay-tips="开：密钥可多次使用；关：仅能使用一次" lay-direction="2"></i>' +
+              '</label>' +
+              '<div class="layui-input-block">' +
+                '<input type="checkbox" name="reusable" lay-skin="switch" lay-text="是|否" checked>' +
+              '</div>' +
+            '</div>' +
+            '<div class="layui-form-item">' +
+              '<label class="layui-form-label">' +
+                '临时节点 <i class="layui-icon layui-icon-about" lay-tips="开：节点离线后自动从网络中移除" lay-direction="2"></i>' +
+              '</label>' +
+              '<div class="layui-input-block">' +
+                '<input type="checkbox" name="ephemeral" lay-skin="switch" lay-text="是|否">' +
+              '</div>' +
+            '</div>' +
+            '<div class="layui-form-item">' +
+              '<label class="layui-form-label">' +
+                '有效期 <i class="layui-icon layui-icon-about" lay-tips="密钥在此时间后自动失效" lay-direction="2"></i>' +
+              '</label>' +
+              '<div class="layui-input-block" style="width:200px;">' +
+                '<select name="expireDays">' +
+                  '<option value="1">1 天</option>' +
+                  '<option value="7" selected>7 天</option>' +
+                  '<option value="30">30 天</option>' +
+                  '<option value="90">90 天</option>' +
+                  '<option value="365">365 天</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+          '</form>' +
+        '</div>';
 
-          $.ajax({
-            url:'/api/preauthkey/addKey',
-            type: 'post',
-            dataType: 'json',
-            success:function(res){
-              if(res.code == 0){
-                var data = JSON.parse(res.data);
-                var key = data.preAuthKey.key;
-
-                // 弹出密钥框（不会重叠）
-                layer.prompt({
-                  title: '⚠️ 密钥只显示一次，请立即保存！',
-                  formType: 2,
-                  value: key,
-                  readonly: true,
-                  id: 'keyPrompt' // 给弹窗一个ID，防止重复
-                }, function(value, index){
-                  layer.close(index);
-                  // table.reload('test-table-index', true);
-                });
-              }else{
-                layer.msg('新建失败', {icon: 7});
+        layer.open({
+          type: 1,
+          title: '新建预授权密钥',
+          area: ['500px', '370px'],
+          btn: ['确认创建', '取消'],
+          content: formHtml,
+          success: function(layero) {
+            form.render(null, 'keyForm');
+          },
+          yes: function(index, layero) {
+            var formData = {};
+            layero.find('input, select').each(function() {
+              var el = $(this);
+              var name = el.attr('name');
+              if (el.attr('type') === 'checkbox') {
+                formData[name] = el.prop('checked');
+              } else {
+                formData[name] = el.val();
               }
-            }
-          });
+            });
+
+            $.ajax({
+              url:'/api/preauthkey/addKey',
+              type: 'post',
+              data: formData,
+              dataType: 'json',
+              success:function(res){
+                if(res.code == 0){
+                  var data = JSON.parse(res.data);
+                  var key = data.preAuthKey.key;
+
+                  layer.prompt({
+                    title: '密钥只显示一次，请立即保存！',
+                    formType: 2,
+                    value: key,
+                    readonly: true,
+                  }, function(value, promptIndex){
+                    layer.close(promptIndex);
+                    table.reload('test-table-index');
+                  });
+                }else{
+                  layer.msg('新建失败: ' + res.msg, {icon: 7});
+                }
+              }
+            });
+
+            layer.close(index);
+          }
         });
       break;
     };

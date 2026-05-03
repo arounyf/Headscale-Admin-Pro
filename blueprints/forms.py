@@ -6,9 +6,12 @@ from werkzeug.security import check_password_hash
 from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
 from exts import SqliteDB
 from models import User
+from utils import check_account_locked, record_login_failure
 
 
 class RegisterForm(wtforms.Form):
+    vercode = wtforms.StringField(validators=[Length(min=4, max=4, message='验证码格式错误')])
+    captcha_uuid = wtforms.StringField(validators=[Length(min=36, max=36, message='UUID错误')])
     username = wtforms.StringField(
         validators=[
             DataRequired(message='用户名不能为空'),
@@ -23,16 +26,14 @@ class RegisterForm(wtforms.Form):
     confirmPassword = wtforms.StringField(validators=[EqualTo('password',message='密码输入不一致')])
     phone = wtforms.StringField(validators=[DataRequired(),length(11, 11),Regexp(r'(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}', 0, '手机号码不合法')])
     email = wtforms.StringField(validators=[Email(message='请输入有效的电子邮件地址')])
-    vercode = wtforms.StringField(validators=[Length(min=4, max=4, message='验证码格式错误')])
-    captcha_uuid = wtforms.StringField(validators=[Length(min=36, max=36, message='UUID错误')])
 
 
 
 
     def validate_vercode(self,field):
-        code = session['code']
-        if code != field.data:
-            raise wtforms.ValidationError("验证码错误！")
+        code = session.pop('code', None)
+        if not code or code != field.data:
+            raise wtforms.ValidationError("验证码错误或已失效！")
 
 
     def validate_password(self,field):
@@ -63,17 +64,17 @@ class RegisterForm(wtforms.Form):
 
 
 class LoginForm(wtforms.Form):
-    username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
-    password = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='密码格式错误')])
     vercode = wtforms.StringField(validators=[Length(min=4, max=4, message='验证码格式错误')])
     captcha_uuid = wtforms.StringField(validators=[Length(min=36, max=36, message='UUID错误')])
+    username = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='用户名格式错误')])
+    password = wtforms.StringField(validators=[DataRequired(),Length(min=3,max=20,message='密码格式错误')])
 
 
     #user = None  # 用于存储查询到的用户对象
     def validate_vercode(self, field):
-        code = session['code']
-        if code != field.data:
-            raise wtforms.ValidationError("验证码错误！")
+        code = session.pop('code', None)
+        if not code or code != field.data:
+            raise wtforms.ValidationError("验证码错误或已失效！")
 
 
     def validate_username(self, field):
@@ -89,11 +90,16 @@ class LoginForm(wtforms.Form):
                 if user_data:
                     user = User(*user_data)
                     self.user = user
+                    # 检查账户是否已被锁定
+                    is_locked, remaining = check_account_locked(field.data)
+                    if is_locked:
+                        raise wtforms.ValidationError(f"账户已锁定，请{remaining}分钟后再试")
                     input_password = self.password.data
                     if check_password_hash(user.password, input_password):
                         if user.enable == 0:
                             raise wtforms.ValidationError("用户已被禁用！")
                     else:
+                        record_login_failure(field.data)
                         raise wtforms.ValidationError("密码错误！")
                 else:
                     raise wtforms.ValidationError("用户不存在！")

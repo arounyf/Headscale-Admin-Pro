@@ -1,3 +1,4 @@
+import re
 import datetime
 import json
 import requests
@@ -171,7 +172,10 @@ def rename():
     node_id = request.form.get('nodeId')
     node_name = request.form.get('nodeName')
 
-    url = f'/api/v1/node/{node_id}/rename/{node_name}'  # 替换为实际的目标 URL
+    if not node_name or not re.fullmatch(r'[a-zA-Z0-9._-]+', node_name):
+        return res('1', '节点名称仅允许字母、数字、点、下划线和连字符')
+
+    url = f'/api/v1/node/{node_id}/rename/{node_name}'
 
     with SqliteDB() as cursor:
         user_id = cursor.execute("SELECT user_id FROM nodes WHERE id =? ",(node_id,)).fetchone()[0]

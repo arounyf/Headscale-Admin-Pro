@@ -1,6 +1,8 @@
+import time
+from collections import defaultdict
 from datetime import datetime, timedelta
 import json
-from utils import record_log, reload_headscale, to_rewrite_acl, to_request
+from utils import record_log, reload_headscale, to_rewrite_acl, to_request, reset_login_failures
 from flask_login import login_user, logout_user, current_user, login_required
 from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from exts import SqliteDB
@@ -8,6 +10,22 @@ from utils import res
 from .forms import RegisterForm, LoginForm, PasswdForm
 from werkzeug.security import generate_password_hash
 from .get_captcha import get_captcha_code_and_content
+
+
+# 登录频率限制：每个 IP 每分钟最多 10 次
+_login_attempts = defaultdict(list)
+_LOGIN_LIMIT = 10
+_LOGIN_WINDOW = 60
+
+
+def _check_login_rate(ip):
+    now = time.time()
+    cutoff = now - _LOGIN_WINDOW
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if t > cutoff]
+    if len(_login_attempts[ip]) >= _LOGIN_LIMIT:
+        return False
+    _login_attempts[ip].append(now)
+    return True
 
 
 
@@ -188,11 +206,14 @@ def login():
         else:
             return render_template('auth/login.html')
     else:
+        if not _check_login_rate(request.remote_addr):
+            return res('1', '登录过于频繁，请1分钟后再试', '')
         form = LoginForm(request.form)
 
         if form.validate():
             user = form.user  # 获取表单中查询到的用户对象
             login_user(user)
+            reset_login_failures(user.name)
             res_code,res_msg,res_data = '0', '登录成功',''
 
             record_log(user.id,"登录成功")

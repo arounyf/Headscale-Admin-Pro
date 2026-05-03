@@ -94,6 +94,7 @@
   </div>
   
   <script src="/static/layui/layui.js"></script>
+  <script src="/static/csrf.js"></script>
   <script>
   layui.config({
     base: '/static/' // 静态资源所在路径
@@ -276,14 +277,19 @@
         });
       }else if(obj.event === 'detail'){
         console.log(data)
+        var escapeHtml = function(str) {
+          var div = document.createElement('div');
+          div.appendChild(document.createTextNode(str));
+          return div.innerHTML;
+        };
         layer.open({
           title: '用户信息',
           type: 1,
           area: ['600px','400px'],
           content: '<div style="padding: 20px;">'+
-              '手机号码：'+ data.cellphone+ '<br>'+
-              '邮箱地址：'+ data.email+ '<br>'+
-              '注册时间：'+ data.createTime+
+              '手机号码：'+ escapeHtml(data.cellphone)+ '<br>'+
+              '邮箱地址：'+ escapeHtml(data.email)+ '<br>'+
+              '注册时间：'+ escapeHtml(data.createTime)+
             '</div>'
         });
       }

@@ -1,3 +1,7 @@
+import os
+import uuid
+from pathlib import Path
+
 from ruamel.yaml import YAML
 
 
@@ -11,10 +15,27 @@ with open('/etc/headscale/config.yaml', 'r') as file:
     config_yaml = yaml.load(file)
 
 
+# SECRET_KEY 优先从环境变量读取，其次从持久化文件读取，最后自动生成
+_SECRET_KEY_FILE = Path('/var/lib/headscale/.secret_key')
 
-# 配置定义
-SECRET_KEY = 'SFhkrGKQL2yB9F'
+
+def _load_or_create_secret_key():
+    env_key = os.environ.get('SECRET_KEY')
+    if env_key:
+        return env_key
+    if _SECRET_KEY_FILE.exists():
+        return _SECRET_KEY_FILE.read_text().strip()
+    new_key = uuid.uuid4().hex + uuid.uuid4().hex
+    _SECRET_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _SECRET_KEY_FILE.write_text(new_key)
+    return new_key
+
+
+SECRET_KEY = _load_or_create_secret_key()
 PERMANENT_SESSION_LIFETIME = 3600
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = os.environ.get('HTTPS', '').lower() in ('true', '1', 'on', 'yes')
 
 listen_addr = config_yaml.get('listen_addr', '0.0.0.0:8080') 
 _, port_str = listen_addr.rsplit(':', 1)

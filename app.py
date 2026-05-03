@@ -1,5 +1,7 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 from login_setup import init_login_manager
 from utils import get_data_record, start_headscale, to_init_db
 import config_loader,os
@@ -23,6 +25,13 @@ app = Flask(__name__)
 # 应用配置
 app.config.from_object(config_loader)
 app.json.ensure_ascii = False  # 让接口返回的中文不转码
+
+# 信任反向代理的 X-Forwarded-* 头（nginx 等）
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# 初始化 CSRF 保护
+app.config['WTF_CSRF_SSL_STRICT'] = False  # 允许代理终止 HTTPS 后以 HTTP 转发
+csrf = CSRFProtect(app)
 
 
 # 初始化 Flask-login
@@ -59,6 +68,25 @@ scheduler.start()
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('auth/error.html', message="404")
+
+# 仅在页面请求时设置 CSRF cookie，跳过静态资源以减少开销
+@app.after_request
+def set_csrf_cookie(response):
+    if request.method == 'GET' and not request.path.startswith('/static/'):
+        from flask_wtf.csrf import generate_csrf
+        token = generate_csrf()
+        response.set_cookie(
+            'csrf_token', token,
+            httponly=False,
+            samesite='Lax',
+            secure=app.config.get('SESSION_COOKIE_SECURE', False),
+        )
+    return response
+
+# CSRF / 400 错误处理器（返回 JSON，兼容 AJAX 前端）
+@app.errorhandler(400)
+def bad_request(e):
+    return {'code': '1', 'msg': '请求无效或 CSRF 验证失败', 'data': ''}, 400
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')

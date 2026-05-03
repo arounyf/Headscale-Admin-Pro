@@ -62,7 +62,9 @@ def getPreAuthKey():
             'key': key['key'],
             'name': key['user']['name'],
             'create_time': create_time,
-            'expiration': expiration
+            'expiration': expiration,
+            'reusable': key.get('reusable', False),
+            'ephemeral': key.get('ephemeral', False)
         })
 
     return table_res('0','获取成功', pre_auth_keys_list, total_count, len(pre_auth_keys_list))
@@ -74,12 +76,26 @@ def getPreAuthKey():
 @login_required
 def addKey():
 
-    expire_date = datetime.now() + timedelta(days=7)
+    reusable = request.form.get('reusable', 'true').lower() in ('true', '1', 'on')
+    ephemeral = request.form.get('ephemeral', 'false').lower() in ('true', '1', 'on')
+    expire_days = request.form.get('expireDays', '7')
 
-    url =  f'/api/v1/preauthkey'
-    data = {'user':current_user.id,'reusable':True,'ephemeral':False,'expiration':expire_date.isoformat() + 'Z'}
+    try:
+        expire_days = int(expire_days)
+    except (ValueError, TypeError):
+        expire_days = 7
 
-    response = to_request('POST',url,data)
+    expire_date = datetime.now() + timedelta(days=expire_days)
+
+    url = '/api/v1/preauthkey'
+    data = {
+        'user': current_user.id,
+        'reusable': reusable,
+        'ephemeral': ephemeral,
+        'expiration': expire_date.isoformat() + 'Z'
+    }
+
+    response = to_request('POST', url, data)
 
     if response['code'] == '0':
         return res('0', '获取成功', response['data'])

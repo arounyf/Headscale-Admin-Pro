@@ -71,6 +71,7 @@
   </div>
   
   <script src="/static/layui/layui.js"></script>
+  <script src="/static/csrf.js"></script>
 
   <script>
   layui.config({
@@ -284,11 +285,14 @@
             if (res.code === "0") {
               const dataList = res.data;
               const post_data = dataList.length > 0 ? dataList[0] : {};
+              var escapeHtml = function(str) {
+                var div = document.createElement('div');
+                div.appendChild(document.createTextNode(str));
+                return div.innerHTML;
+              };
               $('#node-detail-content').html(`
-                <p><strong>客户端:</strong> ${post_data.Client || '未知'}</p>
-                <p><strong>操作系统:</strong> ${post_data.OS || '未知'}</p>
-                <p><strong>路由列表:</strong> ${data.availableRoutes || '无'}</p>
-                <p><strong>可用路由:</strong> ${data.approvedRoutes || '无'}</p>
+                <p><strong>客户端:</strong> ${escapeHtml(post_data.Client) || '未知'}</p>
+                <p><strong>操作系统:</strong> ${escapeHtml(post_data.OS) || '未知'}</p>
               `);
             } else {
               layer.msg(res.msg, {icon: 7});

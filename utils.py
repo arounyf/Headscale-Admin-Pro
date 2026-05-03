@@ -9,7 +9,7 @@ import psutil
 
 from flask import current_app
 from ruamel.yaml import YAML
-from datetime import datetime,timezone
+from datetime import datetime, timezone, timedelta
 from exts import SqliteDB
 
 
@@ -49,18 +49,21 @@ def to_request(method,url_path,data=None,flag = True):
     }
     url = server_host+url_path
 
-    # 动态调用 requests 库中的方法
     request_method = getattr(requests, method.lower())
     response = request_method(url, headers=headers, json=data)
 
-    print(f'{method}请求url地址: {url},返回消息: {response.text}---------------------------------------')
+    if current_app.debug:
+        print(f'{method} {url} -> {response.status_code}')
 
 
     # 如果返回Unauthorized则自动刷新apikey
     if response.text == "Unauthorized" and flag:
-        current_app.config['BEARER_TOKEN'] = to_refresh_apikey()['data']
-        data = to_request('POST',url_path,data,False)['data']
-        return res('0', '请求成功', data)
+        refresh_result = to_refresh_apikey()
+        if refresh_result['code'] == '0':
+            current_app.config['BEARER_TOKEN'] = refresh_result['data']
+            return to_request(method, url_path, data, False)
+        else:
+            return res('1', 'apikey刷新失败', '')
     else:
         return res('0','请求成功',response.text)
 
@@ -397,4 +400,62 @@ def get_headscale_status(app):
 def to_init_db(app):
     get_headscale_status(app)
     #数据库修改已经集成到了headscale中
+
+
+# 账户锁定：连续 5 次登录失败后锁定 30 分钟
+_LOGIN_FAILURES_FILE = '/var/lib/headscale/login_failures.json'
+_MAX_LOGIN_FAILURES = 5
+_LOCKOUT_MINUTES = 30
+
+
+def _load_login_failures():
+    if os.path.exists(_LOGIN_FAILURES_FILE):
+        with open(_LOGIN_FAILURES_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def _save_login_failures(data):
+    with open(_LOGIN_FAILURES_FILE, 'w') as f:
+        json.dump(data, f)
+
+
+def check_account_locked(username):
+    """返回 (is_locked, remaining_minutes)"""
+    data = _load_login_failures()
+    entry = data.get(username)
+    if not entry or not entry.get('locked_until'):
+        return False, 0
+    try:
+        until = datetime.fromisoformat(entry['locked_until'])
+        if datetime.now() < until:
+            remaining = int((until - datetime.now()).total_seconds() / 60) + 1
+            return True, remaining
+    except (ValueError, TypeError):
+        pass
+    return False, 0
+
+
+def record_login_failure(username):
+    data = _load_login_failures()
+    entry = data.get(username, {'failures': 0, 'locked_until': None})
+    # 如果锁定已过期，重置计数器
+    if entry.get('locked_until'):
+        try:
+            if datetime.now() >= datetime.fromisoformat(entry['locked_until']):
+                entry = {'failures': 0, 'locked_until': None}
+        except (ValueError, TypeError):
+            entry = {'failures': 0, 'locked_until': None}
+    entry['failures'] = entry.get('failures', 0) + 1
+    if entry['failures'] >= _MAX_LOGIN_FAILURES:
+        entry['locked_until'] = (datetime.now() + timedelta(minutes=_LOCKOUT_MINUTES)).isoformat()
+    data[username] = entry
+    _save_login_failures(data)
+
+
+def reset_login_failures(username):
+    data = _load_login_failures()
+    if username in data:
+        del data[username]
+        _save_login_failures(data)
     
