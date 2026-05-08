@@ -214,6 +214,14 @@ def stop_headscale():
     try:
         reload_command = "kill -15 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
         result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
+        # 等待进程退出后清理 WAL
+        import time
+        for _ in range(10):
+            time.sleep(0.5)
+            chk = subprocess.run("ps -ef | grep -E 'headscale serve' | grep -v grep | wc -l", shell=True, capture_output=True, text=True)
+            if chk.stdout.strip() == '0':
+                break
+        subprocess.run("sqlite3 /var/lib/headscale/db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);'", shell=True, capture_output=True)
         res_json['code'], res_json['msg'], res_json['data'] = '0', '停止成功', result.stdout
     except subprocess.CalledProcessError as e:
         res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
@@ -510,37 +518,29 @@ def _is_private_ip(ip):
 
 
 def get_ip_location(ip):
-    """查询IP地理位置，JSON文件缓存。TianAPI有key时优先用，否则fallback到ip-api"""
-    _refresh_tianapi_key()
+    """查询IP地理位置，JSON文件缓存。未配置Key不查询"""
+    from flask import current_app as ca
+    if not ca.config.get('TIANAPI_KEY', ''):
+        return ''
     if _is_private_ip(ip):
-        return '本地/内网'
+        return ''
 
-    # 先查本地缓存
     cache = _load_ip_cache()
     if ip in cache:
         return cache[ip]
 
-    # 查外部API
     loc = _query_tianapi(ip)
-    if not loc:
-        loc = _query_ipapi(ip)
     if not loc:
         return ''
 
-    # 写入缓存
     cache[ip] = loc
     _save_ip_cache(cache)
     return loc
 
 
 def _query_tianapi(ip):
-    # 优先从 current_app 读，线程内 fallback 到缓存
-    api_key = ''
-    try:
-        from flask import current_app as ca
-        api_key = ca.config.get('TIANAPI_KEY', '')
-    except RuntimeError:
-        api_key = _tianapi_key_fallback
+    from flask import current_app as ca
+    api_key = ca.config.get('TIANAPI_KEY', '')
     if not api_key:
         return ''
     try:
@@ -549,33 +549,9 @@ def _query_tianapi(ip):
         data = resp.json()
         if data.get('code') == 200:
             r = data['result']
-            return f"{r.get('country','')} {r.get('province','')} {r.get('city','')} {r.get('isp','')}"
+            return f"{r.get('country','')} {r.get('province','')} {r.get('city','')} {r.get('district','')} {r.get('isp','')}"
     except Exception as e:
-        print(f"TianAPI error: {e}")
-    return ''
-
-
-_tianapi_key_fallback = ''
-
-
-def _refresh_tianapi_key():
-    global _tianapi_key_fallback
-    try:
-        from flask import current_app as ca
-        _tianapi_key_fallback = ca.config.get('TIANAPI_KEY', '')
-    except RuntimeError:
-        pass
-
-
-def _query_ipapi(ip):
-    try:
-        resp = _requests.get(f'http://ip-api.com/json/{ip}?lang=zh-CN', timeout=3)
-        if resp.status_code == 200:
-            data = resp.json()
-            if data.get('status') == 'success':
-                return f"{data.get('country','')} {data.get('regionName','')} {data.get('city','')}"
-    except Exception:
-        pass
+        print(f'[_query_tianapi] error: {e}')
     return ''
 
 

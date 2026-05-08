@@ -87,19 +87,21 @@ def register_node(registrationID):
         if result_post['code'] == '0':
             # 记录节点IP
             import threading
+            app_ctx = current_app._get_current_object()
             def node_log():
-                try:
-                    node_data = json.loads(result_post['data'])
-                    node_ip = node_data['node']['ipAddresses'][0]
-                except Exception:
-                    node_ip = ''
-                ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-                ip_addr = ip_addr.split(",")[0].strip()
-                loc = get_ip_location(ip_addr)
-                msg = f"节点添加成功。节点IP：{node_ip}，请求IP：{ip_addr}"
-                if loc:
-                    msg += f"，位置：{loc}"
-                record_log(current_user.id, msg)
+                with app_ctx.app_context():
+                    try:
+                        node_data = json.loads(result_post['data'])
+                        node_ip = node_data['node']['ipAddresses'][0]
+                    except Exception:
+                        node_ip = ''
+                    ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
+                    ip_addr = ip_addr.split(",")[0].strip()
+                    loc = get_ip_location(ip_addr)
+                    msg = f"节点添加成功。节点IP：{node_ip}，请求IP：{ip_addr}"
+                    if loc:
+                        msg += f"，位置：{loc}"
+                    record_log(current_user.id, msg)
             threading.Thread(target=node_log).start()
             return res('0', '节点添加成功', result_post['data'])
         else:
@@ -219,12 +221,14 @@ def reg():
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
             ip_addr = ip_addr.split(",")[0].strip()
             import threading
+            app_ctx = current_app._get_current_object()
             def reg_log():
-                with SqliteDB() as c:
-                    u = c.execute("SELECT id FROM users WHERE name =?", (username,)).fetchone()
-                    if u:
-                        loc = get_ip_location(ip_addr)
-                        record_log(u['id'], f"新用户注册。IP地址：{ip_addr}，位置：{loc}" if loc else f"新用户注册。IP地址：{ip_addr}")
+                with app_ctx.app_context():
+                    with SqliteDB() as c:
+                        u = c.execute("SELECT id FROM users WHERE name =?", (username,)).fetchone()
+                        if u:
+                            loc = get_ip_location(ip_addr)
+                            record_log(u['id'], f"新用户注册。IP地址：{ip_addr}，位置：{loc}" if loc else f"新用户注册。IP地址：{ip_addr}")
             threading.Thread(target=reg_log).start()
 
             if email_verify:
@@ -244,11 +248,13 @@ def reg():
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
             ip_addr = ip_addr.split(",")[0].strip()
             import threading
+            app_ctx = current_app._get_current_object()
             def fail_reg_log():
-                loc = get_ip_location(ip_addr)
-                msg = f"注册失败：{res_msg}。IP地址：{ip_addr}"
-                if loc: msg += f"，位置：{loc}"
-                record_log(0, msg)
+                with app_ctx.app_context():
+                    loc = get_ip_location(ip_addr)
+                    msg = f"注册失败：{res_msg}。IP地址：{ip_addr}"
+                    if loc: msg += f"，位置：{loc}"
+                    record_log(0, msg)
             threading.Thread(target=fail_reg_log).start()
             return res(res_code, res_msg, '')
 
@@ -275,11 +281,13 @@ def login():
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
             ip_addr = ip_addr.split(",")[0].strip()
             import threading
+            app_ctx = current_app._get_current_object()
             def login_log():
-                loc = get_ip_location(ip_addr)
-                msg = f"登录成功。IP地址：{ip_addr}"
-                if loc: msg += f"，位置：{loc}"
-                record_log(user.id, msg)
+                with app_ctx.app_context():
+                    loc = get_ip_location(ip_addr)
+                    msg = f"登录成功。IP地址：{ip_addr}"
+                    if loc: msg += f"，位置：{loc}"
+                    record_log(user.id, msg)
             threading.Thread(target=login_log).start()
  
         else:
@@ -291,11 +299,13 @@ def login():
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
             ip_addr = ip_addr.split(",")[0].strip()
             import threading
+            app_ctx = current_app._get_current_object()
             def fail_log():
-                loc = get_ip_location(ip_addr)
-                msg = f"登录失败：{res_msg}。IP地址：{ip_addr}"
-                if loc: msg += f"，位置：{loc}"
-                record_log(0, msg)
+                with app_ctx.app_context():
+                    loc = get_ip_location(ip_addr)
+                    msg = f"登录失败：{res_msg}。IP地址：{ip_addr}"
+                    if loc: msg += f"，位置：{loc}"
+                    record_log(0, msg)
             threading.Thread(target=fail_log).start()
         return res(res_code,res_msg,res_data)
 #
