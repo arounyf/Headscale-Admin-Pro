@@ -193,10 +193,8 @@ def get_server_net():
 
 
 def start_headscale():
-    # 定义日志文件路径
     log_file_path = os.path.join('/var/lib/headscale', 'headscale.log')
 
-    # 以追加模式打开日志文件
     if get_headscale_pid():
         return  res('0', '检测到headscale已启动')
 
@@ -214,14 +212,6 @@ def stop_headscale():
     try:
         reload_command = "kill -15 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
         result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
-        # 等待进程退出后清理 WAL
-        import time
-        for _ in range(10):
-            time.sleep(0.5)
-            chk = subprocess.run("ps -ef | grep -E 'headscale serve' | grep -v grep | wc -l", shell=True, capture_output=True, text=True)
-            if chk.stdout.strip() == '0':
-                break
-        subprocess.run("sqlite3 /var/lib/headscale/db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);'", shell=True, capture_output=True)
         res_json['code'], res_json['msg'], res_json['data'] = '0', '停止成功', result.stdout
     except subprocess.CalledProcessError as e:
         res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
@@ -348,7 +338,7 @@ def get_headscale_status(app):
 
     print(f"Health check started. Monitoring log file from position: {log_start_pos}")
 
-    max_attempts = 5
+    max_attempts = 10
     attempt = 0
     while attempt < max_attempts:
         try:
