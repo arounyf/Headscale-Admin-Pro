@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from flask_login import current_user, login_required
 from flask import Blueprint, request,current_app
 from exts import SqliteDB
-from utils import table_res, res, to_request
+from utils import table_res, res, to_request, is_user_mode
 import json
 from datetime import datetime
 
@@ -30,7 +30,7 @@ def getPreAuthKey():
     # 按角色过滤数据
     filtered_keys = []
     for key in all_pre_auth_keys:
-        if current_user.role != 'manager':
+        if current_user.role != 'manager' or is_user_mode():
             if int(key['user']['id']) == current_user.id:
                 filtered_keys.append(key)
         else:

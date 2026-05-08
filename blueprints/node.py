@@ -7,7 +7,7 @@ from blueprints.auth import register_node
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import res, table_res, to_request
+from utils import res, table_res, to_request, is_user_mode
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
 
@@ -42,7 +42,7 @@ def getNodes():
     search_name= request.args.get('search_name',default='')
     print(search_name)
 
-    if current_user.name == 'admin':
+    if current_user.name == 'admin' and not is_user_mode():
         if search_name != "":
             user_name = search_name
         else:
@@ -90,7 +90,10 @@ def getNodes():
 @login_required
 @role_required("manager")
 def topNodes():
-    url = f'/api/v1/node'
+    if is_user_mode():
+        url = f'/api/v1/node?user={current_user.name}'
+    else:
+        url = f'/api/v1/node'
     response = to_request('GET', url)
 
     if response['code'] == '0':
@@ -221,7 +224,7 @@ def node_info():
     params = []
 
     # 根据角色添加用户ID过滤
-    if current_user.role != 'manager':
+    if current_user.role != 'manager' or is_user_mode():
         conditions.append("nodes.user_id = ?")
         params.append(current_user.id)
     

@@ -40,12 +40,23 @@
         <ul class="layui-nav layui-layout-right" lay-filter="layadmin-layout-right">
 
 
-          <li class="layui-nav-item layui-hide-xs" lay-unselect style="pointer-events:none">
-            <span style="font-size:12px;color:{{ '#16baaa' if hs_running == 'running' else '#ff5722' }}">
+          <li class="layui-nav-item layui-hide-xs" lay-unselect>
+            <span style="font-size:12px;color:{{ '#16baaa' if hs_running == 'running' else '#ff5722' }};cursor:help" title="Headscale {{ hs_version }}">
               <i class="layui-icon layui-icon-{{ 'component' if hs_running == 'running' else 'pause' }}" style="font-size:12px"></i>
               {{ '运行中' if hs_running == 'running' else '已停止' }}
             </span>
           </li>
+          {% if current_user.role == 'manager' %}
+          <li class="layui-nav-item layui-hide-xs" lay-unselect>
+            <a href="javascript:;" id="userModeToggle" title="点击切换查看模式">
+              {% if user_mode == 'user' %}
+              <i class="layui-icon layui-icon-user"></i> 用户模式
+              {% else %}
+              <i class="layui-icon layui-icon-diamond"></i> 管理员模式
+              {% endif %}
+            </a>
+          </li>
+          {% endif %}
           <li class="layui-nav-item layui-hide-xs" lay-unselect>
             <a href="javascript:;" layadmin-event="note">
               <i class="layui-icon layui-icon-note"></i>
@@ -155,7 +166,36 @@
   <script>
   layui.config({
     base: '/static/' // 静态资源所在路径
-  }).use(['index']);
+  }).use(['index'], function(){
+    var $ = layui.$;
+    var $modeToggle = $('#userModeToggle');
+    $modeToggle.click(function(){
+      var currentText = $.trim($(this).text());
+      var isUserMode = currentText.indexOf('用户模式') !== -1;
+      var newMode = isUserMode ? 'admin' : 'user';
+      $.ajax({
+        url: '/api/set/user_mode',
+        type: 'post',
+        data: { mode: newMode },
+        dataType: 'json',
+        success: function(res){
+          if (res.code == '0'){
+            // 更新标题栏显示
+            if (newMode === 'user') {
+              $modeToggle.html('<i class="layui-icon layui-icon-user"></i> 用户模式');
+            } else {
+              $modeToggle.html('<i class="layui-icon layui-icon-diamond"></i> 管理员模式');
+            }
+            // 刷新所有 iframe
+            document.querySelectorAll('.layadmin-iframe').forEach(function(f){
+              f.contentWindow.location.reload();
+            });
+          }
+        }
+      });
+      return false;
+    });
+  });
   </script>
 
 

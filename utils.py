@@ -7,7 +7,7 @@ import time
 import requests
 import psutil
 
-from flask import current_app
+from flask import current_app, session
 from ruamel.yaml import YAML
 from datetime import datetime, timezone, timedelta
 from exts import SqliteDB
@@ -557,4 +557,12 @@ def reset_login_failures(username):
     if username in data:
         del data[username]
         _save_login_failures(data)
+
+
+# ---- 用户模式 ----
+
+def is_user_mode():
+    """管理员切换到用户视角，只看自己的数据"""
+    from flask_login import current_user
+    return session.get('user_mode') == 'user' and current_user.role == 'manager'
     

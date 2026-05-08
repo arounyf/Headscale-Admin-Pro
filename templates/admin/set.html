@@ -68,6 +68,15 @@
               </div>
 
               <div class="layui-form-item">
+                <label class="layui-form-label">用户模式</label>
+                <div class="layui-input-inline" style="width:80px">
+                  <input type="checkbox" name="userMode" lay-skin="switch" lay-text="用户|管理员" title="用户|管理员" lay-filter="userModeSet"
+                     {{ user_mode_checked }}>
+                </div>
+                <div class="layui-form-mid layui-word-aux">管理员以用户视角查看数据（只看自己的节点/路由等）</div>
+              </div>
+
+              <div class="layui-form-item">
                 <label class="layui-form-label">网卡名</label>
                 <div class="layui-input-inline" style="width:300px">
                   <select name="serverNet" class="autosave" data-key="SERVER_NET">
@@ -174,12 +183,30 @@
     var $ = layui.$;
     var util = layui.util;
 
+    // 记录初始值，变化才保存
+    var _init = {};
+    // 文本输入
+    $('.autosave').each(function(){ _init[$(this).data('key')] = $(this).val(); });
+    // 下拉选择
+    $('select.autosave').each(function(){ _init[$(this).data('key')] = $(this).val(); });
+    // 开关（form 渲染后）
+    setTimeout(function(){
+      $('input[lay-skin="switch"][data-key]').each(function(){
+        var key = $(this).data('key');
+        _init[key] = this.checked ? 'on' : 'off';
+      });
+    }, 100);
+
     // 自动保存开关
     form.on('switch', function(data){
-      var val = data.elem.checked ? 'on' : 'off';
       var key = $(data.elem).data('key');
       if (!key) return;
-      saveField(key, val);
+      var val = data.elem.checked ? 'on' : 'off';
+      if (_init[key] === val) return;
+      saveField(key, val, function(){ _init[key] = val; }, function(){
+        data.elem.checked = _init[key] === 'on';
+        form.render('checkbox');
+      });
     });
 
     // 自动保存文本输入（失焦时）
@@ -187,7 +214,8 @@
       var key = $(this).data('key');
       var val = $(this).val();
       if (!key) return;
-      saveField(key, val);
+      if (_init[key] === val) return;
+      saveField(key, val, function(){ _init[key] = val; }, function(){ $(this).val(_init[key]); });
     });
 
     // 自动保存下拉选择
@@ -195,10 +223,12 @@
       var key = $(this).data('key');
       var val = $(this).val();
       if (!key) return;
-      saveField(key, val);
+      if (_init[key] === val) return;
+      var that = this;
+      saveField(key, val, function(){ _init[key] = val; }, function(){ $(that).val(_init[key]); form.render('select'); });
     });
 
-    function saveField(key, val){
+    function saveField(key, val, onSuccess, onError){
       var data = {};
       data[key] = val;
       $.ajax({
@@ -207,13 +237,45 @@
         data: data,
         dataType:'json',
         success:function(res){
-          if (res.code == '0') { layer.msg('修改成功', {icon:1, time:800}); } else { layer.msg(res.msg, {icon:7}); }
+          if (res.code == '0') {
+            layer.msg('修改成功', {icon:1, time:800});
+            if (onSuccess) onSuccess();
+          } else {
+            layer.msg(res.msg, {icon:7});
+            if (onError) onError();
+          }
         },
         error:function(){
           layer.msg('保存失败', {icon:7});
+          if (onError) onError();
         }
       });
     }
+
+    // 用户模式开关
+    form.on('switch(userModeSet)', function(data){
+      var mode = data.elem.checked ? 'user' : 'admin';
+      $.ajax({
+        url:'/api/set/user_mode',
+        type:'post',
+        data: { mode: mode },
+        dataType:'json',
+        success:function(res){
+          layer.msg(res.msg, {icon: res.code == '0' ? 6 : 7});
+          if (res.code == '0'){
+            try { parent.location.reload(); } catch(e){}
+          } else {
+            data.elem.checked = !data.elem.checked;
+            form.render('checkbox');
+          }
+        },
+        error:function(){
+          data.elem.checked = !data.elem.checked;
+          form.render('checkbox');
+          layer.msg('保存失败', {icon:7});
+        }
+      });
+    });
 
     // headscale 进程开关
     form.on('switch(switch_up)', function(data){
@@ -238,6 +300,7 @@
               if(res.code == 0){
                 layer.msg(res.msg, {icon:6});
                 $('input[name="apiKey"]').val(res.data);
+                // apikey 无 data-key，手动更新初始值
               }else{
                 layer.msg(res.msg, {icon:7});
               }

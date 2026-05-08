@@ -18,7 +18,7 @@
           <div class="layui-card-header">节点中心</div>
           <div class="layui-card-body">
             
-            {% if current_user.role == 'manager' %}
+            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
                     <!-- 搜索框：嵌套在layui-form中，添加margin-bottom避免与表格重叠 -->
             <div class="layui-form" lay-filter="searchForm" style="margin-bottom: 5px;">
               <div class="layui-input-inline" style="width: 300px;">
@@ -106,18 +106,18 @@
       ,defaultToolbar: ['filter', 'exports', 'print', {
         title: '帮助', layEvent: 'LAYTABLE_TIPS', icon: 'layui-icon-tips'
       }]
-      ,height: {% if current_user.role == 'user' %}'full-100'{% else %}'full-150'{% endif %}
+      ,height: {% if current_user.role == 'user' or session.get('user_mode', 'admin') == 'user' %}'full-100'{% else %}'full-150'{% endif %}
       ,cellMinWidth: 80
       ,totalRow: true
       ,page: false
       ,where: {} // 存储搜索条件
       ,cols: [[
             {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
+            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
                 ,{field:'userName', width:180, title: '用户名', sort: true,totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
             {% endif %}
             ,{field:'name', width:180, title: '节点名', edit: 'text'
-                {% if current_user.role == 'user' %}
+                {% if current_user.role == 'user' or session.get('user_mode', 'admin') == 'user' %}
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }

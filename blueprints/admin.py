@@ -1,6 +1,6 @@
 from flask_login import login_required, current_user
 from login_setup import role_required
-from flask import Blueprint, render_template, current_app, request, json
+from flask import Blueprint, render_template, current_app, request, json, session
 from utils import get_server_net, get_headscale_pid, get_headscale_version
 
 
@@ -36,7 +36,9 @@ def admin():
         default_page = "node"
     menu_html = "".join(item['html'] for item in menu_items.values() if role in item['roles'])
     hs_running = 'running' if get_headscale_pid() else 'stopped'
-    return render_template('admin/index.html', menu_html=menu_html, default_page=default_page, hs_running=hs_running)
+    hs_version = get_headscale_version() or ''
+    user_mode = session.get('user_mode', 'admin')
+    return render_template('admin/index.html', menu_html=menu_html, default_page=default_page, hs_running=hs_running, user_mode=user_mode, hs_version=hs_version)
 
 
 
@@ -156,6 +158,7 @@ def set():
 
     email_verify_reg = 'checked' if current_app.config.get('EMAIL_VERIFY_REG', 'off') == 'on' else ''
     smtp_ssl = 'checked' if str(current_app.config.get('SMTP_SSL', 'true')).lower() in ('true', '1', 'on') else ''
+    user_mode_checked = 'checked' if session.get('user_mode', 'admin') == 'user' else ''
 
     return render_template('admin/set.html',apikey = apikey,
                                server_url = server_url,
@@ -173,6 +176,7 @@ def set():
                                smtp_ssl = smtp_ssl,
                                email_verify_reg = email_verify_reg,
                                headscale_status = hs_status_checked,
+                               user_mode_checked = user_mode_checked,
                            )
 
 

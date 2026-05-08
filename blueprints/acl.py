@@ -1,9 +1,9 @@
 import json
-from flask_login import login_required
+from flask_login import login_required, current_user
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import reload_headscale, to_rewrite_acl, table_res, res
+from utils import reload_headscale, to_rewrite_acl, table_res, res, is_user_mode
 
 
 bp = Blueprint("acl", __name__, url_prefix='/api/acl')
@@ -20,25 +20,40 @@ def getACL():
 
     with SqliteDB() as cursor:
         # 构建基础查询语句
-        base_query = """
-            SELECT 
-                acl.id,
-                acl.acl,
-                users.name
-            FROM 
-                acl acl
-            JOIN 
-                users ON acl.user_id = users.id
-        """
+        if is_user_mode():
+            base_query = """
+                SELECT
+                    acl.id,
+                    acl.acl,
+                    users.name
+                FROM
+                    acl acl
+                JOIN
+                    users ON acl.user_id = users.id
+                WHERE acl.user_id =?
+            """
+            params = (current_user.id,)
+        else:
+            base_query = """
+                SELECT
+                    acl.id,
+                    acl.acl,
+                    users.name
+                FROM
+                    acl acl
+                JOIN
+                    users ON acl.user_id = users.id
+            """
+            params = ()
 
         # 查询总记录数
         count_query = f"SELECT COUNT(*) as total FROM ({base_query})"
-        cursor.execute(count_query)
+        cursor.execute(count_query, params)
         total_count = cursor.fetchone()['total']
 
         # 分页查询
         paginated_query = f"{base_query} LIMIT? OFFSET? "
-        paginated_params = (per_page, offset)
+        paginated_params = params + (per_page, offset)
         cursor.execute(paginated_query, paginated_params)
         acls = cursor.fetchall()
 

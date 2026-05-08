@@ -74,11 +74,11 @@
       ,cols: [[
             //{type: 'checkbox'}
             {field:'id', title:'ID', fixed: 'left', width:80, unresize: true, sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
+            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
                 ,{field:'name', title:'用户名',width:200, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
             {% endif %}
             ,{field:'NodeName', title:'节点',width:300
-                {% if current_user.role == 'user' %}
+                {% if current_user.role == 'user' or session.get('user_mode', 'admin') == 'user' %}
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }
@@ -112,7 +112,7 @@ table.on('toolbar(test-table-index)', function(obj){
       content: `
         <div class="layui-form" lay-filter="filter-test-layer" style="margin: 20px 35px 30px 0; padding: 10px 0;">
       <div class="demo-login-container">
-        {% if current_user.role == 'manager' %}
+        {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
         <!-- 用户选择下拉框 - 仅管理员显示 -->
         <div class="layui-form-item">
           <label class="layui-form-label">用户选择</label>
@@ -154,7 +154,7 @@ table.on('toolbar(test-table-index)', function(obj){
       `,
   
       // 根据角色调整弹窗高度（管理员多一个用户选择框，高度增加50px）
-      area: ['320px', {% if current_user.role == 'manager' %}'295px'{% else %}'245px'{% endif %}],
+      area: ['320px', {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}'295px'{% else %}'245px'{% endif %}],
       maxmin: true,
       success: function(layero, index){
         layer.full(index); // 最大化
@@ -168,7 +168,7 @@ table.on('toolbar(test-table-index)', function(obj){
         };
         
         // 仅管理员加载用户列表
-        {% if current_user.role == 'manager' %}
+        {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
         $.ajax({
           url: '/api/user/getUsers', // 用户列表接口
           type: 'get',
@@ -234,7 +234,7 @@ table.on('toolbar(test-table-index)', function(obj){
         };
         
         // 管理员监听用户选择变化
-        {% if current_user.role == 'manager' %}
+        {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
         form.on('select(userIdFilter)', function(data){
           var userId = data.value;
           if (!userId) {
@@ -304,7 +304,7 @@ table.on('toolbar(test-table-index)', function(obj){
         // 监听表单提交（保持原逻辑不变）
         form.on('submit(demo-login)', function(data) {
           // 普通用户补充userId参数
-          {% if current_user.role != 'manager' %}
+          {% if current_user.role != 'manager' or session.get('user_mode', 'admin') == 'user' %}
           data.field.userId = currentUser.id;
           {% endif %}
           

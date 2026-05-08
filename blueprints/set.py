@@ -2,7 +2,7 @@ import subprocess
 from flask_login import login_required
 from exts import SqliteDB
 from login_setup import role_required
-from flask import Blueprint, request, current_app
+from flask import Blueprint, request, current_app, session
 from utils import start_headscale, stop_headscale, save_config_yaml, res
 
 
@@ -80,4 +80,13 @@ def switch_headscale():
         return stop_headscale()
 
     return res_json
+
+
+@bp.route('/user_mode', methods=['POST'])
+@login_required
+@role_required("manager")
+def user_mode():
+    mode = request.form.get('mode', 'admin')
+    session['user_mode'] = mode if mode in ('admin', 'user') else 'admin'
+    return res('0', f'已切换到{"用户" if mode == "user" else "管理员"}模式', '')
 

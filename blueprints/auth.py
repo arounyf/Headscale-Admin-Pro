@@ -308,18 +308,21 @@ def forgot_password():
         return res('1', '验证码错误或已失效', '')
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip()
+    phone = request.form.get('phone', '').strip()
     if not username:
         return res('1', '请输入用户名', '')
     if not email:
         return res('1', '请输入邮箱地址', '')
+    if not phone:
+        return res('1', '请输入手机号码', '')
     is_locked, remaining = check_account_locked(username)
     if is_locked:
         return res('1', f'账户已锁定，请{remaining}分钟后再试', '')
     with SqliteDB() as cursor:
-        user = cursor.execute("SELECT id, name FROM users WHERE name =? AND email =?", (username, email)).fetchone()
+        user = cursor.execute("SELECT id, name FROM users WHERE name =? AND email =? AND cellphone =?", (username, email, phone)).fetchone()
     if not user:
         record_login_failure(username)
-        return res('1', '用户名与邮箱不匹配', '')
+        return res('1', '用户名、邮箱和手机号不匹配', '')
     reset_login_failures(username)
     import random, string
     new_pass = ''.join(random.choices(string.ascii_letters + string.digits, k=6))

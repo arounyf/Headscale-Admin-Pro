@@ -3,8 +3,8 @@ from random import  choices
 from captcha.image import ImageCaptcha
 from PIL import Image
 
-def gen_captcha(content="0123456789"):
-    image = ImageCaptcha()
+def gen_captcha(content="234689"):
+    image = ImageCaptcha(width=140, height=50, font_sizes=(38, 42, 46))
     captcha_text = "".join(choices(content,k=4))
     captcha_image = Image.open(image.generate(captcha_text))
     return captcha_text,captcha_image

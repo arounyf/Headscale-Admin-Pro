@@ -76,11 +76,11 @@
       }
       ,cols: [[
             {field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
+            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
                 ,{field:'name', title:'用户名',width:200, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
             {% endif %}
             ,{field:'key', title:'密钥',width:300
-                {% if current_user.role == 'user' %}
+                {% if current_user.role == 'user' or session.get('user_mode', 'admin') == 'user' %}
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }

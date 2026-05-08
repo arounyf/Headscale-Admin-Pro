@@ -2,7 +2,7 @@ from flask_login import current_user, login_required
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import res, table_res
+from utils import res, table_res, is_user_mode
 
 bp = Blueprint("user", __name__, url_prefix='/api/user')
 
@@ -17,15 +17,26 @@ def getUsers():
 
     with SqliteDB() as cursor:
         # 查询总记录数和当前页用户数据
-        query = """
-            SELECT COUNT(*) OVER() as total_count, id, name, 
-            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
-            cellphone, 
-            strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable ,email
-            FROM users
-            LIMIT? OFFSET?
-        """
-        cursor.execute(query, (per_page, (page - 1) * per_page))
+        if is_user_mode():
+            query = """
+                SELECT COUNT(*) OVER() as total_count, id, name,
+                strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
+                cellphone,
+                strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable ,email
+                FROM users WHERE id =?
+                LIMIT? OFFSET?
+            """
+            cursor.execute(query, (current_user.id, per_page, (page - 1) * per_page))
+        else:
+            query = """
+                SELECT COUNT(*) OVER() as total_count, id, name,
+                strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
+                cellphone,
+                strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable ,email
+                FROM users
+                LIMIT? OFFSET?
+            """
+            cursor.execute(query, (per_page, (page - 1) * per_page))
         rows = cursor.fetchall()
 
         total_count = rows[0]['total_count'] if rows else 0
@@ -162,9 +173,12 @@ def init_data():
         expire = str(user_info['expire'])
 
         # 查询节点数量
-        node_count = cursor.execute("SELECT COUNT(*) as count FROM nodes").fetchone()[0]
-        # 查询路由数量
-        route_count = cursor.execute("SELECT COUNT(*) as count FROM nodes where approved_routes IS NOT NULL").fetchone()[0]
+        if is_user_mode():
+            node_count = cursor.execute("SELECT COUNT(*) as count FROM nodes WHERE user_id =?", (current_user_id,)).fetchone()[0]
+            route_count = cursor.execute("SELECT COUNT(*) as count FROM nodes WHERE approved_routes IS NOT NULL AND user_id =?", (current_user_id,)).fetchone()[0]
+        else:
+            node_count = cursor.execute("SELECT COUNT(*) as count FROM nodes").fetchone()[0]
+            route_count = cursor.execute("SELECT COUNT(*) as count FROM nodes where approved_routes IS NOT NULL").fetchone()[0]
   
 
     data = {

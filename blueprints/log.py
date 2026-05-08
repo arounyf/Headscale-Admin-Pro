@@ -1,6 +1,7 @@
 from flask_login import login_required, current_user
 from flask import Blueprint,  request
 from exts import SqliteDB
+from utils import is_user_mode
 
 
 bp = Blueprint("log", __name__, url_prefix='/api/log')
@@ -28,7 +29,7 @@ def getLogs():
         """
 
         # 判断用户角色
-        if current_user.role != 'manager':
+        if current_user.role != 'manager' or is_user_mode():
             base_query += " WHERE log.user_id =? "
             params = (current_user.id,)
         else:
