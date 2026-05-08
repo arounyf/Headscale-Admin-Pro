@@ -1,41 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>出错了</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/layui/css/layui.css" media="all">
-  <link rel="stylesheet" href="/static/adminui/dist/css/admin.css" media="all">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}出错了 - Headscale-Admin-Pro{% endblock %}
 
-
-<div class="layui-fluid">
-  <div class="layadmin-tips">
-    <i class="layui-icon" face>&#xe664;</i>
-
-    <div class="layui-text" style="font-size: 20px;">
-        {% if message %}
-            <p>{{ message }}</p>
-        {% endif %}
-    </div>
-
+{% block body %}
+<div class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-950 px-4">
+  <div class="text-center">
+    <svg class="w-16 h-16 mx-auto text-red-300 dark:text-red-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+    <p class="text-lg text-gray-700 dark:text-gray-300 mb-6">{{ message or '发生了一个错误' }}</p>
+    <a href="/" class="inline-block px-6 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600">返回首页</a>
   </div>
 </div>
-
-
-  <script src="/static/layui/layui.js"></script>
-  <script>
-      layui.config({
-        base: '/static/' // 静态资源所在路径
-      }).use(['index']);
-
-
-      setInterval(function() {
-        parent.location.href = '/';
-      }, 3000);
-  </script>
-</body>
-</html>
+{% endblock %}

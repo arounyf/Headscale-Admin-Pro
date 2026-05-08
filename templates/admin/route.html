@@ -1,339 +1,181 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}路由中心{% endblock %}
 
+{% block body %}
+<div class="p-6" x-data="routePage">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 flex items-center justify-between">
+      <span class="font-semibold">路由中心</span>
+      <div class="flex gap-2">
+        <button @click="showAddModal = true" class="px-3 py-1.5 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600">路由通告</button>
+        <button @click="refresh" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">刷新</button>
+      </div>
+    </div>
+    <div class="p-4">
+      <div id="route-table"></div>
+    </div>
+  </div>
 
-  
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">路由中心</div>
-          <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
-
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                <button class="layui-btn layui-btn-sm" lay-event="add">路由通告</button>
-              </div>
-            </script>
-             
-
-            {% raw %}
-            <script type="text/html" id="test-table-switchTpl">
-              <!-- 这里的 checked 的状态只是演示 -->
-              <input type="checkbox" name="启用" lay-skin="switch" lay-text="是|否" lay-filter="test-table-sexDemo"
-               value="{{ d.enable }}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}" {{ d.enable == "1" ? 'checked' : '' }}>
-               &nbsp;
-               <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
-            </script>
-            {% endraw %}
-             
-
-          </div>
+  <!-- 路由通告弹窗 -->
+  <div x-show="showAddModal" class="modal-overlay" @click.self="showAddModal = false" x-transition.opacity>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6" x-transition.scale>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold">路由通告</h3>
+        <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <div class="space-y-4">
+        {% if current_user.role == 'manager' %}
+        <div>
+          <label class="block text-sm text-gray-500 mb-1">用户选择</label>
+          <select x-model="addForm.userId" @change="loadNodes" class="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+            <option value="">请选择用户</option>
+            <template x-for="u in userList" :key="u.id">
+              <option :value="u.id" x-text="u.userName"></option>
+            </template>
+          </select>
         </div>
+        {% endif %}
+        <div>
+          <label class="block text-sm text-gray-500 mb-1">节点选择</label>
+          <select x-model="addForm.nodeId" @change="loadRoutes" class="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+            <option value="">请选择节点</option>
+            <template x-for="n in nodeList" :key="n.id">
+              <option :value="n.id" x-text="n.name + ' (' + n.ip + ')'"></option>
+            </template>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-500 mb-1">路由选择</label>
+          <select x-model="addForm.route" class="w-full px-3 py-2 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+            <option value="">请选择路由</option>
+            <template x-for="r in routeList" :key="r">
+              <option :value="r" x-text="r"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button @click="showAddModal = false" class="px-4 py-2 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">取消</button>
+        <button @click="doAdd" :disabled="adding" class="px-4 py-2 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50" x-text="adding ? '提交中...' : '提交'"></button>
       </div>
     </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script src="/static/csrf.js"></script>
-  <script>
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown','form'], function(){
-    var table = layui.table
-    ,form = layui.form
-    ,$ = layui.$;
-    var dropdown = layui.dropdown;
-    
-    // 创建渲染实例
-    table.render({
-      elem: '#test-table-index'
-      ,url: '/api/route/getRoute' // 此处为静态模拟数据，实际使用时需换成真实接口
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
-      }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: true
-      ,cols: [[
-            //{type: 'checkbox'}
-            {field:'id', title:'ID', fixed: 'left', width:80, unresize: true, sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
-                ,{field:'name', title:'用户名',width:200, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
-            {% endif %}
-            ,{field:'NodeName', title:'节点',width:300
-                {% if current_user.role == 'user' %}
-                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
-                {% endif %}
-            }
-            ,{field:'route', title:'路由',width:280}
-            ,{field:'createTime', title: '创建时间', width:200, sort: true}
-        
-        ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
-      }
-    });
+</div>
 
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('routePage', () => ({
+    grid: null, showAddModal: false, adding: false,
+    userList: [], nodeList: [], routeList: [],
+    currentUser: { id: '{{ current_user.id }}', username: '{{ current_user.name }}' },
+    addForm: { userId: '', nodeId: '', route: '' },
 
-   
-// 工具栏事件
-table.on('toolbar(test-table-index)', function(obj){
-  var $ = layui.$;
-  var form = layui.form; // 确保引入form模块
-  var util = layui.util;
-  var id = obj.config.id;
-  var checkStatus = table.checkStatus(id);
-  var othis = lay(this);
-  switch(obj.event){
-    case 'reload':
-      var data = checkStatus.data;
-      table.reload('test-table-index',true);
-    break;
-    case 'add':
-       layer.open({
-      type: 1,
-      content: `
-        <div class="layui-form" lay-filter="filter-test-layer" style="margin: 20px 35px 30px 0; padding: 10px 0;">
-      <div class="demo-login-container">
+    init() {
+      this.buildTable();
+      {% if current_user.role != 'manager' %}
+      this.loadNodes();
+      {% endif %}
+    },
+
+    buildTable() {
+      var self = this;
+      var cols = [
+        { name: 'ID', id: 'id', sort: true, width: '80px' },
         {% if current_user.role == 'manager' %}
-        <!-- 用户选择下拉框 - 仅管理员显示 -->
-        <div class="layui-form-item">
-          <label class="layui-form-label">用户选择</label>
-          <div class="layui-input-block">
-            <select name="userId" lay-verify="required" lay-reqtext="请选择用户" lay-filter="userIdFilter">
-              <option value="">加载中...</option>
-            </select>
-          </div>
-        </div>
+        { name: '用户名', id: 'name', width: '150px' },
         {% endif %}
-        
-        <!-- 节点选择下拉框 -->
-        <div class="layui-form-item">
-          <label class="layui-form-label">节点选择</label>
-          <div class="layui-input-block">
-            <select name="nodeId" lay-verify="required" lay-reqtext="请选择节点" lay-filter="nodeIdFilter">
-              <option value="">加载中...</option>
-            </select>
-          </div>
-        </div>
-        
-        <!-- 路由选择下拉框 -->
-        <div class="layui-form-item">
-          <label class="layui-form-label">路由选择</label>
-          <div class="layui-input-block">
-            <select name="routes" lay-verify="required" lay-reqtext="请选择路由">
-              <option value="">请先选择节点</option>
-            </select>
-          </div>
-        </div>
-      
-        <div class="layui-form-item">
-          <div class="layui-input-block">
-            <button class="layui-btn" lay-submit lay-filter="demo-login">提交</button>
-          </div>
-        </div>
-      </div>
-    </div>
-      `,
-  
-      // 根据角色调整弹窗高度（管理员多一个用户选择框，高度增加50px）
-      area: ['320px', {% if current_user.role == 'manager' %}'295px'{% else %}'245px'{% endif %}],
-      maxmin: true,
-      success: function(layero, index){
-        layer.full(index); // 最大化
-        
-        // 存储用户列表数据（仅管理员需要）
-        var userList = [];
-        // 当前用户信息（普通用户直接使用）
-        var currentUser = {
-          id: '{{ current_user.id }}',
-          username: '{{ current_user.username }}'
-        };
-        
-        // 仅管理员加载用户列表
-        {% if current_user.role == 'manager' %}
-        $.ajax({
-          url: '/api/user/getUsers', // 用户列表接口
-          type: 'get',
-          dataType: 'json',
-          success: function(res) {
-            if (res.code === "0" && res.data && res.data.length > 0) {
-              userList = res.data;
-              var userIdSelect = layero.find('select[name="userId"]');
-              userIdSelect.html('<option value="">请选择用户</option>');
-              res.data.forEach(function(user) {
-                userIdSelect.append(`<option value="${user.id}">${user.userName}</option>`);
-              });
-            } else {
-              layero.find('select[name="userId"]').html(`<option value="">${res.msg || '暂无用户数据'}</option>`);
-            }
-            form.render('select', 'filter-test-layer');
-          },
-          error: function(xhr) {
-            console.error('用户请求失败：', xhr);
-            layero.find('select[name="userId"]').html('<option value="">用户数据加载失败（网络错误）</option>');
-            form.render('select', 'filter-test-layer');
+        { name: '节点', id: 'NodeName', width: '200px' },
+        { name: '路由', id: 'route', width: '200px' },
+        { name: '创建时间', id: 'createTime', sort: true, width: '160px' },
+        { name: '操作', id: 'actions', width: '120px', sort: false, formatter: function(_, row) {
+          var cells = row.cells; var idIdx = 0; var id = cells[idIdx].data; var enIdx = cells.length - 2; var enabled = cells[enIdx].data === '1';
+          return gridjs.html('<input type="checkbox" ' + (enabled ? 'checked' : '') + ' onchange="document.dispatchEvent(new CustomEvent(\'route:toggle\',{detail:{id:' + id + ', val: this.checked}}))" class="w-4 h-4 rounded border-gray-300 text-primary-500 mr-2"><button class="text-red-500 hover:text-red-600 text-sm" onclick="document.dispatchEvent(new CustomEvent(\'route:del\',{detail:{id:' + id + '}}))">删除</button>');
+        }}
+      ];
+
+      this.grid = new gridjs.Grid({
+        columns: cols,
+        server: {
+          url: '/api/route/getRoute',
+          then: function(data) {
+            var list = data.data || [];
+            return list.map(function(r) {
+              return [r.id, {% if current_user.role == 'manager' %}r.name, {% endif %}r.NodeName, r.route, r.createTime, r.enable, null];
+            });
           }
-        });
-        {% endif %}
-        
-        // 加载节点列表（管理员需选择用户后加载，普通用户直接加载）
-        var loadNodes = function(userId, userName) {
-          var nodeSelect = layero.find('select[name="nodeId"]');
-          var routeSelect = layero.find('select[name="routes"]');
-          
-          // 重置节点和路由选择框状态
-          nodeSelect.html('<option value="">节点加载中...</option>');
-          routeSelect.html('<option value="">请先选择节点</option>');
-          form.render('select', 'filter-test-layer');
-          
-          // 请求节点列表接口（保持原接口地址不变）
-          $.ajax({
-            url: '/api/node/getNodes',
-            type: 'get',
-            data: { 
-              userId: userId,
-              search_name: userName // 保持原参数传递逻辑
-            },
-            dataType: 'json',
-            success: function(res) {
-              if (res.code === "0" && res.data && res.data.length > 0) {
-                nodeSelect.html('<option value="">请选择节点</option>');
-                res.data.forEach(function(node) {
-                  var displayText = `${node.name} (${node.ip})`;
-                  nodeSelect.append(`<option value="${node.id}">${displayText}</option>`);
-                });
-              } else {
-                nodeSelect.html(`<option value="">${res.msg || '该用户无可用节点'}</option>`);
-              }
-              form.render('select', 'filter-test-layer');
-            },
-            error: function(xhr) {
-              console.error('节点请求失败：', xhr);
-              nodeSelect.html('<option value="">节点数据加载失败（网络错误）</option>');
-              form.render('select', 'filter-test-layer');
-            }
+        },
+        search: true,
+        sort: { multiColumn: false },
+        pagination: { limit: 15 },
+        language: { search: { placeholder: '搜索...' }, pagination: { showing: '显示', to: '到', of: '共', results: '' } },
+        style: { table: { 'white-space': 'nowrap' } },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('route-table'));
+
+      document.addEventListener('route:del', function(e) {
+        openConfirm('确认删除该路由吗？', function() {
+          apiPost('/api/node/delete_route', { routeId: e.detail.id }).then(function(res) {
+            showToast(res.msg, res.code === '0' ? 'success' : 'error');
+            self.refresh();
           });
-        };
-        
-        // 管理员监听用户选择变化
-        {% if current_user.role == 'manager' %}
-        form.on('select(userIdFilter)', function(data){
-          var userId = data.value;
-          if (!userId) {
-            layero.find('select[name="nodeId"]').html('<option value="">请先选择用户</option>');
-            form.render('select', 'filter-test-layer');
-            return;
-          }
-          // 根据用户ID查找用户名
-          var userName = '';
-          for (var i = 0; i < userList.length; i++) {
-            if (userList[i].id == userId) {
-              userName = userList[i].userName;
-              break;
-            }
-          }
-          // 加载该用户的节点
-          loadNodes(userId, userName);
         });
+      });
+
+      document.addEventListener('route:toggle', function(e) {
+        apiPost('/api/node/route_open', { id: e.detail.id, enable: e.detail.val }).then(function(res) {
+          showToast(res.msg, res.code === '0' ? 'success' : 'error');
+        });
+      });
+    },
+
+    async loadUsers() {
+      try {
+        var res = await fetch('/api/user/getUsers').then(r => r.json());
+        this.userList = res.data || [];
+      } catch(e) {}
+    },
+
+    async loadNodes() {
+      var userId = this.addForm.userId || this.currentUser.id;
+      if (!userId) return;
+      try {
+        var res = await fetch('/api/node/getNodes?search_name=' + (this.addForm.userId ? this.userList.find(u => u.id == userId)?.userName || '' : this.currentUser.username)).then(r => r.json());
+        this.nodeList = res.data || [];
+      } catch(e) {}
+    },
+
+    async loadRoutes() {
+      if (!this.addForm.nodeId) { this.routeList = []; return; }
+      try {
+        var fd = new URLSearchParams(); fd.append('NodeId', this.addForm.nodeId);
+        var res = await apiPost('/api/node/node_route_info', fd);
+        if (res.code === '0' && res.data && res.data.length > 0) {
+          this.routeList = res.data[0].availableRoutes || [];
+        } else { this.routeList = []; }
+      } catch(e) {}
+    },
+
+    async doAdd() {
+      if (!this.addForm.nodeId || !this.addForm.route) { showToast('请完整填写', 'warning'); return; }
+      this.adding = true;
+      try {
+        var fd = new URLSearchParams();
+        fd.append('nodeId', this.addForm.nodeId);
+        fd.append('routes', this.addForm.route);
+        {% if current_user.role != 'manager' %}
+        fd.append('userId', this.currentUser.id);
         {% else %}
-        // 普通用户直接加载自己的节点
-        loadNodes(currentUser.id, currentUser.username);
+        fd.append('userId', this.addForm.userId);
         {% endif %}
-        
-        // 监听节点选择变化（保持原逻辑不变）
-        form.on('select(nodeIdFilter)', function(data){
-          var nodeId = data.value;
-          var routesSelect = layero.find('select[name="routes"]');
-          
-          if (!nodeId) {
-            routesSelect.html('<option value="">请先选择节点</option>');
-            form.render('select', 'filter-test-layer');
-            return;
-          }
-          
-          routesSelect.html('<option value="">路由加载中...</option>');
-          form.render('select', 'filter-test-layer');
-          
-          $.ajax({
-            url: '/api/node/node_route_info',
-            type: 'post',
-            data: { NodeId: nodeId },
-            dataType: 'json',
-            success: function(routeRes) {
-              if (routeRes.code === "0" && routeRes.data && routeRes.data.length > 0) {
-                var availableRoutes = routeRes.data[0].availableRoutes || [];
-                if (availableRoutes.length > 0) {
-                  routesSelect.html('<option value="">请选择需要通告路由</option>');
-                  availableRoutes.forEach(function(route) {
-                    routesSelect.append(`<option value="${route}">${route}</option>`);
-                  });
-                } else {
-                  routesSelect.html('<option value="">该节点无可用路由</option>');
-                }
-              } else {
-                routesSelect.html(`<option value="">${routeRes.msg || '路由数据获取失败'}</option>`);
-              }
-              form.render('select', 'filter-test-layer');
-            },
-            error: function(xhr) {
-              console.error('路由请求失败：', xhr);
-              routesSelect.html('<option value="">路由请求失败（网络错误）</option>');
-              form.render('select', 'filter-test-layer');
-            }
-          });
-        });
-        
-        // 监听表单提交（保持原逻辑不变）
-        form.on('submit(demo-login)', function(data) {
-          // 普通用户补充userId参数
-          {% if current_user.role != 'manager' %}
-          data.field.userId = currentUser.id;
-          {% endif %}
-          
-          $.ajax({
-            url: '/api/node/approve_routes',
-            type: 'post',
-            data: data.field,
-            success: function(res) {
-              if (res.code === "0") {
-                layer.msg(res.msg, {icon: 6});
-                layer.close(index);
-                table.reload('test-table-index');
-              } else {
-                layer.msg(res.msg || '操作失败', {icon: 7});
-              }
-            }
-          });
-          
-          return false;
-        });
-      }
-    });
+        var res = await apiPost('/api/node/approve_routes', fd);
+        showToast(res.msg || '操作完成', res.code === '0' ? 'success' : 'error');
+        if (res.code === '0') { this.showAddModal = false; this.refresh(); }
+      } catch(e) { showToast('操作失败', 'error'); }
+      this.adding = false;
+    },
 
-    break;
-  };
+    refresh() { if (this.grid) this.grid.forceRender(); }
+  }));
 });
-   
-
-  });
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}

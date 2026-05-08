@@ -13,30 +13,38 @@ bp = Blueprint("admin", __name__, url_prefix='/admin')
 @bp.route('/')
 @login_required
 def admin():
-    # 定义每个菜单项及其对应的可访问角色
-
-    menu_items = {
-        'console': {'html': '<dd data-name="console" class="layui-this"><a lay-href="console"><i class="layui-icon layui-icon-console"></i>控制台</a></dd>', 'roles': ['manager']},
-        'user': {'html': '<dd data-name="console"><a lay-href="user"><i class="layui-icon layui-icon-user"></i>用户</a></dd>', 'roles': ['manager']},
-        'node': {'html': '<dd data-name="console"><a lay-href="node"><i class="layui-icon layui-icon-website"></i>节点</a></dd>', 'roles': ['manager', 'user']},
-        'route': {'html': '<dd data-name="console"><a lay-href="route"><i class="layui-icon layui-icon-senior"></i>路由</a></dd>', 'roles': ['manager', 'user']},
-        'acl': {'html': '<dd data-name="console"><a lay-href="acl"><i class="layui-icon layui-icon-auz"></i>ACL</a></dd>','roles': ['manager']},
-        'preauthkey': {'html': '<dd data-name="console"><a lay-href="preauthkey"><i class="layui-icon layui-icon-key"></i>密钥</a></dd>','roles': ['manager', 'user']},
-        'deploy': {'html': '<dd data-name="console"><a lay-href="deploy"><i class="layui-icon layui-icon-fonts-code"></i>指令</a></dd>', 'roles': ['manager', 'user']},
-        'help': {'html': '<dd data-name="console"><a lay-href="help"><i class="layui-icon layui-icon-read"></i>文档</a></dd>', 'roles': ['manager', 'user']},
-        'set': {'html': '<dd data-name="console"><a lay-href="set"><i class="layui-icon layui-icon-set"></i>设置</a></dd>', 'roles': ['manager']},
-        'log': {'html': '<dd data-name="console"><a lay-href="log"><i class="layui-icon layui-icon-form"></i>日志</a></dd>', 'roles': ['manager', 'user']}
+    # 定义菜单项及其对应的可访问角色
+    # icon: SVG 内联图标
+    _svg = {
+        'console': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4"/></svg>',
+        'user': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>',
+        'node': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>',
+        'route': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>',
+        'acl': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>',
+        'preauthkey': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>',
+        'deploy': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>',
+        'help': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>',
+        'set': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+        'log': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>',
     }
-
+    menu_items = [
+        {'name': '控制台', 'url': 'console', 'icon': _svg['console'], 'roles': ['manager']},
+        {'name': '用户', 'url': 'user', 'icon': _svg['user'], 'roles': ['manager']},
+        {'name': '节点', 'url': 'node', 'icon': _svg['node'], 'roles': ['manager', 'user']},
+        {'name': '路由', 'url': 'route', 'icon': _svg['route'], 'roles': ['manager', 'user']},
+        {'name': 'ACL', 'url': 'acl', 'icon': _svg['acl'], 'roles': ['manager']},
+        {'name': '密钥', 'url': 'preauthkey', 'icon': _svg['preauthkey'], 'roles': ['manager', 'user']},
+        {'name': '指令', 'url': 'deploy', 'icon': _svg['deploy'], 'roles': ['manager', 'user']},
+        {'name': '文档', 'url': 'help', 'icon': _svg['help'], 'roles': ['manager', 'user']},
+        {'name': '设置', 'url': 'set', 'icon': _svg['set'], 'roles': ['manager']},
+        {'name': '日志', 'url': 'log', 'icon': _svg['log'], 'roles': ['manager', 'user']},
+    ]
 
     role = current_user.role
-    if(role == "manager"):
-        default_page = "console"
-    else:
-        default_page = "node"
-    menu_html = "".join(item['html'] for item in menu_items.values() if role in item['roles'])
+    default_page = "console" if role == "manager" else "node"
+    visible_menus = [m for m in menu_items if role in m['roles']]
     hs_running = 'running' if get_headscale_pid() else 'stopped'
-    return render_template('admin/index.html', menu_html=menu_html, default_page=default_page, hs_running=hs_running)
+    return render_template('admin/index.html', menu_items=visible_menus, default_page=default_page, hs_running=hs_running)
 
 
 

@@ -1,307 +1,174 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>节点中心</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}节点中心{% endblock %}
 
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">节点中心</div>
-          <div class="layui-card-body">
-            
-            {% if current_user.role == 'manager' %}
-                    <!-- 搜索框：嵌套在layui-form中，添加margin-bottom避免与表格重叠 -->
-            <div class="layui-form" lay-filter="searchForm" style="margin-bottom: 5px;">
-              <div class="layui-input-inline" style="width: 300px;">
-  
-                <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
-              </div>
-              <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
-                <i class="layui-icon layui-icon-search"></i> 搜索
-              </button>
-            </div>
-            {% endif %}
-            
-
-            <!-- 表格：保留原有的所有配置 -->
-            <table class="layui-table" id="test-table-index" lay-filter="test-table-index"></table>
-
-            <!-- 工具栏模板 -->
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <button id="switchButton" class="layui-btn layui-btn-sm" lay-event=""></button>
-                <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">多行</button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="default-row">单行</button>
-     
-              </div>
-            </script>
-
-            <!-- 时间模板 -->
-            {% raw %}
-            <script type="text/html" id="TPL-lastTime">  
-                {{#  
-                  var util = layui.util;
-                  var lastTime = function(){
-                    return util.timeAgo(d.lastTime);
-                  }; 
-                }}
-                {{= lastTime() }}
-            </script>               
-            {% endraw %}
-
-            <!-- 操作列模板 -->
-            <script type="text/html" id="barDemo">
-              <a class="layui-btn layui-btn-info layui-btn-xs" lay-event="detail">查看</a>
-              <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
-            </script>  
-          </div>
-        </div>
+{% block body %}
+<div class="p-6" x-data="nodePage">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 flex items-center justify-between flex-wrap gap-2">
+      <span class="font-semibold">节点中心</span>
+      <div class="flex gap-2 flex-wrap">
+        {% if current_user.role == 'manager' %}
+        <form @submit.prevent="searchSubmit" class="flex gap-2">
+          <input type="text" x-model="searchName" placeholder="搜索用户名" class="w-48 px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-primary-500">
+          <button type="submit" class="px-3 py-1.5 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600">搜索</button>
+        </form>
+        {% endif %}
+        <button @click="addNode" class="px-3 py-1.5 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600" id="switchButton">添加节点</button>
+        <button @click="refresh" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">刷新</button>
+        <button @click="toggleMultiRow" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <span x-text="multiRow ? '单行' : '多行'"></span>
+        </button>
       </div>
     </div>
+    <div class="p-4">
+      <div id="node-table"></div>
+    </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script src="/static/csrf.js"></script>
 
-  <script>
-  layui.config({
-    base: '/static/'
-  }).use(['index', 'table', 'dropdown', 'form'], function(){
-    var table = layui.table;
-    var $ = layui.$;
-    var util = layui.util;
-    var form = layui.form;
+  <!-- 节点详情弹窗 -->
+  <div x-show="showDetail" class="modal-overlay" @click.self="showDetail = false" x-transition.opacity>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg p-6" x-transition.scale>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold">节点信息</h3>
+        <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <div x-html="detailContent"></div>
+    </div>
+  </div>
+</div>
 
-    // 节点添加结果提示（保留原有逻辑）
-    var ip_address = '{{ ip_address }}';
-    if (ip_address == "error"){
-        layer.alert('{{ error_info }}', {
-            icon: 7, shadeClose: true, title: '节点添加失败'
-        }, function(){
-            window.location.href = '/admin/node';
-        });
-    } else if(ip_address && ip_address != "error"){
-        layer.alert('ip地址: '+ ip_address, {
-            icon: 1, shadeClose: true, title: '节点添加成功'
-        }, function(){
-            window.location.href = '/admin/node';
-        });
-    }
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('nodePage', () => ({
+    grid: null, searchName: '', multiRow: false,
+    showDetail: false, detailContent: '',
 
-    // 表格渲染（保留原有所有配置，仅调整height适配搜索框）
-    var tableIns = table.render({
-      elem: '#test-table-index'
-      ,url: '/api/node/getNodes'
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助', layEvent: 'LAYTABLE_TIPS', icon: 'layui-icon-tips'
-      }]
-      ,height: {% if current_user.role == 'user' %}'full-100'{% else %}'full-150'{% endif %}
-      ,cellMinWidth: 80
-      ,totalRow: true
-      ,page: false
-      ,where: {} // 存储搜索条件
-      ,cols: [[
-            {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
-                ,{field:'userName', width:180, title: '用户名', sort: true,totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
-            {% endif %}
-            ,{field:'name', width:180, title: '节点名', edit: 'text'
-                {% if current_user.role == 'user' %}
-                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
-                {% endif %}
-            }
-            ,{
-                field: 'ip', 
-                width: 160, 
-                title: 'IP地址',
-                templet: function(d) {
-                    return d.ip.split(', ').join('<br>');
-                }
-            }
-            ,{
-                field: 'online', 
-                width: 100, 
-                title: '状态',
-                sort: true, 
-                templet: function(d) {
-                    return d.online ? '<span class="layui-badge layui-bg-green">在线</span>' : '<span class="layui-badge layui-bg-gray">离线</span>';
-                }
-            }
-            ,{
-                field: 'createTime', 
-                title: '创建时间', 
-                width: 180, 
-                sort: true,
-                templet: function(d) {
-                    return util.timeAgo(d.createTime);
-                }
-            }
-            ,{fixed: 'right', title:'操作', width: 120, toolbar: '#barDemo'}
-        ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
+    init() {
+      // 检查是否从注册页面转来
+      {% if ip_address %}
+      var ip = '{{ ip_address }}';
+      var err = '{{ error_info }}';
+      if (ip === 'error') {
+        setTimeout(function() {
+          openModal('节点添加失败', '<p class="text-red-500">' + (err || '添加失败') + '</p>', function() { window.location.href = '/admin/node'; }, { confirmText: '确定', cancelText: '取消' });
+        }, 300);
+      } else if (ip && ip !== 'error') {
+        setTimeout(function() {
+          openModal('节点添加成功', '<p>IP地址: <strong>' + ip + '</strong></p>', function() { window.location.href = '/admin/node'; }, { confirmText: '确定', cancelText: '取消' });
+        }, 300);
       }
-    });
+      {% endif %}
 
-    // 保留按钮状态逻辑
-    function keepButtonStatus(){
-        if (window.top !== window) {
-            $('#switchButton').attr('lay-event', 'addNode').text('添加节点');
-        }else{
-            $('#switchButton').attr('lay-event', 'goHome').text('返回主页');
+      this.buildTable();
+      this.updateButtonLabel();
+    },
+
+    buildTable() {
+      var self = this;
+
+      var cols = [
+        { name: 'ID', id: 'id', sort: true, width: '80px' },
+        {% if current_user.role == 'manager' %}
+        { name: '用户名', id: 'userName', sort: true, width: '150px' },
+        {% endif %}
+        { name: '节点名', id: 'name', width: '180px' },
+        { name: 'IP地址', id: 'ip', width: '160px', formatter: function(cell) { return gridjs.html(String(cell || '').split(', ').join('<br>')); } },
+        { name: '状态', id: 'online', width: '80px', sort: true, formatter: function(cell) { return gridjs.html(cell ? '<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">在线</span>' : '<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">离线</span>'); } },
+        { name: '创建时间', id: 'createTime', width: '160px', sort: true, formatter: function(cell) { return gridjs.html(timeAgo(cell)); } },
+        { name: '操作', id: 'actions', width: '120px', sort: false, formatter: function(_, row) {
+          var cells = row.cells;
+          var idIdx = 0;
+          var data = { id: cells[idIdx].data };
+          return gridjs.html('<button class="text-primary-500 hover:text-primary-600 text-sm mr-2" onclick="document.dispatchEvent(new CustomEvent(\'node:detail\',{detail:' + JSON.stringify(data) + '}))">查看</button><button class="text-red-500 hover:text-red-600 text-sm" onclick="document.dispatchEvent(new CustomEvent(\'node:del\',{detail:' + JSON.stringify(data) + '}))">删除</button>');
+        }}
+      ];
+
+      var serverOpts = {
+        url: '/api/node/getNodes',
+        then: function(data) {
+          var list = data.data || [];
+          return list.map(function(r) {
+            return [r.id, {% if current_user.role == 'manager' %}r.userName, {% endif %}r.name, r.ip, r.online, r.createTime, null];
+          });
         }
-    }
-    keepButtonStatus();
+      };
 
-    // 搜索表单提交事件
-    form.on('submit(demo-table-search)', function(data){
-      var field = data.field;
-      // 重载表格，传递搜索条件
-      table.reload('test-table-index', {
-        where: field, // 搜索条件：{username: "输入的用户名"}
-        page: false // 重置页码
+      if (this.searchName) {
+        serverOpts.url = '/api/node/getNodes?search_name=' + encodeURIComponent(this.searchName);
+      }
+
+      this.grid = new gridjs.Grid({
+        columns: cols,
+        server: serverOpts,
+        search: false,
+        sort: { multiColumn: false },
+        pagination: false,
+        height: this.multiRow ? undefined : undefined,
+        style: { table: { 'font-size': '14px' }, td: this.multiRow ? { 'padding': '12px 8px' } : {} },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('node-table'));
+
+      // 事件处理
+      document.addEventListener('node:del', function(e) {
+        var d = e.detail;
+        openConfirm('确认删除该节点吗？', function() {
+          apiPost('/api/node/delete', { NodeId: d.id }).then(function(res) {
+            if (res.code === '0') { showToast(res.msg, 'success'); self.refresh(); }
+            else { showToast(res.msg, 'error'); }
+          });
+        });
       });
-      keepButtonStatus();
 
-      return false; // 阻止表单默认提交
-    });
-
-    // 单元格编辑事件（保留原有逻辑）
-    table.on('edit(test-table-index)', function(obj){
-      var value = obj.value, data = obj.data, field = obj.field;
-      if (field == "name"){
-        $.ajax({
-          url:'/api/node/rename',
-          type: 'post',
-          dataType: 'json',
-          data: {nodeId: obj.data.id, nodeName: obj.value},
-          success:function(res){
-            if(res.code == 0){
-              layer.msg(res.msg, {icon: 6});
-              obj.update({name: value});
-            }else{
-              layer.msg(res.msg, {icon: 7});
-            }
-          }
+      document.addEventListener('node:detail', function(e) {
+        var d = e.detail;
+        apiPost('/api/node/node_info', { NodeId: d.id }).then(function(res) {
+          if (res.code === '0') {
+            var list = res.data || [];
+            var info = list.length > 0 ? list[0] : {};
+            self.detailContent = '<p><strong>客户端:</strong> ' + escapeHtml(info.Client || '未知') + '</p><p><strong>操作系统:</strong> ' + escapeHtml(info.OS || '未知') + '</p>';
+            self.showDetail = true;
+          } else { showToast(res.msg, 'error'); }
         });
+      });
+    },
+
+    updateButtonLabel() {
+      try {
+        var btn = document.getElementById('switchButton');
+        if (btn && window.top !== window) { btn.textContent = '添加节点'; btn.setAttribute('data-action', 'add'); }
+        else { btn.textContent = '返回主页'; btn.setAttribute('data-action', 'home'); }
+      } catch(e) {}
+    },
+
+    addNode() {
+      var btn = document.getElementById('switchButton');
+      var action = btn ? btn.getAttribute('data-action') : 'add';
+      if (action === 'home') {
+        window.location.href = '/admin';
+        return;
       }
-    });
+      var nodeKey = prompt('请输入节点ID:');
+      if (!nodeKey) return;
+      var self = this;
+      apiPost('/api/node/register', { nodekey: nodeKey }).then(function(res) {
+        if (res.code === '0') { showToast(res.msg, 'success'); self.refresh(); }
+        else { showToast(res.msg, 'error'); }
+      });
+    },
 
-    // 工具栏事件（保留原有逻辑）
-    table.on('toolbar(test-table-index)', function(obj){
-      var checkStatus = table.checkStatus(obj.config.id);
-      switch(obj.event){
-        case 'goHome':
-          window.location.href = '/admin';
-          break;
-        case 'addNode':
-          layer.prompt({title: '请输入节点id'}, function(value, index){
-            if(value === '') return elem.focus();
-            $.ajax({
-              url:'/api/node/register',
-              type: 'post',
-              dataType: 'json',
-              data: {nodekey: util.escape(value)},
-              success:function(res){
-                if(res.code == 0){
-                  layer.msg(res.msg, {icon: 6});
-                  table.reload('test-table-index', true);
-                }else{
-                  layer.msg(res.msg, {icon: 7});
-                }
-              }
-            });
-            layer.close(index);
-          });
-          break;
-        case 'reload':
-          // 刷新时保留搜索条件
-          table.reload('test-table-index', {
-            where: tableIns.config.where
-          });
-          layer.msg('已刷新', {icon: 1});
-          break;
-        case 'multi-row':
-          table.reload('test-table-index', {lineStyle: 'height: 95px;'});
-          layer.msg('已设为多行显示');
-          break;
-        case 'default-row':
-          table.reload('test-table-index', {lineStyle: null});
-          layer.msg('已设为单行显示');
-          break;
-        case 'LAYTABLE_TIPS':
-          layer.alert('Table for layui-v'+ layui.v);
-          break;
-      }
-      keepButtonStatus();
-    });
+    searchSubmit() {
+      this.buildTable();
+    },
 
-    // 单元格工具事件（保留原有逻辑）
-    table.on('tool(test-table-index)', function(obj){
-      var data = obj.data;
-      if(obj.event === 'del'){
-        layer.confirm('真的删除该节点吗？', function(index){
-          $.ajax({
-            url:'/api/node/delete',
-            type: 'post',
-            dataType: 'json',
-            data: {NodeId: obj.data.id},
-            success:function(res){
-              if(res.code == 0){
-                layer.msg(res.msg, {icon: 6});
-                obj.del();
-              }else{
-                layer.msg(res.msg, {icon: 7});
-              }
-            }
-          });
-          layer.close(index);
-        });
-      }else if(obj.event === 'detail'){
-        var dialogContent = `<div id="node-detail-content" style="padding: 20px;"></div>`;
-        layer.open({
-          title: '节点信息',
-          type: 1,
-          area: ['600px','400px'],
-          content: dialogContent
-        });
-        $.ajax({
-          url:'/api/node/node_info',
-          type: 'post',
-          dataType: 'json',
-          data: {NodeId: obj.data.id},
-          success:function(res){
-            if (res.code === "0") {
-              const dataList = res.data;
-              const post_data = dataList.length > 0 ? dataList[0] : {};
-              var escapeHtml = function(str) {
-                var div = document.createElement('div');
-                div.appendChild(document.createTextNode(str));
-                return div.innerHTML;
-              };
-              $('#node-detail-content').html(`
-                <p><strong>客户端:</strong> ${escapeHtml(post_data.Client) || '未知'}</p>
-                <p><strong>操作系统:</strong> ${escapeHtml(post_data.OS) || '未知'}</p>
-              `);
-            } else {
-              layer.msg(res.msg, {icon: 7});
-            }
-          }
-        });
-      }
-    });
-  });
-  </script>
-</body>
-</html>
+    toggleMultiRow() {
+      this.multiRow = !this.multiRow;
+      this.buildTable();
+    },
+
+    refresh() {
+      if (this.grid) this.grid.forceRender();
+    }
+  }));
+});
+</script>
+{% endblock %}

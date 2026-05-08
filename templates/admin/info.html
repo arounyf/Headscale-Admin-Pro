@@ -1,65 +1,46 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>我的资料</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/layui/css/layui.css" media="all">
-  <link rel="stylesheet" href="/static/adminui/dist/css/admin.css" media="all">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}基本资料{% endblock %}
 
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">我的资料</div>
-          <div class="layui-card-body">
-            <table class="layui-table" lay-skin="nob">
-              <colgroup>
-                <col width="150">
-                <col>
-              </colgroup>
-              <tbody>
-                <tr>
-                  <td>用户名</td>
-                  <td>{{ name }}</td>
-                </tr>
-                <tr>
-                  <td>手机号码</td>
-                  <td>{{ cellphone or '未填写' }}</td>
-                </tr>
-                <tr>
-                  <td>邮箱</td>
-                  <td>{{ email or '未填写' }}</td>
-                </tr>
-                <tr>
-                  <td>可用节点数</td>
-                  <td>{{ node }}</td>
-                </tr>
-                <tr>
-                  <td>路由权限</td>
-                  <td>
-                    {% if route == 'checked' %}
-                    <span style="color:#16baaa;">已启用</span>
-                    {% else %}
-                    <span style="color:#999;">未启用</span>
-                    {% endif %}
-                  </td>
-                </tr>
-                <tr>
-                  <td>到期时间</td>
-                  <td>{{ expire }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+{% block body %}
+<div class="p-6 max-w-2xl">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">我的资料</div>
+    <div class="p-6">
+      <table class="w-full text-sm">
+        <tbody>
+          <tr class="border-b dark:border-gray-700">
+            <td class="py-3 text-gray-500 w-32">用户名</td>
+            <td class="py-3 font-medium">{{ name }}</td>
+          </tr>
+          <tr class="border-b dark:border-gray-700">
+            <td class="py-3 text-gray-500">手机号码</td>
+            <td class="py-3">{{ cellphone or '未填写' }}</td>
+          </tr>
+          <tr class="border-b dark:border-gray-700">
+            <td class="py-3 text-gray-500">邮箱</td>
+            <td class="py-3">{{ email or '未填写' }}</td>
+          </tr>
+          <tr class="border-b dark:border-gray-700">
+            <td class="py-3 text-gray-500">可用节点数</td>
+            <td class="py-3 font-medium">{{ node }}</td>
+          </tr>
+          <tr class="border-b dark:border-gray-700">
+            <td class="py-3 text-gray-500">路由权限</td>
+            <td class="py-3">
+              {% if route == 'checked' %}
+              <span class="text-emerald-500 font-medium">已启用</span>
+              {% else %}
+              <span class="text-gray-400">未启用</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="py-3 text-gray-500">到期时间</td>
+            <td class="py-3">{{ expire }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
-
-</body>
-</html>
+</div>
+{% endblock %}

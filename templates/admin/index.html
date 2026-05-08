@@ -1,166 +1,217 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>异地组网管理中心</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-  <script>
-  /^http(s*):\/\//.test(location.href) || alert('请通过 localhost 访问');;
-  </script>
-</head>
-<body class="layui-layout-body" id="LAY_home_iframe">
-  <div id="LAY_app" style="visibility: hidden">
-    <div class="layui-layout layui-layout-admin">
-      <div class="layui-header">
-        <!-- 头部区域 -->
-        <ul class="layui-nav layui-layout-left">
-          <li class="layui-nav-item layadmin-flexible" lay-unselect>
-            <a href="javascript:;" layadmin-event="flexible" title="侧边伸缩">
-              <i class="layui-icon layui-icon-shrink-right" id="LAY_app_flexible"></i>
-            </a>
-          </li>
-          <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <a href="." target="_blank" title="前台">
-              <i class="layui-icon layui-icon-website"></i>
-            </a>
-          </li>
-          <li class="layui-nav-item" lay-unselect>
-            <a href="javascript:;" layadmin-event="refresh" title="刷新">
-              <i class="layui-icon layui-icon-refresh-3"></i>
-            </a>
-          </li>
-          <!-- <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <input type="text" placeholder="搜索..." autocomplete="off" class="layui-input layui-input-search" layadmin-event="serach" lay-action="template/search.html?keywords=">
-          </li> -->
-        </ul>
-        <ul class="layui-nav layui-layout-right" lay-filter="layadmin-layout-right">
+{% extends "base.html" %}
+{% block title %}Headscale-Admin-Pro{% endblock %}
 
+{% block body %}
+<div class="flex min-h-screen bg-gray-100 dark:bg-gray-950" x-data="adminLayout">
 
-          <li class="layui-nav-item layui-hide-xs" lay-unselect style="pointer-events:none">
-            <span style="font-size:12px;color:{{ '#16baaa' if hs_running == 'running' else '#ff5722' }}">
-              <i class="layui-icon layui-icon-{{ 'component' if hs_running == 'running' else 'pause' }}" style="font-size:12px"></i>
-              {{ '运行中' if hs_running == 'running' else '已停止' }}
-            </span>
-          </li>
-          <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <a href="javascript:;" layadmin-event="note">
-              <i class="layui-icon layui-icon-note"></i>
-            </a>
-          </li>
-          <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <a href="javascript:;" layadmin-event="theme">
-              <i class="layui-icon layui-icon-theme"></i>
-            </a>
-          </li>
-          <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <a href="javascript:;" layadmin-event="fullscreen">
-              <i class="layui-icon layui-icon-screen-full"></i>
-            </a>
-          </li>
-          <li class="layui-nav-item" lay-unselect>
-            <!-- <a href="javascript:;">
-              <img src="https://unpkg.com/outeres@0.0.10/demo/avatar/1.jpg" class="layui-nav-img">
-            </a> -->
-            <a lay-href="/admin/info">
-              <img src="https://unpkg.com/outeres@0.0.10/demo/avatar/1.jpg" class="layui-nav-img">
-{#              <cite>{{ user.name }}</cite>#}
-              <cite>
-            {% if current_user.is_authenticated %}
-              Hi {{ current_user.name }}!
-            {% endif %}
-              </cite>
-            </a>
-            <dl class="layui-nav-child">
-              <dd><a lay-href="/admin/info">基本资料</a></dd>
-              <dd><a lay-href="/admin/password">修改密码</a></dd>
-              <hr>
-              <dd layadmin-event="logout" style="text-align: center;"><a>退出</a></dd>
-            </dl>
-          </li>
+  <!-- ========== 侧边栏 ========== -->
+  <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-700 cursor-pointer" @click="openTab('{{ default_page }}', '{{ default_page|capitalize }}')">
+      <div class="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">H</div>
+      <span x-show="!sidebarCollapsed" class="text-white font-semibold text-sm whitespace-nowrap">Admin-Pro</span>
+    </div>
 
-          <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <a href="javascript:;" layadmin-event="about"><i class="layui-icon layui-icon-more-vertical"></i></a>
-          </li>
-          <li class="layui-nav-item layui-show-xs-inline-block layui-hide-sm" lay-unselect>
-            <a href="javascript:;" layadmin-event="more"><i class="layui-icon layui-icon-more-vertical"></i></a>
-          </li>
-        </ul>
+    <!-- 菜单 -->
+    <nav class="sidebar-nav py-2">
+      {% for item in menu_items %}
+      <a href="javascript:void(0)" @click="openTab('{{ item.url }}', '{{ item.name }}')"
+         class="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm transition-all cursor-pointer whitespace-nowrap"
+         :class="activeTab === '{{ item.url }}' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'">
+        <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+          {{ item.icon|safe }}
+        </span>
+        <span x-show="!sidebarCollapsed" class="truncate">{{ item.name }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+
+    <!-- 底部用户信息 -->
+    <div class="sidebar-footer">
+      <div class="w-8 h-8 rounded-lg bg-primary-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+        {{ current_user.name[0].upper() if current_user.name else 'U' }}
+      </div>
+      <div x-show="!sidebarCollapsed" class="truncate">
+        <div class="text-sm text-white font-medium truncate">{{ current_user.name }}</div>
+        <div class="text-xs text-slate-500">{% if current_user.role == 'manager' %}管理员{% else %}用户{% endif %}</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========== 主区域 ========== -->
+  <div class="main-area" :class="{ collapsed: sidebarCollapsed }">
+
+    <!-- 顶栏 -->
+    <header class="main-header border-b dark:border-slate-700">
+      <div class="flex items-center gap-3">
+        <!-- 折叠按钮 -->
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500">
+          <svg x-show="!sidebarCollapsed" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+          <svg x-show="sidebarCollapsed" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+        </button>
+        <!-- Home -->
+        <a href="/" target="_blank" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500" title="前台">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        </a>
+        <!-- 刷新 -->
+        <button @click="refreshIframe" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500" title="刷新">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
       </div>
 
-      <!-- 侧边菜单 -->
-      <div class="layui-side layui-side-menu">
-        <div class="layui-side-scroll">
-          <div class="layui-logo" lay-href="/admin/{{ default_page }}">
-            <span>headscale-Admin-Pro</span>
+      <div class="flex items-center gap-3">
+        <!-- Headscale 状态 -->
+        <span class="text-xs font-medium {{ 'text-emerald-500' if hs_running == 'running' else 'text-red-500' }}">
+          <span class="w-1.5 h-1.5 rounded-full inline-block mr-1 {{ 'bg-emerald-500' if hs_running == 'running' else 'bg-red-500' }}"></span>
+          {{ '运行中' if hs_running == 'running' else '已停止' }}
+        </span>
+
+        <!-- 便签 -->
+        <button @click="showNote = !showNote" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500" title="便签">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        </button>
+
+        <!-- 暗色模式切换 -->
+        <button @click="darkMode = !darkMode" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500" title="主题切换">
+          <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </button>
+
+        <!-- 全屏 -->
+        <button @click="toggleFullscreen" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500" title="全屏">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        </button>
+
+        <!-- 用户下拉 -->
+        <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+          <button @click="open = !open" class="flex items-center gap-2 cursor-pointer">
+            <div class="w-7 h-7 rounded-lg bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
+              {{ current_user.name[0].upper() if current_user.name else 'U' }}
+            </div>
+            <span class="text-sm font-medium hidden sm:inline">{{ current_user.name }}</span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div x-show="open" x-transition class="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border dark:border-slate-700 py-1 z-50">
+            <a href="javascript:void(0)" @click="openTab('info', '基本资料'); open = false" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">基本资料</a>
+            <a href="javascript:void(0)" @click="openTab('password', '修改密码'); open = false" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">修改密码</a>
+            <hr class="my-1 border-gray-100 dark:border-slate-700">
+            <a href="javascript:void(0)" @click="doLogout; open = false" class="block px-4 py-2 text-sm text-red-500 hover:bg-gray-50 dark:hover:bg-slate-700">退出</a>
           </div>
-
-          <ul class="layui-nav layui-nav-tree" lay-accordion id="LAY-system-side-menu" lay-filter="layadmin-system-side-menu">
-            <li data-name="home" class="layui-nav-item layui-nav-itemed">
-              <a href="javascript:;" lay-tips="主页" lay-direction="2">
-                <i class="layui-icon layui-icon-home"></i>
-                <cite>主页</cite>
-              </a>
-              <dl class="layui-nav-child">
-                    {{ menu_html|safe }}
-
-              </dl>
-            </li>
-          </ul>
         </div>
+
+        <!-- 更多 -->
+        <a href="https://github.com/arounyf/Headscale-Admin-Pro" target="_blank" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500" title="关于">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </a>
       </div>
+    </header>
 
-      <!-- 页面标签 -->
-      <div class="layadmin-pagetabs" id="LAY_app_tabs">
-        <div class="layui-icon layadmin-tabs-control layui-icon-prev" layadmin-event="leftPage"></div>
-        <div class="layui-icon layadmin-tabs-control layui-icon-next" layadmin-event="rightPage"></div>
-        <div class="layui-icon layadmin-tabs-control layui-icon-down">
-          <ul class="layui-nav layadmin-tabs-select" lay-filter="layadmin-pagetabs-nav">
-            <li class="layui-nav-item" lay-unselect>
-              <a href="javascript:;"></a>
-              <dl class="layui-nav-child layui-anim-fadein">
-                <dd layadmin-event="closeThisTabs"><a href="javascript:;">关闭当前标签页</a></dd>
-                <dd layadmin-event="closeOtherTabs"><a href="javascript:;">关闭其它标签页</a></dd>
-                <dd layadmin-event="closeRightTabs"><a href="javascript:;">关闭右侧标签页</a></dd>
-                <dd layadmin-event="closeAllTabs"><a href="javascript:;">关闭全部标签页</a></dd>
-              </dl>
-            </li>
-          </ul>
+    <!-- Tab 标签栏 -->
+    <div class="tab-bar" x-show="tabs.length > 0">
+      <template x-for="(tab, idx) in tabs" :key="tab.id">
+        <div class="tab-item" :class="{ active: activeTab === tab.id }"
+             @click="switchTab(tab.id)"
+             @click.middle.prevent="closeTab(tab.id)">
+          <span x-text="tab.name" class="select-none"></span>
+          <button class="tab-close" @click.stop="closeTab(tab.id)">&times;</button>
         </div>
-        <div class="layui-tab" lay-unauto lay-allowClose="true" lay-filter="layadmin-layout-tabs">
-          <ul class="layui-tab-title" id="LAY_app_tabsheader">
-            <li lay-id="home3/console.html" lay-attr="home3/console.html" class="layui-this"><i class="layui-icon layui-icon-home"></i></li>
-          </ul>
-        </div>
-      </div>
+      </template>
+      <!-- Tab 右键菜单可以后续添加 -->
+    </div>
 
-
-      <!-- 主体内容 -->
-      <div class="layui-body" id="LAY_app_body">
-        <div class="layadmin-tabsbody-item layui-show">
-          <iframe src="./{{ default_page }}" frameborder="0" class="layadmin-iframe"></iframe>
-        </div>
-      </div>
-
-      <!-- 辅助元素，一般用于移动设备下遮罩 -->
-      <div class="layadmin-body-shade" layadmin-event="shade"></div>
+    <!-- iframe 容器 -->
+    <div class="iframe-container" x-show="tabs.length > 0">
+      <template x-for="tab in tabs" :key="tab.id">
+        <iframe x-show="activeTab === tab.id" :src="'/admin/' + tab.id" class="w-full h-full border-none block"></iframe>
+      </template>
     </div>
   </div>
 
-  <script src="{{ url_for('static',filename='layui/layui.js') }}"></script>
-<script src="{{ url_for('static',filename='csrf.js') }}"></script>
-  <script>
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index']);
-  </script>
+  <!-- 便签弹出 -->
+  <div x-show="showNote" class="modal-overlay" @click.self="showNote = false" x-transition.opacity>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold">便签</h3>
+        <button @click="showNote = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <textarea rows="6" class="w-full rounded-lg border dark:border-slate-600 bg-gray-50 dark:bg-slate-700 p-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" placeholder="记录一些备忘..."></textarea>
+    </div>
+  </div>
+</div>
 
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('adminLayout', () => ({
+    sidebarCollapsed: false,
+    darkMode: localStorage.dark === 'true',
+    tabs: [],
+    activeTab: '',
+    showNote: false,
 
+    init() {
+      this.darkMode && document.documentElement.classList.add('dark');
+      this.$watch('darkMode', v => {
+        localStorage.dark = v;
+        document.documentElement.classList.toggle('dark', v);
+      });
 
+      // 打开默认页面
+      this.openTab('{{ default_page }}', '主页');
 
+      // 监听来自 iframe 的打开 tab 请求
+      var self = this;
+      document.addEventListener('admin:openTab', function(e) {
+        self.openTab(e.detail.id, e.detail.name);
+      });
+    },
 
-</body>
-</html>
+    openTab(id, name) {
+      // 如果已存在则切换到该 tab
+      const existing = this.tabs.find(t => t.id === id);
+      if (existing) {
+        this.activeTab = id;
+        return;
+      }
+      this.tabs.push({ id, name });
+      this.activeTab = id;
+    },
+
+    switchTab(id) {
+      this.activeTab = id;
+    },
+
+    closeTab(id) {
+      const idx = this.tabs.findIndex(t => t.id === id);
+      if (idx === -1) return;
+      this.tabs = this.tabs.filter(t => t.id !== id);
+      if (this.activeTab === id) {
+        const next = this.tabs[Math.min(idx, this.tabs.length - 1)];
+        this.activeTab = next ? next.id : '';
+      }
+    },
+
+    refreshIframe() {
+      const iframe = document.querySelector(`iframe[src="/admin/${this.activeTab}"]`);
+      if (iframe) iframe.src = iframe.src;
+    },
+
+    toggleFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    },
+
+    async doLogout() {
+      try {
+        await apiPost('/logout', {});
+        location.href = '/login';
+      } catch(e) {
+        showToast('退出失败', 'error');
+      }
+    }
+  }));
+});
+</script>
+{% endblock %}

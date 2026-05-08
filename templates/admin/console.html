@@ -1,336 +1,225 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>控制台</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md8">
-        <div class="layui-row layui-col-space15">
-          <div class="layui-col-md6">
-            <div class="layui-card">
-              <div class="layui-card-header">快捷方式</div>
-              <div class="layui-card-body">
+{% extends "base.html" %}
+{% block title %}控制台{% endblock %}
 
-                <div class="layui-carousel layadmin-carousel layadmin-shortcut">
-                  <div carousel-item>
-                    <ul class="layui-row layui-col-space10">
-                    <li class="layui-col-xs3">
-                        <a lay-href="/admin/help">
-                          <i class="layui-icon layui-icon-template-1"></i>
-                          <cite>入门</cite>
-                        </a>
-                      </li>
-
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/user">
-                          <i class="layui-icon layui-icon-user"></i>
-                          <cite>用户</cite>
-                        </a>
-                      </li>
-
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/node">
-                          <i class="layui-icon layui-icon-website"></i>
-                          <cite>节点</cite>
-                        </a>
-                      </li>
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/route">
-                          <i class="layui-icon layui-icon-senior"></i>
-                          <cite>路由</cite>
-                        </a>
-                      </li>
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/deploy">
-                          <i class="layui-icon layui-icon-fonts-code"></i>
-                          <cite>指令</cite>
-                        </a>
-                      </li>
-
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/acl">
-                          <i class="layui-icon layui-icon-auz"></i>
-                          <cite>ACL</cite>
-                        </a>
-                      </li>
-
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/preauthkey">
-                          <i class="layui-icon layui-icon-key"></i>
-                          <cite>密钥</cite>
-                        </a>
-                      </li>
-
-
-                      <li class="layui-col-xs3">
-                        <a lay-href="/admin/set">
-                          <i class="layui-icon layui-icon-set"></i>
-                          <cite>设置</cite>
-                        </a>
-                      </li>
-
-                    </ul>
-
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-          <div class="layui-col-md6">
-            <div class="layui-card">
-              <div class="layui-card-header">数据统计</div>
-              <div class="layui-card-body">
-
-                <div class="layui-carousel layadmin-carousel layadmin-backlog">
-                  <div carousel-item>
-                    <ul class="layui-row layui-col-space10">
-                      <li class="layui-col-xs6">
-                        <a lay-href="/admin/node" class="layadmin-backlog-body" lay-title="节点中心">
-                          <h3>节点数量</h3>
-                          <p><cite id="nodeNum">0</cite></p>
-                        </a>
-                      </li>
-                      <li class="layui-col-xs6">
-                        <a lay-href="/admin/route" class="layadmin-backlog-body" lay-title="路由中心">
-                          <h3>路由数量</h3>
-                          <p><cite id="RoutesNum">0</cite></p>
-                        </a>
-                      </li>
-
-                      <li class="layui-col-xs6">
-                        <a class="layadmin-backlog-body" >
-                          <h3>累计上行</h3>
-                          <p><cite id="sent">0</cite></p>
-                        </a>
-                      </li>
-                      <li class="layui-col-xs6">
-                        <a  class="layadmin-backlog-body" >
-                          <h3>累计下行</h3>
-                          <p><cite id="recv">0</cite></p>
-                        </a>
-                      </li>
-
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="layui-col-md12">
-
-
-
-            
- 
-
-            <div class="layui-card">
-              <div class="layui-card-header">数据概览</div>
-              <div class="layui-card-body">
-
-                <div class="layui-carousel layadmin-carousel layadmin-dataview" data-anim="fade" lay-filter="LAY-index-dataview">
-                  <div carousel-item id="LAY-index-dataview">
-                    <div><i class="layui-icon layui-icon-loading1 layadmin-loading"></i></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-
-            <div class="layui-card">
-              <div class="layui-tab layui-tab-brief layadmin-latestData">
-                <ul class="layui-tab-title">
-                  <li class="layui-this">使用情况</li>
-           
-                </ul>
-                <div class="layui-tab-content">
-                  <div class="layui-tab-item layui-show">
-                    <table id="LAY-index-topCard"></table>
-                  </div>
-                 
-                </div>
-              </div>
-            </div>
-
-
-          </div>         
+{% block body %}
+<div class="p-6" x-data="consolePage">
+  <!-- 统计卡片 -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold" x-text="nodeCount">0</div>
+          <div class="text-xs text-gray-500">在线 / 总机器</div>
+          <div class="text-xs text-gray-400" x-text="onlineCount + ' / ' + totalNodeCount">0 / 0</div>
         </div>
       </div>
+    </div>
 
-
-      
-      <div class="layui-col-md4">
-        <div class="layui-card">
-          <div class="layui-card-header">账户信息</div>
-          <div class="layui-card-body layui-text layadmin-version">
-            <table class="layui-table">
-              <colgroup>
-                <col width="100">
-                <col>
-              </colgroup>
-              <tbody>
-                <tr>
-                  <td>注册时间</td>
-                  <td id="reg"></td>
-                </tr>
-                <tr>
-                  <td>距离到期</td>
-                  <td id="expire">
-                    
-                  </td>
-                </tr>
-                <tr>
-                  <td>项目地址</td>
-                  <td>
-                    https://github.com/arounyf/Headscale-Admin-Pro
-                 </td>
-                </tr>
-                <tr>
-                  <td>公告中心</td>
-                  <td>欢迎使用Headscale-Admin-Pro</td>
-                </tr>
-
-              </tbody>
-            </table>
-          </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+          <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         </div>
-
-
-
-        <div class="layui-card">
-          <div class="layui-card-header">进度占用</div>
-          <div class="layui-card-body layadmin-takerates">
-            <div class="layui-progress" lay-showPercent="yes" lay-filter="cpu-filter-progress">
-              <h3>CPU 使用率</h3>
-              <div class="layui-progress-bar" lay-percent="0%" id="cpu"></div>
-            </div>
-            <div class="layui-progress" lay-showPercent="yes"  lay-filter="memory-filter-progress">
-              <h3>内存占用率</h3>
-              <div class="layui-progress-bar" lay-percent="0%" id="memory"></div>
-            </div>
-          </div>
-
+        <div>
+          <div class="text-2xl font-bold" x-text="routeCount">0</div>
+          <div class="text-xs text-gray-500">路由数量</div>
         </div>
-
-
-
-        <div class="layui-card">
-          <div class="layui-card-header">产品动态</div>
-          <div class="layui-card-body">
-            <div class="layui-carousel layadmin-carousel layadmin-news" data-autoplay="true" data-anim="fade" lay-filter="news">
-              <div carousel-item>
-                <div><a href="#" class="layui-bg-red">小远组网快速上手文档</a></div>
-                <div><a href="#" class="layui-bg-green">小远技术问答专区</a></div>
-                <div><a href="#" class="layui-bg-blue">小远博客官网</a></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-
-
-
       </div>
+    </div>
 
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        </div>
+        <div>
+          <div class="text-sm font-bold" x-text="formatBytes(sentSpeed)">0</div>
+          <div class="text-xs text-gray-500">累计上行</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+          <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+        </div>
+        <div>
+          <div class="text-sm font-bold" x-text="formatBytes(recvSpeed)">0</div>
+          <div class="text-xs text-gray-500">累计下行</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="/static/layui/layui.js?t=1"></script>
-  <script>
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'console']);
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- 左：系统资源 -->
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">系统资源</div>
+        <div class="p-6 space-y-4">
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span class="text-gray-500">CPU 使用率</span><span x-text="cpuUsage + '%'">0%</span></div>
+            <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" :class="cpuUsage > 80 ? 'bg-red-500' : cpuUsage > 50 ? 'bg-amber-500' : 'bg-emerald-500'" :style="'width:' + cpuUsage + '%'"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span class="text-gray-500">内存占用率</span><span x-text="memUsage + '%'">0%</span></div>
+            <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" :class="memUsage > 80 ? 'bg-red-500' : memUsage > 50 ? 'bg-amber-500' : 'bg-emerald-500'" :style="'width:' + memUsage + '%'"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <!-- 使用情况排行榜 -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">使用情况</div>
+        <div class="p-4">
+          <div id="top-table"></div>
+        </div>
+      </div>
+    </div>
 
-  layui.use(function(){
-    var layer = layui.layer;
-    var util = layui.util;
-    var $ = layui.$;
-    var element = layui.element;
+    <!-- 右：账户信息 + 快捷方式 -->
+    <div class="space-y-6">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">账户信息</div>
+        <div class="p-4 text-sm space-y-2">
+          <div class="flex justify-between"><span class="text-gray-500">注册时间</span><span x-text="regTime">-</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">距离到期</span><span x-text="expireText">-</span></div>
+          <hr class="dark:border-gray-700">
+          <div class="text-xs text-gray-400">
+            <a href="https://github.com/arounyf/Headscale-Admin-Pro" target="_blank" class="hover:text-primary-500">GitHub &rarr;</a>
+          </div>
+        </div>
+      </div>
 
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">快捷方式</div>
+        <div class="p-4 grid grid-cols-2 gap-3">
+          <a href="javascript:void(0)" @click="parentOpenTab('node', '节点')" class="p-3 rounded-lg border dark:border-gray-600 text-center text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+            <svg class="w-5 h-5 mx-auto mb-1 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>节点
+          </a>
+          <a href="javascript:void(0)" @click="parentOpenTab('user', '用户')" class="p-3 rounded-lg border dark:border-gray-600 text-center text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+            <svg class="w-5 h-5 mx-auto mb-1 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>用户
+          </a>
+          <a href="javascript:void(0)" @click="parentOpenTab('route', '路由')" class="p-3 rounded-lg border dark:border-gray-600 text-center text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+            <svg class="w-5 h-5 mx-auto mb-1 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 9l3 3-3 3m5 0h3"/></svg>路由
+          </a>
+          <a href="javascript:void(0)" @click="parentOpenTab('preauthkey', '密钥')" class="p-3 rounded-lg border dark:border-gray-600 text-center text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+            <svg class="w-5 h-5 mx-auto mb-1 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>密钥
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('consolePage', () => ({
+    nodeCount: 0, totalNodeCount: 0, onlineCount: 0,
+    routeCount: 0, sentSpeed: 0, recvSpeed: 0,
+    cpuUsage: 0, memUsage: 0,
+    regTime: '', expireText: '',
+    topGrid: null,
 
+    init() {
+      this.loadData();
+      this.loadTopTable();
+      setInterval(() => this.loadSysInfo(), 2000);
+    },
 
-    $.ajax({
-      url:'/api/user/init_data',
-      type: 'get',
-      dataType: 'json',
-      success:function(res){
-
-        $('#nodeNum').html(res.data.node_count)
-        $('#RoutesNum').html(res.data.route_count)
-
-        $('#reg').text(res.data.created_at.split('+')[0])
-        
-        {#$('#expire').text(res.data.expire)#}
-
-        var countdown = util.countdown({
-          date: res.data.expire, // 目标时间值
-          now: new Date(), // 当前时间，一般为服务器时间，此处以本地时间为例
-          ready: function(){ // 初始操作
-            clearTimeout(util.countdown.timer); // 清除旧定时器，防止多次渲染时重复执行。实际使用时不常用
-          },
-          clock: function(obj, inst){  // 计时中
-            var str = [obj.d,'天',obj.h,'时',obj.m,'分',obj.s,'秒'].join(' ');
-            lay('#expire').html(str);
-            util.countdown.timer = inst.timer; // 记录当前定时器，以便在重复渲染时清除。实际使用时不常用
-          },
-          done: function(obj, inst){ // 计时完成
-            {#layer.msg('你的账号已到期');#}
-          }
-        });
-
-      }
-    });
-
-
-    setInterval(function(){
-
-      $.ajax({
-        url:'/api/system/info',
-        type: 'get',
-        dataType: 'json',
-        success:function(res){
-          // console.log(res)
-
-          if(res.cpu_usage > 50){
-            $('#cpu').addClass('layui-bg-red');
-          }else{
-            $('#cpu').removeClass('layui-bg-red');
-          }
-
-          if(res.memory_usage_percent > 50){
-            $('#memory').addClass('layui-bg-red');
-          }else{
-            $('#memory').removeClass('layui-bg-red');
-          }
-
-          element.progress('cpu-filter-progress', res.cpu_usage+'%');
-          element.progress('memory-filter-progress', res.memory_usage_percent+'%');
-          $('#sent').text((res.sent_speed/1024).toFixed(2)+'M');
-          $('#recv').text((res.recv_speed/1024).toFixed(2)+'M');
-
+    async loadData() {
+      try {
+        var res = await fetch('/api/user/init_data').then(r => r.json());
+        if (res.data) {
+          this.totalNodeCount = res.data.node_count || 0;
+          this.routeCount = res.data.route_count || 0;
+          this.regTime = (res.data.created_at || '').split('+')[0];
+          this.countdown(res.data.expire);
         }
-      });
+      } catch(e) {}
+      try {
+        var n = await fetch('/api/node/getNodes').then(r => r.json());
+        var nodes = n.data || [];
+        this.nodeCount = nodes.length;
+        var now = new Date();
+        this.onlineCount = nodes.filter(function(x) {
+          if (x.online) return true;
+          if (!x.lastSeen) return false;
+          return (now - new Date(x.lastSeen)) < 300000;
+        }).length;
+      } catch(e) {}
+    },
 
-    },2000)
+    async loadSysInfo() {
+      try {
+        var res = await fetch('/api/system/info').then(r => r.json());
+        this.cpuUsage = Math.round(res.cpu_usage || 0);
+        this.memUsage = Math.round(res.memory_usage_percent || 0);
+        this.sentSpeed = (res.sent_speed || 0) * 1024;
+        this.recvSpeed = (res.recv_speed || 0) * 1024;
+      } catch(e) {}
+    },
 
+    loadTopTable() {
+      this.topGrid = new gridjs.Grid({
+        columns: [
+          { name: '用户名', id: 'userName' },
+          { name: '节点名', id: 'nodeName' },
+          { name: '在线', id: 'online', width: '60px', formatter: function(c) { return gridjs.html(c ? '<span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>' : '<span class="inline-block w-2 h-2 rounded-full bg-gray-300"></span>'); }},
+        ],
+        server: {
+          url: '/api/node/getNodes',
+          then: function(data) {
+            var list = data.data || [];
+            return list.slice(0, 10).map(function(r) {
+              return [r.userName || r.name, r.name || r.nodeName || '', r.online];
+            });
+          }
+        },
+        pagination: false,
+        search: false,
+        sort: false,
+        style: { table: { 'font-size': '13px' } },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('top-table'));
+    },
 
-  });
+    parentOpenTab(id, name) {
+      try { parent.document.dispatchEvent(new CustomEvent('admin:openTab', { detail: { id, name } })); } catch(e) {}
+    },
 
+    countdown(expireStr) {
+      if (!expireStr) { this.expireText = '-'; return; }
+      var expire = new Date(expireStr);
+      var self = this;
+      function tick() {
+        var diff = expire - new Date();
+        if (diff <= 0) { self.expireText = '已到期'; return; }
+        var d = Math.floor(diff / 86400000);
+        var h = Math.floor((diff % 86400000) / 3600000);
+        var m = Math.floor((diff % 3600000) / 60000);
+        self.expireText = d + '天 ' + h + '时 ' + m + '分';
+        setTimeout(tick, 60000);
+      }
+      tick();
+    },
 
-
-
-  </script>
-</body>
-</html>
-
+    formatBytes(b) {
+      if (!b) return '0 B';
+      var units = ['B','KB','MB','GB','TB'];
+      var i = 0, val = b;
+      while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+      return val.toFixed(1) + ' ' + units[i];
+    }
+  }));
+});
+</script>
+{% endblock %}

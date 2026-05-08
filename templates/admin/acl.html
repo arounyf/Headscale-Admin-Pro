@@ -1,187 +1,94 @@
-  {% raw %}
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}ACL 规则{% endblock %}
 
-
-  
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">访问控制中心</div>
-          <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
-
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <button class="layui-btn layui-btn-sm" lay-event="writeConfig">写入配置</button>
-                <button class="layui-btn layui-btn-sm" lay-event="readConfig">读取配置</button>
-                <button class="layui-btn layui-btn-sm" lay-event="reload">重载配置</button>
-              </div>
-            </script>
-                
-
-          </div>
-        </div>
+{% block body %}
+<div class="p-6" x-data="aclPage">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 flex items-center justify-between">
+      <span class="font-semibold">访问控制中心</span>
+      <div class="flex gap-2">
+        <button @click="writeConfig" class="px-3 py-1.5 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600">写入配置</button>
+        <button @click="readConfig" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">读取配置</button>
+        <button @click="reloadConfig" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">重载配置</button>
       </div>
     </div>
+    <div class="p-4">
+      <div id="acl-table"></div>
+    </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script src="/static/csrf.js"></script>
-  <script>
 
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown','form'], function(){
-    var table = layui.table
-    ,form = layui.form
-    ,$ = layui.$;
-    var dropdown = layui.dropdown;
+  <!-- ACL 内容展示弹窗 -->
+  <div x-show="showAclModal" class="modal-overlay" @click.self="showAclModal = false" x-transition.opacity>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-auto" x-transition.scale>
+      <div class="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700">
+        <h3 class="font-semibold">ACL 配置</h3>
+        <button @click="showAclModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <pre class="p-6 text-sm overflow-x-auto font-mono whitespace-pre-wrap" x-text="aclContent"></pre>
+    </div>
+  </div>
+</div>
 
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('aclPage', () => ({
+    grid: null, showAclModal: false, aclContent: '',
 
+    init() { this.buildTable(); },
 
+    buildTable() {
+      var self = this;
 
+      var cols = [
+        { name: 'ID', id: 'id', width: '80px' },
+        { name: '用户名', id: 'userName', width: '150px' },
+        { name: 'ACL', id: 'acl', width: '600px' },
+      ];
 
-    
-    // 创建渲染实例
-    table.render({
-      elem: '#test-table-index'
-      ,url: '/api/acl/getACL' // 此处为静态模拟数据，实际使用时需换成真实接口
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
-      }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: true
-      ,cols: [[
-        //{type: 'checkbox'}
-        {field:'id', title:'ID', fixed: 'left', width:50,  totalRowText: '合计：'}
-        ,{field:'userName', title:'用户名',width:180,totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-        ,{field:'acl', title:'ACL',width:800,edit: 'text'}
-    
-      ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
-      }
-    });
-
-    
-
-    // 工具栏事件
-    table.on('toolbar(test-table-index)', function(obj){
-      var $ = layui.$;
-      var util = layui.util;
-      var id = obj.config.id;
-      var checkStatus = table.checkStatus(id);
-      var othis = lay(this);
-      switch(obj.event){
-
-        case 'writeConfig':
-          $.ajax({
-            url:'/api/acl/rewrite_acl',
-            type: 'post',
-            dataType: 'json',
-            success:function(res){
-              if(res.code == 0){
-                layer.msg(res.msg, {icon: 6});
-              }else{
-                layer.msg(res.msg, {icon: 7});
-              }
-            }
-          });
-        break;
-        case 'readConfig':
-          $.ajax({
-            url:'/api/acl/read_acl',
-            type: 'post',
-            dataType: 'json',
-            success:function(res){
-              if(res.code == 0){
-                // 在此处输入 layer 的任意代码
-                layer.open({
-                  type: 1, // page 层类型
-                  area: ['1000px', '500px'],
-                  title: 'ACL',
-                  shade: 0.6, // 遮罩透明度
-                  shadeClose: true, // 点击遮罩区域，关闭弹层
-                  maxmin: true, // 允许全屏最小化
-                  anim: 0, // 0-6 的动画形式，-1 不开启
-                  content: (res.data)
-                });
-              }else{
-                layer.msg(res.msg, {icon: 7});
-              }
-            }
-          });
-        break;
-        case 'reload':
-          var data = checkStatus.data;
-          // table.reload('test-table-index',true);
-          $.ajax({
-            url:'/api/acl/reload',
-            type: 'post',
-            dataType: 'json',
-            success:function(res){
-              if(res.code == 0){
-                layer.msg(res.msg, {icon: 6});
-              }
-            }
-          });
-        break;
-
-      
-      };
-    });
-
-
-    //事件-单元格编辑
-    table.on('edit(test-table-index)', function(obj){
-      var value = obj.value; //得到修改后的值
-      var field = obj.field; //得到字段
-      var oldValue= obj.oldValue;
-
-
-      console.log(obj.oldValue)
-      $.ajax({
-        url:'/api/acl/re_acl',
-        type: 'post',
-        dataType: 'json',
-        data: {aclId: obj.data.id,newAcl: obj.value},
-        success:function(res){
-          // console.log(res.code)
-          if(res.code == 0){
-            layer.msg(res.msg, {icon: 6});
-            obj.update({ [field]: value });
-          }else{
-            layer.msg(res.msg, {icon: 7});
-            obj.update({ [field]: oldValue });
+      this.grid = new gridjs.Grid({
+        columns: cols,
+        server: {
+          url: '/api/acl/getACL',
+          then: function(data) {
+            var list = data.data || [];
+            return list.map(function(r) { return [r.id, r.userName, r.acl]; });
           }
-        }
-      });
+        },
+        search: true,
+        sort: { multiColumn: false },
+        pagination: { limit: 15 },
+        language: { search: { placeholder: '搜索...' }, pagination: { showing: '显示', to: '到', of: '共', results: '' } },
+        style: { table: { 'white-space': 'nowrap' } },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('acl-table'));
+    },
 
+    async writeConfig() {
+      try {
+        var res = await apiPost('/api/acl/rewrite_acl', {});
+        showToast(res.msg, res.code === '0' ? 'success' : 'error');
+      } catch(e) { showToast('操作失败', 'error'); }
+    },
 
-    });
+    async readConfig() {
+      try {
+        var res = await apiPost('/api/acl/read_acl', {});
+        if (res.code === '0') {
+          this.aclContent = res.data;
+          this.showAclModal = true;
+        } else { showToast(res.msg, 'error'); }
+      } catch(e) { showToast('读取失败', 'error'); }
+    },
 
+    async reloadConfig() {
+      try {
+        var res = await apiPost('/api/acl/reload', {});
+        showToast(res.msg, res.code === '0' ? 'success' : 'error');
+      } catch(e) { showToast('操作失败', 'error'); }
+    },
 
-
-  });
-  </script>
-</body>
-</html>
-
-    {% endraw %}
+    refresh() { if (this.grid) this.grid.forceRender(); }
+  }));
+});
+</script>
+{% endblock %}

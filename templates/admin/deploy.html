@@ -1,174 +1,88 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>入门文档</title>
-  <!-- 请勿在项目正式环境中引用该 layui.css 地址 -->
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}部署指令{% endblock %}
 
-<div class="layui-bg-gray" style="padding: 16px;">
-  <div class="layui-row layui-col-space15">
-    <div class="layui-col-md12">
-      <div class="layui-card">
-        <div class="layui-card-header">指令中心</div>
+{% block body %}
+<div class="p-6" x-data="deployPage">
+  <div class="max-w-3xl space-y-6">
+    <!-- 指令展示 -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+      <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">指令中心</div>
+      <div class="p-6">
+        <pre class="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto font-mono" x-text="command"></pre>
+      </div>
+    </div>
 
-          <div class="layui-card-body">
-    
-            <pre class="layui-code code-tailscale" lay-options="{theme: 'dark'}"></pre>
-            <br>
-            <form class="layui-form" action="">
+    <!-- 选项配置 -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+      <div class="px-6 py-4 border-b dark:border-gray-700 font-semibold">配置选项</div>
+      <div class="p-6 space-y-4">
+        <!-- 接收 DNS -->
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" x-model="acceptDNS" @change="rebuild" class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+          <span class="text-sm">接收 DNS</span>
+        </label>
 
-               <div class="layui-form-item">
-                <label class="layui-form-label">接收DNS</label>
-                <div class="layui-input-block">
-                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptDNS" title="ON|OFF">
-                </div>
-              </div>
+        <!-- 接收路由 -->
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" x-model="acceptRoutes" @change="rebuild" class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+          <span class="text-sm">接收路由</span>
+        </label>
 
-              <div class="layui-form-item">
-                <label class="layui-form-label">接收路由</label>
-                <div class="layui-input-block">
-                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptRoutes" title="ON|OFF">
-                </div>
-              </div>
+        <!-- 通告路由 -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" x-model="advertiseRoutes" @change="rebuild" class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+            <span class="text-sm">通告路由</span>
+          </label>
+          <div class="flex items-center gap-2" x-show="advertiseRoutes">
+            <input type="text" x-model="subnet" @input="rebuild" placeholder="192.168.1.0" class="w-32 px-2 py-1.5 text-sm rounded border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-primary-500">
+            <span class="text-gray-400">/</span>
+            <input type="number" x-model="cidr" @input="rebuild" placeholder="24" class="w-16 px-2 py-1.5 text-sm rounded border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+        </div>
 
-              <div class="layui-form-item">
-                <label class="layui-form-label">通告路由</label>
-                <div class="layui-inline">
-                  <input type="checkbox" lay-skin="switch" lay-filter="AdvertiseRoutes" title="ON|OFF">
-                  <div class="layui-input-inline" style="width: 120px;">
-                    <input type="text" id="subnet" placeholder="192.168.1.0" autocomplete="off" class="layui-input"  >
-                  </div>
-                  <div class="layui-form-mid">/</div>
-                  <div class="layui-input-inline" style="width: 80px;">
-                    <input type="number"  id="cidr" placeholder="24" autocomplete="off" class="layui-input" min="8" step="8" lay-affix="number">
-                  </div>
-                </div>
-              </div>
+        <!-- 出口节点 -->
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" x-model="advertiseExitNode" @change="rebuild" class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+          <span class="text-sm">出口节点</span>
+        </label>
 
-
-            <div class="layui-form-item">
-                <label class="layui-form-label">出口节点</label>
-                <div class="layui-input-block"><input type="checkbox" lay-skin="switch" lay-filter="AdvertiseExitNode" title="ON|OFF">
-                </div>
-            </div>
-
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">指定出口</label>
-                <div class="layui-inline">
-                  <input type="checkbox" lay-skin="switch" lay-filter="ExitNode" title="ON|OFF">
-                  <div class="layui-input-inline" style="width: 120px;">
-                    <input type="text" id="exit_info" placeholder="100.64.0.1" autocomplete="off" class="layui-input"  >
-                  </div>
-                </div>
-              </div>
-
-          </form>
+        <!-- 指定出口 -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" x-model="exitNode" @change="rebuild" class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+            <span class="text-sm">指定出口</span>
+          </label>
+          <input type="text" x-model="exitIP" @input="rebuild" placeholder="100.64.0.1" x-show="exitNode" class="w-32 px-2 py-1.5 text-sm rounded border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-primary-500">
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 请勿在项目正式环境中引用该 layui.js 地址 -->
-<script src="//unpkg.com/layui@2.9.14/dist/layui.js"></script>  
 <script>
-layui.use(['form', 'laydate', 'util'], function(){
-  var form = layui.form;
-  var layer = layui.layer;
-  var laydate = layui.laydate;
-  var util = layui.util;
-  var $ = layui.$;
+document.addEventListener('alpine:init', () => {
+  Alpine.data('deployPage', () => ({
+    serverUrl: '{{ server_url }}',
+    acceptDNS: false, acceptRoutes: false,
+    advertiseRoutes: false, subnet: '192.168.1.0', cidr: '24',
+    advertiseExitNode: false, exitNode: false, exitIP: '100.64.0.1',
+    command: '',
 
-  var tailscale_up = ["tailscale up --login-server={{ server_url }}"]
+    init() {
+      this.rebuild();
+    },
 
-
-    function show_code(code){
-      // code
-      var codeInst = layui.code({
-        elem: '.code-tailscale',
-        style: 'font-size: 20px;',
-        code: code,
-        lang: '复制',
-        langMarker: true,
-        ln: false
-      });
+    rebuild() {
+      var parts = ['tailscale up --login-server=' + this.serverUrl];
+      parts.push(this.acceptDNS ? '--accept-dns' : '--accept-dns=false');
+      if (this.acceptRoutes) parts.push('--accept-routes');
+      if (this.advertiseRoutes && this.subnet && this.cidr) parts.push('--advertise-routes=' + this.subnet + '/' + this.cidr);
+      if (this.advertiseExitNode) parts.push('--advertise-exit-node');
+      if (this.exitNode && this.exitIP) parts.push('--exit-node=' + this.exitIP);
+      this.command = parts.join(' ');
     }
-
-
-    
-  tailscale_up[1] = "--accept-dns=false"; // 去掉前面多余的空格
-  show_code(tailscale_up.join(' '));
-
-
-    // 接收DNS
-  form.on('switch(AcceptDNS)', function(data){
-    if(this.checked){
-      tailscale_up[1] = "--accept-dns"
-    }else{
-      tailscale_up[1] = "--accept-dns=false"
-    }
-    show_code(tailscale_up.join(' '))
-  });
-
-
-  // 接收路由
-  form.on('switch(AcceptRoutes)', function(data){
-
-    if(this.checked){
-
-      tailscale_up[2] = "--accept-routes"
-    }else{
-      tailscale_up[2] = ""
-    }
-    show_code(tailscale_up.join(' '))
-  });
-
-
-
-
-  // 通告路由
-  form.on('switch(AdvertiseRoutes)', function(data){
-
-    if(this.checked){
-      tailscale_up[3] = "--advertise-routes="+$('#subnet').val()+"/"+$('#cidr').val()
-    }else{
-      tailscale_up[3] = ""
-    }
-    show_code(tailscale_up.join(' '))
-  });
-
-  // 出口节点
-  form.on('switch(AdvertiseExitNode)', function(data){
-    if(this.checked){
-      tailscale_up[4] = "--advertise-exit-node"
-    }else{
-      tailscale_up[4] = ""
-    }
-    show_code(tailscale_up.join(' '))
-  });
-
-
-
-    // 指定出口
-  form.on('switch(ExitNode)', function(data){
-
-    if(this.checked){
-      tailscale_up[5] = "--exit-node="+$('#exit_info').val()
-    }else{
-      tailscale_up[5] = ""
-    }
-    show_code(tailscale_up.join(' '))
-  });
-
-
+  }));
 });
 </script>
-
-
-</body>
-</html>
+{% endblock %}

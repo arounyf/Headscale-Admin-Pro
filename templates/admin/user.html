@@ -1,355 +1,119 @@
-  {% raw %}
+{% extends "base.html" %}
+{% block title %}用户中心{% endblock %}
 
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>用户中心</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
-
-
-    <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">用户中心</div>
-          <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
-
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <!-- <button class="layui-btn layui-btn-sm" lay-event="addNode">添加设备</button> -->
-                <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                
-                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">
-                  多行
-                </button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="default-row">
-                  单行
-                </button>
-
-              </div>
-            </script>
-
-
-
-
-
-             <script type="text/html" id="route-table-toolbar">
-              <!-- 这里的 checked 的状态只是演示 -->
-              <input type="checkbox" name="lock" title="允许" lay-filter="route-table-toolbar"
-               value="{{d.route}}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}"  {{ d.route == "1" ? 'checked' : '' }}>
-            </script>
-
-             <script type="text/html" id="enable-table-toolbar">
-                <input type="checkbox" name="启用" lay-skin="switch" lay-text="是|否" lay-filter="enable-table-toolbar"
-                       value="{{ d.enable }}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}" {{ d.enable == "1" ? 'checked' : '' }}>
-            </script>
-
-            <script type="text/html" id="more-table-toolbar">
-                 <a class="layui-btn layui-btn-info layui-btn-xs" lay-event="detail">查看</a>
-                 <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
-            </script>
-
-
-
-
-            <script type="text/html" id="TPL-expire">
-              {{#
-                var util = layui.util;
-                var result;
-                var countdown = util.countdown({
-                  date: d.expire,
-                  now: new Date(),
-                  ready: function(){
-                    clearTimeout(util.countdown.timer);
-                  },
-                  clock: function(obj, inst){
-                    if (obj.d <=30){
-                      result = [obj.d,'天',obj.h,'时',obj.m,'分',obj.s,'秒'].join(' ');
-                    }else{
-                      result = d.expire
-                    }
-                    util.countdown.timer = inst.timer;
-                  },
-                  done: function(obj, inst){
-                    result = "已到期";
-                  }
-                });
-              }}
-              {{= result }}
-            </script>
-
-
-          </div>
-        </div>
+{% block body %}
+<div class="p-6" x-data="userPage">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 flex items-center justify-between">
+      <span class="font-semibold">用户中心</span>
+      <div class="flex gap-2">
+        <button @click="refresh" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">刷新</button>
+        <button @click="toggleMultiRow" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <span x-text="multiRow ? '单行' : '多行'"></span>
+        </button>
       </div>
     </div>
+    <div class="p-4">
+      <div id="user-table"></div>
+    </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script src="/static/csrf.js"></script>
-  <script>
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown'], function(){
-    var table = layui.table;
-    var form = layui.form;
-    var dropdown = layui.dropdown;
-    var laydate = layui.laydate;
-    var util = layui.util;
-    var $ = layui.$;
 
+  <!-- 用户详情弹窗 -->
+  <div x-show="showDetail" class="modal-overlay" @click.self="showDetail = false" x-transition.opacity>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6" x-transition.scale>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold">用户信息</h3>
+        <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <div x-html="detailContent" class="space-y-2 text-sm"></div>
+    </div>
+  </div>
+</div>
 
-    
-    // 创建渲染实例
-    table.render({
-      elem: '#test-table-index'
-      ,url: '/api/user/getUsers' // 此处为静态模拟数据，实际使用时需换成真实接口
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
-      }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: true
-      ,cols: [[
-        //{type: 'checkbox', fixed: 'left'}
-        {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
-        ,{field:'userName', width:150, title: '用户名', sort: true, totalRow: '{{= d.TOTAL_ROW.count   }} 😊'}
-        // ,{field:'createTime', title:'注册时间', width: 180,templet: function(d){
-        //     var ago = util.timeAgo(d.createTime);
-        //     return ago;
-        //   }
-        // }
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('userPage', () => ({
+    grid: null, multiRow: false,
+    showDetail: false, detailContent: '',
 
-        ,{field:'role', title:'角色', width: 120,templet: function(d){
-            if (d.role == "manager"){
-              return "超级管理员"
-            }else{
-              return "普通用户"
-            }
-           
+    init() { this.buildTable(); },
+
+    buildTable() {
+      var self = this;
+
+      var cols = [
+        { name: 'ID', id: 'id', sort: true, width: '80px' },
+        { name: '用户名', id: 'userName', sort: true, width: '140px' },
+        { name: '角色', id: 'role', width: '100px', formatter: function(cell) { return cell === 'manager' ? '<span class="text-primary-500 font-medium">超级管理员</span>' : '<span class="text-gray-500">普通用户</span>'; } },
+        { name: '到期时间', id: 'expire', sort: true, width: '180px' },
+        { name: '节点限制', id: 'node', width: '90px' },
+        { name: '路由', id: 'route', width: '80px', sort: false, formatter: function(cell, row) {
+          var cells = row.cells; var idIdx = 0; var id = cells[idIdx].data;
+          var checked = cell === '1' ? 'checked' : '';
+          return gridjs.html('<input type="checkbox" ' + checked + ' onchange="document.dispatchEvent(new CustomEvent(\'user:route\',{detail:{id:' + id + ', val: this.checked}}))" class="w-4 h-4 rounded border-gray-300 text-primary-500">');
+        }},
+        { name: '启用', id: 'enable', width: '80px', sort: false, formatter: function(cell, row) {
+          var cells = row.cells; var idIdx = 0; var id = cells[idIdx].data;
+          var checked = cell === '1' ? 'checked' : '';
+          return gridjs.html('<input type="checkbox" ' + checked + ' onchange="document.dispatchEvent(new CustomEvent(\'user:enable\',{detail:{id:' + id + ', val: this.checked}}))" class="w-4 h-4 rounded border-gray-300 text-primary-500">');
+        }},
+        { name: '操作', id: 'actions', width: '120px', sort: false, formatter: function(_, row) {
+          var cells = row.cells; var idIdx = 0; var data = { id: cells[idIdx].data, userName: cells[1].data, cellphone: cells[7] ? cells[7].data : '', email: cells[8] ? cells[8].data : '', createTime: cells[9] ? cells[9].data : '' };
+          return gridjs.html('<button class="text-primary-500 hover:text-primary-600 text-sm mr-2" onclick="document.dispatchEvent(new CustomEvent(\'user:detail\',{detail:' + JSON.stringify(data).replace(/'/g, "&#39;") + '}))">查看</button><button class="text-red-500 hover:text-red-600 text-sm" onclick="document.dispatchEvent(new CustomEvent(\'user:del\',{detail:{id:' + cells[idIdx].data + '}}))">删除</button>');
+        }},
+      ];
+
+      this.grid = new gridjs.Grid({
+        columns: cols,
+        server: {
+          url: '/api/user/getUsers',
+          then: function(data) {
+            var list = data.data || [];
+            return list.map(function(r) {
+              return [r.id, r.userName, r.role, r.expire, r.node, r.route, r.enable, r.cellphone, r.email, r.createTime, null];
+            });
           }
-        }
-        ,{field:'expire', title:'到期时间', sort: true,width:200,edit: 'text',templet: '#TPL-expire'}
-        ,{field:'node', title:'节点限制', width: 100,edit: 'text'}
-        ,{field: 'route', title:'路由', width: 100, minWidth: 100, toolbar: '#route-table-toolbar'}
-        ,{field: 'enable', title:'是否启用', width: 100, minWidth: 100, toolbar: '#enable-table-toolbar'}
-        ,{field: 'more', title:'操作', width: 120, minWidth: 140, toolbar: '#more-table-toolbar'}
+        },
+        search: true,
+        sort: { multiColumn: false },
+        pagination: { limit: 15 },
+        language: { search: { placeholder: '搜索...' }, pagination: { showing: '显示', to: '到', of: '共', results: '' } },
+        style: { table: { 'white-space': 'nowrap' } },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('user-table'));
 
-      ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
-      }
-    });
-
-
-
-
-    //事件-单元格编辑
-    table.on('edit(test-table-index)', function(obj){
-      var value = obj.value //得到修改后的值
-      ,data = obj.data //得到所在行所有键值
-      ,field = obj.field; //得到字段
-
-      console.log(field)
-
-
-      if (field == "expire"){
-        $.ajax({
-        url:'/api/user/re_expire',
-        type: 'post',
-        dataType: 'json',
-        data: {user_id: obj.data.id,new_expire: obj.value},
-        success:function(res){
-            // console.log(res.code)
-            if(res.code == 0){
-              layer.msg(res.msg, {icon: 6});
-              var field = 'name' //得到字段
-              var value = obj.value //得到修改后的值
-
-              var update = {};
-              update[field] = value;
-              obj.update(update);
-            }else{
-              layer.msg(res.msg, {icon: 7});
-            }
-          }
-        });
-      }else if(field == "node"){
-        $.ajax({
-        url:'/api/user/re_node',
-        type: 'post',
-        dataType: 'json',
-        data: {user_id: obj.data.id,new_node: obj.value},
-        success:function(res){
-            // console.log(res.code)
-            if(res.code == 0){
-              layer.msg(res.msg, {icon: 6});
-              var field = 'name' //得到字段
-              var value = obj.value //得到修改后的值
-
-              var update = {};
-              update[field] = value;
-              obj.update(update);
-            }else{
-              layer.msg(res.msg, {icon: 7});
-            }
-          }
-        });
-      }
-      
-    });
-    
-    // 工具栏事件
-    table.on('toolbar(test-table-index)', function(obj){
-      var $ = layui.$;
-      var util = layui.util;
-      var id = obj.config.id;
-      var checkStatus = table.checkStatus(id);
-      var othis = lay(this);
-      switch(obj.event){
-        
-        case 'reload':
-          var data = checkStatus.data;
-          table.reload('test-table-index',true);
-        break;
-
-
-        case 'multi-row':
-          table.reload('test-table-index', {
-            // 设置行样式，此处以设置多行高度为例。若为单行，则没必要设置改参数 - 注：v2.7.0 新增
-            lineStyle: 'height: 95px;' 
+      // Events
+      document.addEventListener('user:del', function(e) {
+        openConfirm('确认删除该用户吗？', function() {
+          apiPost('/api/user/delUser', { user_id: e.detail.id }).then(function(res) {
+            if (res.code === '0') { showToast('删除成功', 'success'); self.refresh(); }
+            else { showToast(res.msg, 'error'); }
           });
-          layer.msg('已设为多行显示');
-        break;
-        case 'default-row':
-          table.reload('test-table-index', {
-            lineStyle: null // 恢复单行
-          });
-          layer.msg('已设为单行显示');
-        break;
-        case 'LAYTABLE_TIPS':
-          layer.alert('Table for layui-v'+ layui.v);
-        break;
-      };
-    });
-
-
-
-   
-    //触发单元格工具事件
-    table.on('tool(test-table-index)', function(obj){ // 双击 toolDouble
-      var $ = layui.$;
-      var data = obj.data;
-      // console.log(obj)
-
-
-      if(obj.event === 'del'){
-        layer.confirm('真的删除行么', function(index){
-          $.ajax({
-            url:'/api/user/delUser',
-            type: 'post',
-            dataType: 'json',
-            data: {user_id: obj.data.id},
-            success:function(res){
-              if (res.code == 2){
-                layer.msg("该用户存在节点未删除", {icon: 7});
-              }else{
-                layer.msg('删除成功', {icon: 6});
-                obj.del();
-                layer.close(index);
-              }
-              
-            }
-          });
-          
         });
-      }else if(obj.event === 'detail'){
-        console.log(data)
-        var escapeHtml = function(str) {
-          var div = document.createElement('div');
-          div.appendChild(document.createTextNode(str));
-          return div.innerHTML;
-        };
-        layer.open({
-          title: '用户信息',
-          type: 1,
-          area: ['600px','400px'],
-          content: '<div style="padding: 20px;">'+
-              '手机号码：'+ escapeHtml(data.cellphone)+ '<br>'+
-              '邮箱地址：'+ escapeHtml(data.email)+ '<br>'+
-              '注册时间：'+ escapeHtml(data.createTime)+
-            '</div>'
-        });
-      }
-    });
-
-
-    //事件-路由启用操作
-    form.on('checkbox(route-table-toolbar)', function(obj){
-    var json = JSON.parse(decodeURIComponent($(this).data('json')));
-      json = table.clearCacheKey(json);
-      // console.log("执行用户状态操作");
-      $.ajax({
-        url:'/api/user/route_enable',
-        type: 'post',
-        dataType: 'json',
-        data: {user_id: json.id,enable: obj.elem.checked},
-        success:function(res){
-            console.log(res)
-            if(res.code == 0){
-              layer.msg(res.msg, {icon: 6});
-            }else{
-              layer.msg(res.msg, {icon: 6});
-            }
-        }
       });
-    });
-   
-    //事件-开关操作
-    form.on('switch(enable-table-toolbar)', function(obj){
-      var $ = layui.$;
-      var json = JSON.parse(decodeURIComponent($(this).data('json')));
-      //layer.tips(this.value + ' ' + this.name + '：'+ obj.elem.checked, obj.othis);
-      
-      json = table.clearCacheKey(json);
-      console.log(obj.elem.checked); 
 
-      console.log("执行用户状态操作");
-      $.ajax({
-        url:'/api/user/user_enable',
-        type: 'post',
-        dataType: 'json',
-        data: {user_id: json.id,enable: obj.elem.checked},
-        success:function(res){
-            console.log(res)
-            if(res.code == 0){
-              layer.msg(res.msg, {icon: 6});
-            }else{
-              layer.msg(res.msg, {icon: 7});
-            }
-        }
+      document.addEventListener('user:detail', function(e) {
+        var d = e.detail;
+        self.detailContent = '<p><strong>手机号码：</strong>' + escapeHtml(d.cellphone || '') + '</p><p><strong>邮箱：</strong>' + escapeHtml(d.email || '') + '</p><p><strong>注册时间：</strong>' + escapeHtml(d.createTime || '') + '</p>';
+        self.showDetail = true;
       });
-      
-    });
-   
 
-  });
-  </script>
+      document.addEventListener('user:route', function(e) {
+        apiPost('/api/user/route_enable', { user_id: e.detail.id, enable: e.detail.val }).then(function(res) {
+          showToast(res.msg, res.code === '0' ? 'success' : 'error');
+        });
+      });
 
+      document.addEventListener('user:enable', function(e) {
+        apiPost('/api/user/user_enable', { user_id: e.detail.id, enable: e.detail.val }).then(function(res) {
+          showToast(res.msg, res.code === '0' ? 'success' : 'error');
+        });
+      });
+    },
 
-</body>
-</html>
-
-{% endraw %}
+    toggleMultiRow() { this.multiRow = !this.multiRow; this.buildTable(); },
+    refresh() { if (this.grid) this.grid.forceRender(); }
+  }));
+});
+</script>
+{% endblock %}

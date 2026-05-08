@@ -1,244 +1,153 @@
+{% extends "base.html" %}
+{% block title %}预共享密钥{% endblock %}
 
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
+{% block body %}
+<div class="p-6" x-data="preauthkeyPage">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 flex items-center justify-between">
+      <span class="font-semibold">预共享密钥中心</span>
+      <div class="flex gap-2">
+        <button @click="showAddModal = true" class="px-3 py-1.5 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600">新建</button>
+        <button @click="refresh" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">刷新</button>
+      </div>
+    </div>
+    <div class="p-4">
+      <div id="preauthkey-table"></div>
+    </div>
+  </div>
 
-
-  
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">预共享密钥中心</div>
-          <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
-
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <button class="layui-btn layui-btn-sm" lay-event="add">新建</button>
-                <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-              </div>
-            </script>
-             
-
-
-            <script type="text/html" id="barDemo">
-              <!-- 这里的 checked 的状态只是演示 -->
-               <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
-            </script>
-             
-
-          </div>
+  <!-- 新建密钥弹窗 -->
+  <div x-show="showAddModal" class="modal-overlay" @click.self="showAddModal = false" x-transition.opacity>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6" x-transition.scale>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold">新建预授权密钥</h3>
+        <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <label class="flex items-center justify-between">
+          <span class="text-sm">可复用 <span class="text-xs text-gray-400">(开：密钥可多次使用)</span></span>
+          <input type="checkbox" x-model="addForm.reusable" class="w-4 h-4 rounded border-gray-300 text-primary-500">
+        </label>
+        <label class="flex items-center justify-between">
+          <span class="text-sm">临时节点 <span class="text-xs text-gray-400">(开：节点离线后自动移除)</span></span>
+          <input type="checkbox" x-model="addForm.ephemeral" class="w-4 h-4 rounded border-gray-300 text-primary-500">
+        </label>
+        <div class="flex items-center justify-between">
+          <span class="text-sm">有效期</span>
+          <select x-model="addForm.expireDays" class="px-3 py-1.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+            <option value="1">1 天</option>
+            <option value="7">7 天</option>
+            <option value="30">30 天</option>
+            <option value="90">90 天</option>
+            <option value="365">365 天</option>
+          </select>
         </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button @click="showAddModal = false" class="px-4 py-2 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">取消</button>
+        <button @click="doAdd" :disabled="adding" class="px-4 py-2 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50" x-text="adding ? '创建中...' : '确认创建'"></button>
       </div>
     </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script src="/static/csrf.js"></script>
-  <script>
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown', 'form', 'util'], function(){
-    var table = layui.table
-    ,form = layui.form
-    ,$ = layui.$
-    ,util = layui.util;
-    var dropdown = layui.dropdown;
-    
-    // 创建渲染实例
-    table.render({
-      elem: '#test-table-index'
-      ,url: '/api/preauthkey/getPreAuthKey' // 此处为静态模拟数据，实际使用时需换成真实接口
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
-      }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: false
-      // ✅ 关键：默认按 create_time 倒序
-      ,initSort: {
-        field: 'create_time',
-        type: 'desc'
-      }
-      ,cols: [[
-            {field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
-                ,{field:'name', title:'用户名',width:200, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
-            {% endif %}
-            ,{field:'key', title:'密钥',width:300
-                {% if current_user.role == 'user' %}
-                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
-                {% endif %}
-            }
-            ,{field:'create_time', title:'创建时间',width:180, sort: true}
-            ,{field:'expiration', title: '到期时间', width:180, sort: true}
-            ,{field:'reusable', title:'可复用', width:85, templet: function(d){
-                return d.reusable ? '<span class="layui-badge layui-bg-green">是</span>' : '<span class="layui-badge layui-bg-gray">否</span>';
-            }}
-            ,{field:'ephemeral', title:'临时节点', width:95, templet: function(d){
-                return d.ephemeral ? '<span class="layui-badge layui-bg-orange">临时</span>' : '<span class="layui-badge layui-bg-gray">持久</span>';
-            }}
-            ,{fixed: 'right', title:'操作', width: 70, minWidth: 70, toolbar: '#barDemo'}
-        ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
-      }
-    });
 
+  <!-- 密钥展示弹窗 -->
+  <div x-show="showKeyModal" class="modal-overlay" @click.self="showKeyModal = false" x-transition.opacity>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6" x-transition.scale>
+      <div class="mb-4">
+        <h3 class="font-semibold text-amber-500 mb-2">密钥只显示一次，请立即保存！</h3>
+        <pre class="bg-gray-900 text-green-400 p-3 rounded-lg text-sm overflow-x-auto font-mono" x-text="newKey"></pre>
+      </div>
+      <div class="flex justify-end">
+        <button @click="showKeyModal = false; showAddModal = false; refresh()" class="px-4 py-2 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600">我记住了</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    
-    
-  // 工具栏事件
-  table.on('toolbar(test-table-index)', function(obj){
-    var $ = layui.$;
-    var util = layui.util;
-    var id = obj.config.id;
-    var checkStatus = table.checkStatus(id);
-    var othis = lay(this);
-    switch(obj.event){
-      case 'reload':
-        table.reload('test-table-index',true);
-      break;
-      case 'add':
-        var formHtml = '<div style="padding: 20px 30px 10px 10px;">' +
-          '<form class="layui-form" lay-filter="keyForm">' +
-            '<div class="layui-form-item">' +
-              '<label class="layui-form-label">' +
-                '可复用 <i class="layui-icon layui-icon-about" lay-tips="开：密钥可多次使用；关：仅能使用一次" lay-direction="2"></i>' +
-              '</label>' +
-              '<div class="layui-input-block">' +
-                '<input type="checkbox" name="reusable" lay-skin="switch" lay-text="是|否" checked>' +
-              '</div>' +
-            '</div>' +
-            '<div class="layui-form-item">' +
-              '<label class="layui-form-label">' +
-                '临时节点 <i class="layui-icon layui-icon-about" lay-tips="开：节点离线后自动从网络中移除" lay-direction="2"></i>' +
-              '</label>' +
-              '<div class="layui-input-block">' +
-                '<input type="checkbox" name="ephemeral" lay-skin="switch" lay-text="是|否">' +
-              '</div>' +
-            '</div>' +
-            '<div class="layui-form-item">' +
-              '<label class="layui-form-label">' +
-                '有效期 <i class="layui-icon layui-icon-about" lay-tips="密钥在此时间后自动失效" lay-direction="2"></i>' +
-              '</label>' +
-              '<div class="layui-input-block" style="width:200px;">' +
-                '<select name="expireDays">' +
-                  '<option value="1">1 天</option>' +
-                  '<option value="7" selected>7 天</option>' +
-                  '<option value="30">30 天</option>' +
-                  '<option value="90">90 天</option>' +
-                  '<option value="365">365 天</option>' +
-                '</select>' +
-              '</div>' +
-            '</div>' +
-          '</form>' +
-        '</div>';
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('preauthkeyPage', () => ({
+    grid: null,
+    showAddModal: false,
+    showKeyModal: false,
+    newKey: '',
+    adding: false,
+    addForm: { reusable: true, ephemeral: false, expireDays: '7' },
 
-        layer.open({
-          type: 1,
-          title: '新建预授权密钥',
-          area: ['500px', '370px'],
-          btn: ['确认创建', '取消'],
-          content: formHtml,
-          success: function(layero) {
-            form.render(null, 'keyForm');
-          },
-          yes: function(index, layero) {
-            var formData = {};
-            layero.find('input, select').each(function() {
-              var el = $(this);
-              var name = el.attr('name');
-              if (el.attr('type') === 'checkbox') {
-                formData[name] = el.prop('checked');
-              } else {
-                formData[name] = el.val();
-              }
+    init() { this.buildTable(); },
+
+    buildTable() {
+      var self = this;
+      var cols = [
+        { name: 'ID', id: 'id', sort: true, width: '80px' },
+        {% if current_user.role == 'manager' %}
+        { name: '用户名', id: 'name', width: '150px' },
+        {% endif %}
+        { name: '密钥', id: 'key', width: '280px' },
+        { name: '创建时间', id: 'create_time', width: '160px', sort: true },
+        { name: '到期时间', id: 'expiration', width: '160px', sort: true },
+        { name: '可复用', id: 'reusable', width: '80px', formatter: function(cell) { return gridjs.html(cell ? '<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">是</span>' : '<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">否</span>'); } },
+        { name: '节点类型', id: 'ephemeral', width: '90px', formatter: function(cell) { return gridjs.html(cell ? '<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">临时</span>' : '<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">持久</span>'); } },
+        { name: '操作', id: 'actions', width: '80px', sort: false, formatter: function(_, row) {
+          var id = row.cells[0].data;
+          return gridjs.html('<button class="text-red-500 hover:text-red-600 text-sm" onclick="document.dispatchEvent(new CustomEvent(\'preauthkey:del\', {detail:' + id + '}))">删除</button>');
+        }}
+      ];
+
+      this.grid = new gridjs.Grid({
+        columns: cols,
+        server: {
+          url: '/api/preauthkey/getPreAuthKey',
+          then: function(data) {
+            var list = data.data || [];
+            return list.map(function(r) {
+              return [r.id, {% if current_user.role == 'manager' %}r.name, {% endif %}r.key, r.create_time, r.expiration, r.reusable, r.ephemeral, null];
             });
-
-            $.ajax({
-              url:'/api/preauthkey/addKey',
-              type: 'post',
-              data: formData,
-              dataType: 'json',
-              success:function(res){
-                if(res.code == 0){
-                  var data = JSON.parse(res.data);
-                  var key = data.preAuthKey.key;
-
-                  layer.prompt({
-                    title: '密钥只显示一次，请立即保存！',
-                    formType: 2,
-                    value: key,
-                    readonly: true,
-                  }, function(value, promptIndex){
-                    layer.close(promptIndex);
-                    table.reload('test-table-index');
-                  });
-                }else{
-                  layer.msg('新建失败: ' + res.msg, {icon: 7});
-                }
-              }
-            });
-
-            layer.close(index);
           }
-        });
-      break;
-    };
-  });
+        },
+        search: true,
+        sort: { multiColumn: false },
+        pagination: { limit: 15 },
+        language: { search: { placeholder: '搜索...' }, pagination: { showing: '显示', to: '到', of: '共', results: '' } },
+        style: { table: { 'white-space': 'nowrap' } },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('preauthkey-table'));
 
-
-   
-    //触发单元格工具事件
-    table.on('tool(test-table-index)', function(obj){ // 双击 toolDouble
-      var $ = layui.$;
-
-      // console.log(obj)
-      if(obj.event === 'del'){
-        layer.confirm('真的删除行么', function(index){
-
-          layer.close(index);
-
-          $.ajax({
-            url:'/api/preauthkey/delKey',
-            type: 'post',
-            dataType: 'json',
-            data: {keyId: obj.data.id},
-            success:function(res){
-              if(res.code == 0){
-                layer.msg(res.msg, {icon: 6});
-                obj.del();
-              }else{
-                layer.msg(res.msg, {icon: 7});
-
-              }
-              
-            }
+      // Delete handler
+      document.addEventListener('preauthkey:del', function(e) {
+        var keyId = e.detail;
+        openConfirm('确认删除该密钥吗？', function() {
+          apiPost('/api/preauthkey/delKey', { keyId: keyId }).then(function(res) {
+            if (res.code === '0') { showToast(res.msg, 'success'); self.refresh(); }
+            else { showToast(res.msg, 'error'); }
           });
-          
         });
-      }
-    });
+      });
+    },
 
+    async doAdd() {
+      this.adding = true;
+      try {
+        var fd = new URLSearchParams();
+        fd.append('reusable', this.addForm.reusable ? 'true' : 'false');
+        fd.append('ephemeral', this.addForm.ephemeral ? 'true' : 'false');
+        fd.append('expireDays', this.addForm.expireDays);
+        var res = await apiPost('/api/preauthkey/addKey', fd);
+        if (res.code === '0') {
+          var data = JSON.parse(res.data);
+          this.newKey = data.preAuthKey.key;
+          this.showKeyModal = true;
+        } else {
+          showToast('创建失败: ' + res.msg, 'error');
+        }
+      } catch(e) { showToast('创建失败', 'error'); }
+      this.adding = false;
+    },
 
-   
-
-  });
-  </script>
-</body>
-</html>
+    refresh() {
+      if (this.grid) this.grid.forceRender();
+    }
+  }));
+});
+</script>
+{% endblock %}

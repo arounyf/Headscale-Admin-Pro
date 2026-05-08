@@ -1,110 +1,63 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/layui/css/layui.css" rel="stylesheet">
-  <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}日志中心{% endblock %}
 
-
-  
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">日志中心</div>
-          <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
-
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-              </div>
-            </script>
-                
-
-          </div>
-        </div>
-      </div>
+{% block body %}
+<div class="p-6" x-data="logPage">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div class="px-6 py-4 border-b dark:border-gray-700 flex items-center justify-between">
+      <span class="font-semibold">日志中心</span>
+      <button @click="refresh" class="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">刷新</button>
+    </div>
+    <div class="p-4">
+      <div id="log-table"></div>
     </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script>
+</div>
 
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown','form'], function(){
-    var table = layui.table
-    ,form = layui.form
-    ,$ = layui.$;
-    var dropdown = layui.dropdown;
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('logPage', () => ({
+    grid: null,
 
+    init() {
+      this.buildTable();
+    },
 
+    buildTable() {
+      var cols = [
+        { name: 'ID', id: 'id', sort: true, width: '80px' },
+        {% if current_user.role == 'manager' %}
+        { name: '用户名', id: 'name', width: '150px' },
+        {% endif %}
+        { name: '内容', id: 'content' },
+        { name: '时间', id: 'create_time', width: '200px', sort: true },
+      ];
 
+      this.grid = new gridjs.Grid({
+        columns: cols,
+        server: {
+          url: '/api/log/getLogs',
+          then: function(data) {
+            var list = data.data || [];
+            return list.map(function(r) { return [r.id, {% if current_user.role == 'manager' %}r.name, {% endif %}r.content, r.create_time]; });
+          }
+        },
+        search: true,
+        sort: true,
+        pagination: { limit: 15 },
+        language: {
+          search: { placeholder: '搜索...' },
+          pagination: { showing: '显示', to: '到', of: '共', results: '' }
+        },
+        style: { table: { 'white-space': 'nowrap' } },
+        className: { table: 'text-sm' }
+      }).render(document.getElementById('log-table'));
+    },
 
-
-    
-    // 创建渲染实例
-    table.render({
-      elem: '#test-table-index'
-      ,url: '/api/log/getLogs' // 此处为静态模拟数据，实际使用时需换成真实接口
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
-      }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: true
-      ,cols: [[
-           // {type: 'checkbox'}
-            {field:'id', title:'ID', width:10, unresize: true, sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' %}
-                ,{field:'name', title:'用户名',width:180,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
-            {% endif %}
-            ,{field:'content', title:'内容',width:700
-                {% if current_user.role == 'user' %}
-                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
-                {% endif %}
-            }
-            ,{field:'create_time', title:'时间',width:300}
-        ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
-      }
-    });
-
-    
-
-    // 工具栏事件
-    table.on('toolbar(test-table-index)', function(obj){
-      var $ = layui.$;
-      var util = layui.util;
-      var id = obj.config.id;
-      var checkStatus = table.checkStatus(id);
-      var othis = lay(this);
-      switch(obj.event){
-
-        case 'reload':
-          var data = checkStatus.data;
-          table.reload('test-table-index',true);
-        break;
-
-      };
-    });
-
-
-
-
-  });
-  </script>
-</body>
-</html>
+    refresh() {
+      if (this.grid) this.grid.forceRender();
+    }
+  }));
+});
+</script>
+{% endblock %}
