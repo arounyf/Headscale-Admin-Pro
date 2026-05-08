@@ -30,6 +30,7 @@ def upset():
         'SMTP_FROM_NAME': 'smtpFromName',
         'SMTP_SSL': 'smtpSsl',
         'EMAIL_VERIFY_REG': 'emailVerifyReg',
+        'TIANAPI_KEY': 'tianapiKey',
     }
     # 构建反向映射：form字段名 -> config key
     form_to_config = {v: k for k, v in form_fields.items()}

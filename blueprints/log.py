@@ -40,8 +40,8 @@ def getLogs():
         cursor.execute(count_query, params)
         total_count = cursor.fetchone()['total']
 
-        # 分页查询
-        paginated_query = f"{base_query} LIMIT? OFFSET? "
+        # 分页查询（倒序）
+        paginated_query = f"{base_query} ORDER BY log.id DESC LIMIT? OFFSET? "
         paginated_params = params + (per_page, offset)
         cursor.execute(paginated_query, paginated_params)
         logs = cursor.fetchall()

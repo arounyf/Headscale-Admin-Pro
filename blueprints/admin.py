@@ -177,6 +177,7 @@ def set():
                                email_verify_reg = email_verify_reg,
                                headscale_status = hs_status_checked,
                                user_mode_checked = user_mode_checked,
+                               tianapi_key = current_app.config.get('TIANAPI_KEY', ''),
                            )
 
 

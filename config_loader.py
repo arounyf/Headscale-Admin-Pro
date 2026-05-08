@@ -72,3 +72,4 @@ SMTP_SSL = config_yaml.get('smtp_ssl', 'true')
 
 # 邮箱验证注册开关
 EMAIL_VERIFY_REG = config_yaml.get('email_verify_reg', 'off')
+TIANAPI_KEY = config_yaml.get('tianapi_key', '')

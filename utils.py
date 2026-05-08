@@ -474,10 +474,100 @@ def send_email(to_email, subject, body):
 
 import requests as _requests
 
+_IP_CACHE_FILE = '/var/lib/headscale/ip_locations.json'
+
+
+def _load_ip_cache():
+    if os.path.exists(_IP_CACHE_FILE):
+        try:
+            with open(_IP_CACHE_FILE, 'r') as f:
+                content = f.read().strip()
+                if not content:
+                    return {}
+                return json.loads(content)
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def _save_ip_cache(data):
+    try:
+        with open(_IP_CACHE_FILE, 'w') as f:
+            json.dump(data, f)
+    except OSError:
+        pass
+
+
+def _is_private_ip(ip):
+    """判断是否为内网/私有IP"""
+    import ipaddress
+    try:
+        addr = ipaddress.ip_address(ip.strip())
+        return addr.is_private or addr.is_loopback
+    except ValueError:
+        return ip.lower() in ('localhost',)
+
+
 
 def get_ip_location(ip):
-    if ip in ('127.0.0.1', 'localhost', '::1', '172.17.0.1'):
+    """查询IP地理位置，JSON文件缓存。TianAPI有key时优先用，否则fallback到ip-api"""
+    _refresh_tianapi_key()
+    if _is_private_ip(ip):
         return '本地/内网'
+
+    # 先查本地缓存
+    cache = _load_ip_cache()
+    if ip in cache:
+        return cache[ip]
+
+    # 查外部API
+    loc = _query_tianapi(ip)
+    if not loc:
+        loc = _query_ipapi(ip)
+    if not loc:
+        return ''
+
+    # 写入缓存
+    cache[ip] = loc
+    _save_ip_cache(cache)
+    return loc
+
+
+def _query_tianapi(ip):
+    # 优先从 current_app 读，线程内 fallback 到缓存
+    api_key = ''
+    try:
+        from flask import current_app as ca
+        api_key = ca.config.get('TIANAPI_KEY', '')
+    except RuntimeError:
+        api_key = _tianapi_key_fallback
+    if not api_key:
+        return ''
+    try:
+        resp = _requests.get('https://apis.tianapi.com/ipquery/index',
+                             params={'key': api_key, 'ip': ip, 'full': 1}, timeout=5)
+        data = resp.json()
+        if data.get('code') == 200:
+            r = data['result']
+            return f"{r.get('country','')} {r.get('province','')} {r.get('city','')} {r.get('isp','')}"
+    except Exception as e:
+        print(f"TianAPI error: {e}")
+    return ''
+
+
+_tianapi_key_fallback = ''
+
+
+def _refresh_tianapi_key():
+    global _tianapi_key_fallback
+    try:
+        from flask import current_app as ca
+        _tianapi_key_fallback = ca.config.get('TIANAPI_KEY', '')
+    except RuntimeError:
+        pass
+
+
+def _query_ipapi(ip):
     try:
         resp = _requests.get(f'http://ip-api.com/json/{ip}?lang=zh-CN', timeout=3)
         if resp.status_code == 200:
