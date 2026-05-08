@@ -39,6 +39,8 @@
 
 /* ── 主区域 ── */
 .main-area {
+  flex: 1;
+  min-width: 0;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
   transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1);
@@ -97,6 +99,7 @@
 /* ── iframe 容器 ── */
 .iframe-container {
   position: relative;
+  width: 100%;
   height: calc(100vh - var(--header-height) - var(--tab-height));
 }
 .iframe-container iframe {
