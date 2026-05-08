@@ -60,3 +60,15 @@ SERVER_NET = config_yaml.get('server_net', {})
 DEFAULT_REG_DAYS = config_yaml.get('default_reg_days', '7')
 DEFAULT_NODE_COUNT = config_yaml.get('default_node_count', 2)
 OPEN_USER_REG = config_yaml.get('open_user_reg', 'on')
+
+# SMTP 邮件配置
+SMTP_HOST = config_yaml.get('smtp_host', '')
+SMTP_PORT = config_yaml.get('smtp_port', '465')
+SMTP_USER = config_yaml.get('smtp_user', '')
+SMTP_PASSWORD = config_yaml.get('smtp_password', '')
+SMTP_FROM = config_yaml.get('smtp_from', '')
+SMTP_FROM_NAME = config_yaml.get('smtp_from_name', '')
+SMTP_SSL = config_yaml.get('smtp_ssl', 'true')
+
+# 邮箱验证注册开关
+EMAIL_VERIFY_REG = config_yaml.get('email_verify_reg', 'off')

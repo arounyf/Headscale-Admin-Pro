@@ -1,6 +1,6 @@
 import sqlite3
 import wtforms
-from flask import session
+from flask import session, current_app
 from flask_login import current_user
 from werkzeug.security import check_password_hash
 from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
@@ -31,9 +31,14 @@ class RegisterForm(wtforms.Form):
 
 
     def validate_vercode(self,field):
-        code = session.pop('code', None)
-        if not code or code != field.data:
-            raise wtforms.ValidationError("验证码错误或已失效！")
+        if current_app.config.get('EMAIL_VERIFY_REG') == 'on':
+            code = session.pop('email_code', None)
+            if not code or code != field.data:
+                raise wtforms.ValidationError("邮箱验证码错误或已失效！")
+        else:
+            code = session.pop('code', None)
+            if not code or code != field.data:
+                raise wtforms.ValidationError("验证码错误或已失效！")
 
 
     def validate_password(self,field):
@@ -97,7 +102,9 @@ class LoginForm(wtforms.Form):
                     input_password = self.password.data
                     if check_password_hash(user.password, input_password):
                         if user.enable == 0:
-                            raise wtforms.ValidationError("用户已被禁用！")
+                            if current_app.config.get('EMAIL_VERIFY_REG') == 'on':
+                                raise wtforms.ValidationError("请先验证邮箱后再登录，检查你的收件箱")
+                            raise wtforms.ValidationError("账户已被禁用，请联系管理员")
                     else:
                         record_login_failure(field.data)
                         raise wtforms.ValidationError("密码错误！")

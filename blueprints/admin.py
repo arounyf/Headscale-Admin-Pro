@@ -35,8 +35,8 @@ def admin():
     else:
         default_page = "node"
     menu_html = "".join(item['html'] for item in menu_items.values() if role in item['roles'])
-
-    return render_template('admin/index.html', menu_html=menu_html,default_page=default_page)
+    hs_running = 'running' if get_headscale_pid() else 'stopped'
+    return render_template('admin/index.html', menu_html=menu_html, default_page=default_page, hs_running=hs_running)
 
 
 
@@ -151,27 +151,28 @@ def set():
 
 
 
-    if get_headscale_pid():
-        headscale_status = "checked"
-    else:
-        headscale_status = ""
+    open_reg_checked = 'checked' if open_user_reg == 'on' else ''
+    hs_status_checked = 'checked' if get_headscale_pid() else ''
 
-
-    if open_user_reg == 'on':
-        open_user_reg = "checked"
-    else:
-        open_user_reg = ""
-
+    email_verify_reg = 'checked' if current_app.config.get('EMAIL_VERIFY_REG', 'off') == 'on' else ''
+    smtp_ssl = 'checked' if str(current_app.config.get('SMTP_SSL', 'true')).lower() in ('true', '1', 'on') else ''
 
     return render_template('admin/set.html',apikey = apikey,
                                server_url = server_url,
                                server_net = options_html,
-                               headscale_status = headscale_status,
                                default_reg_days = default_reg_days,
                                default_node_count = default_node_count,
-                               open_user_reg = open_user_reg,
+                               open_user_reg = open_reg_checked,
                                version = get_headscale_version(),
-
+                               smtp_host = current_app.config.get('SMTP_HOST', ''),
+                               smtp_port = current_app.config.get('SMTP_PORT', '465'),
+                               smtp_user = current_app.config.get('SMTP_USER', ''),
+                               smtp_password = current_app.config.get('SMTP_PASSWORD', ''),
+                               smtp_from = current_app.config.get('SMTP_FROM', ''),
+                               smtp_from_name = current_app.config.get('SMTP_FROM_NAME', ''),
+                               smtp_ssl = smtp_ssl,
+                               email_verify_reg = email_verify_reg,
+                               headscale_status = hs_status_checked,
                            )
 
 

@@ -16,14 +16,14 @@ def getLogs():
     with SqliteDB() as cursor:
         # 构建基础查询语句
         base_query = """
-            SELECT 
+            SELECT
                 log.id,
                 log.content,
                 users.name,
                 strftime('%Y-%m-%d %H:%M:%S', log.created_at, 'localtime') as created_at
-            FROM 
+            FROM
                 log
-            JOIN 
+            JOIN
                 users ON log.user_id = users.id
         """
 

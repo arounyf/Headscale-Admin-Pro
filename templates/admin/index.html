@@ -40,6 +40,12 @@
         <ul class="layui-nav layui-layout-right" lay-filter="layadmin-layout-right">
 
 
+          <li class="layui-nav-item layui-hide-xs" lay-unselect style="pointer-events:none">
+            <span style="font-size:12px;color:{{ '#16baaa' if hs_running == 'running' else '#ff5722' }}">
+              <i class="layui-icon layui-icon-{{ 'component' if hs_running == 'running' else 'pause' }}" style="font-size:12px"></i>
+              {{ '运行中' if hs_running == 'running' else '已停止' }}
+            </span>
+          </li>
           <li class="layui-nav-item layui-hide-xs" lay-unselect>
             <a href="javascript:;" layadmin-event="note">
               <i class="layui-icon layui-icon-note"></i>
@@ -63,12 +69,9 @@
               <img src="https://unpkg.com/outeres@0.0.10/demo/avatar/1.jpg" class="layui-nav-img">
 {#              <cite>{{ user.name }}</cite>#}
               <cite>
-
-
             {% if current_user.is_authenticated %}
               Hi {{ current_user.name }}!
             {% endif %}
-
               </cite>
             </a>
             <dl class="layui-nav-child">

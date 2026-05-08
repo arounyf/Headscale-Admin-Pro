@@ -74,18 +74,13 @@ def to_request(method,url_path,data=None,flag = True):
 
 
 def record_log(user_id, log_content):
-    """
-    记录日志到数据库（使用 UTC 时间）
-    :param user_id: 用户 ID
-    :param log_content: 日志内容
-    :return: 成功返回 True，失败返回 False
-    """
     try:
         with SqliteDB() as cursor:
-            # 获取当前 UTC 时间
             current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-            insert_query = "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);"
-            cursor.execute(insert_query, (user_id, log_content, current_time))
+            cursor.execute(
+                "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);",
+                (user_id, log_content, current_time)
+            )
             return True
     except Exception as e:
         print(f"记录日志失败: {e}")
@@ -399,7 +394,102 @@ def get_headscale_status(app):
 
 def to_init_db(app):
     get_headscale_status(app)
-    #数据库修改已经集成到了headscale中
+    _init_app_tables()
+
+
+# ---- 应用自定义表初始化 ----
+
+def _init_app_tables():
+    pass
+
+
+# ---- 邮件发送 ----
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from itsdangerous import URLSafeTimedSerializer
+
+
+def _get_token_serializer():
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='email-token')
+
+
+def generate_email_token(user_id):
+    """生成签名令牌，1小时有效，不存数据库"""
+    return _get_token_serializer().dumps(user_id)
+
+
+def verify_email_token(token):
+    """验证签名令牌，返回 user_id 或 None"""
+    try:
+        return _get_token_serializer().loads(token, max_age=3600)
+    except Exception:
+        return None
+
+
+def send_email(to_email, subject, body):
+    host = current_app.config.get('SMTP_HOST', '')
+    port = int(current_app.config.get('SMTP_PORT', '465'))
+    user = current_app.config.get('SMTP_USER', '')
+    password = current_app.config.get('SMTP_PASSWORD', '')
+    from_addr = current_app.config.get('SMTP_FROM', user)
+    from_name = current_app.config.get('SMTP_FROM_NAME', '')
+    use_ssl = str(current_app.config.get('SMTP_SSL', 'true')).lower() in ('true', '1', 'yes', 'on')
+
+    if not host or not user or not password:
+        print('SMTP not configured, skip sending email')
+        return False
+
+    msg = MIMEMultipart()
+    msg['From'] = from_addr
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'html', 'utf-8'))
+
+    try:
+        print(f'SMTP connecting: {host}:{port} SSL={use_ssl} user={user}')
+        if use_ssl:
+            with smtplib.SMTP_SSL(host, port, timeout=10) as s:
+                s.login(user, password)
+                s.sendmail(from_addr, [to_email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port, timeout=10) as s:
+                s.starttls()
+                s.login(user, password)
+                s.sendmail(from_addr, [to_email], msg.as_string())
+        print(f'Email sent to {to_email}')
+        return True
+    except smtplib.SMTPAuthenticationError as e:
+        print(f'SMTP 认证失败: {e}')
+        return False
+    except Exception as e:
+        print(f'Send email failed: {type(e).__name__}: {e}')
+        return False
+
+
+
+
+# ---- IP 地理位置 ----
+
+import requests as _requests
+
+
+def get_ip_location(ip):
+    if ip in ('127.0.0.1', 'localhost', '::1', '172.17.0.1'):
+        return '本地/内网'
+    try:
+        resp = _requests.get(f'http://ip-api.com/json/{ip}?lang=zh-CN', timeout=3)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('status') == 'success':
+                return f"{data.get('country','')} {data.get('regionName','')} {data.get('city','')}"
+    except Exception:
+        pass
+    return ''
+
+
+# ---- 登录 IP 记录已合并到 record_log ----
 
 
 # 账户锁定：连续 5 次登录失败后锁定 30 分钟

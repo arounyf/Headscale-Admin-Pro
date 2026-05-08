@@ -1,8 +1,10 @@
+import os
+import re
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 import json
-from utils import record_log, reload_headscale, to_rewrite_acl, to_request, reset_login_failures
+from utils import record_log, reload_headscale, to_rewrite_acl, to_request, reset_login_failures, send_email, generate_email_token, verify_email_token, get_ip_location, check_account_locked, record_login_failure
 from flask_login import login_user, logout_user, current_user, login_required
 from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from exts import SqliteDB
@@ -46,6 +48,20 @@ def get_captcha():
     code,content = get_captcha_code_and_content()
     session['code'] = code
     return content
+
+
+@bp.route('/send_email_code', methods=['POST'])
+def send_email_code():
+    email = request.form.get('email', '').strip()
+    if not email:
+        return res('1', '请输入邮箱', '')
+    import random
+    code = ''.join(random.choices('0123456789', k=4))
+    session['email_code'] = code
+    body = f'<h3>邮箱验证码</h3><p>你的验证码为：<b style="font-size:24px;color:#16baaa">{code}</b></p><p>5分钟内有效</p>'
+    if send_email(email, '邮箱验证码', body):
+        return res('0', '验证码已发送', '')
+    return res('1', '验证码发送失败，请联系管理员', '')
 
 def register_node(registrationID):
     url_path = f'/api/v1/node/register?user={current_user.name}&key={registrationID}'
@@ -118,11 +134,11 @@ def reg():
     if current_app.config['OPEN_USER_REG'] != 'on':
         return '<h1>当前服务器已关闭对外注册</h1>'
     if request.method == 'GET':
-        # 如果用户已经登录，重定向到 admin 页面
         if current_user.is_authenticated:
             return redirect(url_for('admin.admin'))
         else:
-            return render_template('auth/reg.html')
+            email_verify = 'true' if current_app.config.get('EMAIL_VERIFY_REG', 'off') == 'on' else 'false'
+            return render_template('auth/reg.html', email_verify=email_verify)
     else:
 
         form = RegisterForm(request.form)
@@ -143,8 +159,8 @@ def reg():
                 role = "user"
                 expire = create_time + timedelta(days=int(default_reg_days))  # 新用户注册默认?天后到期
 
-            default_reg_days = 1 if default_reg_days != 0 else default_reg_days # 若用户注册默认天数不为0，代表该用户启用
-
+            email_verify = current_app.config.get('EMAIL_VERIFY_REG', 'off') == 'on'
+            enable_val = 0 if email_verify else (1 if default_reg_days != '0' else 0)
 
             # headscale用户注册请求参数构建
             json_data =  {
@@ -154,11 +170,11 @@ def reg():
               "pictureUrl": "NULL"
             }
 
-            result_reg = to_request('POST','/api/v1/user',data = json_data)  # 直接使用数据库创建用户会出现ACL失效，所有使用api创建
+            result_reg = to_request('POST','/api/v1/user',data = json_data)
 
             if result_reg['code'] == '0':
                 try:
-                    user_id = json.loads(result_reg['data'])['user']['id']   # 获取 user_id
+                    user_id = json.loads(result_reg['data'])['user']['id']
                 except Exception as e:
                     print(f"发生错误: {e}")
                     return res('1','注册失败',result_reg['data'])
@@ -168,29 +184,32 @@ def reg():
 
             with SqliteDB() as cursor:
                 update_query = """
-                        UPDATE users 
+                        UPDATE users
                         SET password = ?,created_at = ?,updated_at = ?,expire = ?,role = ?,cellphone = ?,node = ?,route = ?,enable = ?
                         WHERE name = ?
                     """
                 values = (
                     password, create_time, create_time, expire, role, phone_number, current_app.config['DEFAULT_NODE_COUNT'], '0',
-                    default_reg_days, username
+                    enable_val, username
                 )
                 cursor.execute(update_query, values)
 
-                # 初始化用户ACL规则
                 init_acl = f'{{"action": "accept","src": ["{username}@"],"dst": ["{username}@:*"]}}'
-                insert_query = "INSERT INTO acl (acl, user_id) VALUES (?,?);"
-                cursor.execute(insert_query, (init_acl, user_id))
+                cursor.execute("INSERT INTO acl (acl, user_id) VALUES (?,?);", (init_acl, user_id))
 
-            # 用户初始化
             to_rewrite_acl()
             reload_headscale()
 
-            return res('0','注册成功','')
+            if email_verify:
+                token = generate_email_token(user_id)
+                verify_url = f"{current_app.config.get('SERVER_URL', request.host_url)}/verify/{token}"
+                body = f'<h3>欢迎注册</h3><p>请点击以下链接验证邮箱：</p><p><a href="{verify_url}">{verify_url}</a></p><p>链接1小时内有效</p>'
+                send_email(email, '邮箱验证', body)
+                return res('0', '注册成功，请查收验证邮件', '')
+            else:
+                return res('0','注册成功','')
 
         else:
-            # return form.errors
             first_key = next(iter(form.errors.keys()))
             first_value = form.errors[first_key]
             return res('1', str(first_value[0]),'')
@@ -215,8 +234,16 @@ def login():
             login_user(user)
             reset_login_failures(user.name)
             res_code,res_msg,res_data = '0', '登录成功',''
-
-            record_log(user.id,"登录成功")
+            ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
+            ip_addr = ip_addr.split(",")[0].strip()
+            record_log(user.id, f"登录成功。IP地址：{ip_addr}")
+            import threading
+            def update_location():
+                loc = get_ip_location(ip_addr)
+                if loc:
+                    with SqliteDB() as c:
+                        c.execute("UPDATE log SET content = content || ? WHERE id = (SELECT MAX(id) FROM log WHERE user_id = ?)", (f"，位置：{loc}", user.id))
+            threading.Thread(target=update_location).start()
  
         else:
             # return form.errors
@@ -257,6 +284,50 @@ def password():
 
     return res(res_code, res_msg, res_data)
 
+
+# ---- 邮箱验证 ----
+
+@bp.route('/verify/<token>')
+def verify_email(token):
+    user_id = verify_email_token(token)
+    if not user_id:
+        return render_template('auth/error.html', message='验证链接已失效或已使用')
+    with SqliteDB() as cursor:
+        cursor.execute("UPDATE users SET enable = 1 WHERE id =?", (user_id,))
+    return redirect(url_for('auth.login'))
+
+
+# ---- 忘记密码 ----
+
+@bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'GET':
+        return render_template('auth/forgot_password.html')
+    code = session.pop('code', None)
+    if not code or code != request.form.get('vercode', ''):
+        return res('1', '验证码错误或已失效', '')
+    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
+    if not username:
+        return res('1', '请输入用户名', '')
+    if not email:
+        return res('1', '请输入邮箱地址', '')
+    is_locked, remaining = check_account_locked(username)
+    if is_locked:
+        return res('1', f'账户已锁定，请{remaining}分钟后再试', '')
+    with SqliteDB() as cursor:
+        user = cursor.execute("SELECT id, name FROM users WHERE name =? AND email =?", (username, email)).fetchone()
+    if not user:
+        record_login_failure(username)
+        return res('1', '用户名与邮箱不匹配', '')
+    reset_login_failures(username)
+    import random, string
+    new_pass = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+    with SqliteDB() as cursor:
+        cursor.execute("UPDATE users SET password =? WHERE id =?", (generate_password_hash(new_pass), user['id']))
+    body = f'<h3>密码已重置</h3><p>用户 <b>{user["name"]}</b> 的新密码为：<b style="font-size:18px;color:#16baaa">{new_pass}</b></p><p>请登录后尽快修改密码。</p>'
+    send_email(email, '密码重置', body)
+    return res('0', '新密码已发送至邮箱，请查收', '')
 
 
 @bp.route('/error')

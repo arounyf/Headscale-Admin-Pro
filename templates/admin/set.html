@@ -13,41 +13,39 @@
   <body class="layui-fluid">
     <div class="layui-row layui-col-space15">
       <div class="layui-col-md8">
-        <div class="layui-card">
-          <div class="layui-card-header">系统设置</div>
-          <div class="layui-card-body" pad15>
-            
-            <div class="layui-form" wid100 lay-filter="" >
 
+        <div class="layui-form" wid100 lay-filter="">
+
+          <div class="layui-card">
+            <div class="layui-card-header">
+              系统设置
+              <span style="font-size:12px;color:#999;margin-left:10px;cursor:help" lay-tips="Headscale v{{ version }}"><i class="layui-icon layui-icon-about"></i></span>
+            </div>
+            <div class="layui-card-body" pad15>
 
               <div class="layui-form-item">
-                  <label class="layui-form-label">apiKey</label>
-
-                  <div class="layui-input-inline" style="width:395px">
-                    <input type="password" name="apiKey" lay-verify="required" autocomplete="off"   value="{{ apikey }}" class="layui-input" lay-affix="eye"  >
-                  </div>
-                  <div class="layui-form-mid" style="padding: 0!important;">
-                    <button type="button" class="layui-btn layui-btn-primary" lay-on="get_apikey">自动生成</button>
-                  </div>
-                  <div class="layui-form-mid layui-word-aux">apikey是与headscale通信的凭证</div>
-
-               </div>
-
+                <label class="layui-form-label">apiKey</label>
+                <div class="layui-input-inline" style="width:395px">
+                  <input type="password" name="apiKey" lay-verify="required" autocomplete="off" value="{{ apikey }}" class="layui-input" lay-affix="eye" data-key="BEARER_TOKEN">
+                </div>
+                <div class="layui-form-mid" style="padding: 0!important;">
+                  <button type="button" class="layui-btn layui-btn-primary" lay-on="get_apikey">自动生成</button>
+                </div>
+                <div class="layui-form-mid layui-word-aux">apikey是与headscale通信的凭证</div>
+              </div>
 
               <div class="layui-form-item">
                 <label class="layui-form-label">server url</label>
                 <div class="layui-input-inline" style="width:500px">
-                  <input type="text" name="serverUrl" lay-verify="required" value="{{ server_url }}" class="layui-input"  >
-
+                  <input type="text" name="serverUrl" lay-verify="required" value="{{ server_url }}" class="layui-input autosave" data-key="SERVER_URL">
                 </div>
                 <div class="layui-form-mid layui-word-aux">headscale对外提供服务的URL</div>
               </div>
 
-
               <div class="layui-form-item">
                 <label class="layui-form-label">新用户默认天数</label>
                 <div class="layui-input-inline" style="width:300px">
-                  <input type="text" name="defaultRegDays" lay-verify="required" value="{{ default_reg_days }}" class="layui-input">
+                  <input type="text" name="defaultRegDays" lay-verify="required" value="{{ default_reg_days }}" class="layui-input autosave" data-key="DEFAULT_REG_DAYS">
                 </div>
                 <div class="layui-form-mid layui-word-aux">新用户注册默认到期天数,0代表默认禁用</div>
               </div>
@@ -55,7 +53,7 @@
               <div class="layui-form-item">
                 <label class="layui-form-label">默认节点限制</label>
                 <div class="layui-input-inline" style="width:300px">
-                  <input type="text" name="defaultNodeCount" lay-verify="required" value="{{ default_node_count }}" class="layui-input" >
+                  <input type="text" name="defaultNodeCount" lay-verify="required" value="{{ default_node_count }}" class="layui-input autosave" data-key="DEFAULT_NODE_COUNT">
                 </div>
                 <div class="layui-form-mid layui-word-aux">新用户注册默认节点数量限制</div>
               </div>
@@ -63,151 +61,193 @@
               <div class="layui-form-item">
                 <label class="layui-form-label">对外注册</label>
                 <div class="layui-input-inline" style="width:80px">
-                  <input type="checkbox" name="openUserReg" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="open_user_reg_switch"
-                     {{ open_user_reg }}     ><div class="layui-unselect layui-form-switch" lay-skin="switch" ><div>关闭</div><i></i></div>
+                  <input type="checkbox" name="openUserReg" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" data-key="OPEN_USER_REG"
+                     {{ open_user_reg }}>
                 </div>
                 <div class="layui-form-mid layui-word-aux">是否允许新用户注册</div>
               </div>
 
               <div class="layui-form-item">
                 <label class="layui-form-label">网卡名</label>
-
-{#                  <input type="text" name="serverNet" lay-verify="required"  value="{{ server_net }}" class="layui-input">#}
-                    <div class="layui-input-inline" style="width:300px">
-                      <select name="serverNet">
-                        <option value=""></option>
-{#                        <option value="0">写作</option>#}
-{#                        <option value="1" selected>阅读</option>#}
-                          {{ server_net|safe }}
-                      </select>
-                    </div>
-
-
+                <div class="layui-input-inline" style="width:300px">
+                  <select name="serverNet" class="autosave" data-key="SERVER_NET">
+                    <option value=""></option>
+                    {{ server_net|safe }}
+                  </select>
+                </div>
                 <div class="layui-form-mid layui-word-aux">流量统计使用</div>
               </div>
 
-              
-
-
-
+              <hr style="margin:20px 0;border-color:#e6e6e6">
+              <div style="color:#999;font-size:13px;margin-bottom:15px">邮件设置</div>
 
               <div class="layui-form-item">
-                <div class="layui-input-block">
-                  <button class="layui-btn" lay-submit lay-filter="set_config">确认保存</button>
+                <label class="layui-form-label">邮箱验证注册</label>
+                <div class="layui-input-inline" style="width:80px">
+                  <input type="checkbox" name="emailVerifyReg" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" data-key="EMAIL_VERIFY_REG"
+                     {{ email_verify_reg }}>
+                </div>
+                <div class="layui-form-mid layui-word-aux">开启后新用户需验证邮箱才能激活</div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">SMTP服务器</label>
+                <div class="layui-input-inline" style="width:250px">
+                  <input type="text" name="smtpHost" value="{{ smtp_host }}" placeholder="smtp.qq.com" class="layui-input autosave" data-key="SMTP_HOST">
+                </div>
+                <div class="layui-form-mid layui-word-aux">SMTP服务器地址</div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">SMTP端口</label>
+                <div class="layui-input-inline" style="width:100px">
+                  <input type="text" name="smtpPort" value="{{ smtp_port }}" placeholder="465" class="layui-input autosave" data-key="SMTP_PORT">
+                </div>
+                <div class="layui-form-mid layui-word-aux">465(SSL) / 587(TLS)</div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">发件邮箱</label>
+                <div class="layui-input-inline" style="width:300px">
+                  <input type="text" name="smtpFrom" value="{{ smtp_from }}" placeholder="xxx@qq.com" class="layui-input autosave" data-key="SMTP_FROM">
                 </div>
               </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">登录用户</label>
+                <div class="layui-input-inline" style="width:300px">
+                  <input type="text" name="smtpUser" value="{{ smtp_user }}" placeholder="xxx@qq.com" class="layui-input autosave" data-key="SMTP_USER">
+                </div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">授权码</label>
+                <div class="layui-input-inline" style="width:300px">
+                  <input type="password" name="smtpPassword" value="{{ smtp_password }}" placeholder="QQ邮箱SMTP授权码" class="layui-input autosave" lay-affix="eye" data-key="SMTP_PASSWORD">
+                </div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">发件昵称</label>
+                <div class="layui-input-inline" style="width:300px">
+                  <input type="text" name="smtpFromName" value="{{ smtp_from_name }}" placeholder="显示在邮件中的发件人名称" class="layui-input autosave" data-key="SMTP_FROM_NAME">
+                </div>
+              </div>
+
+              <div class="layui-form-item">
+                <label class="layui-form-label">SSL加密</label>
+                <div class="layui-input-inline" style="width:80px">
+                  <input type="checkbox" name="smtpSsl" lay-skin="switch" lay-text="SSL|TLS" title="SSL|TLS" data-key="SMTP_SSL"
+                     {{ smtp_ssl }}>
+                </div>
+                <div class="layui-form-mid layui-word-aux">开启用SSL(465)，关闭用TLS(587)</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="layui-col-md4">
+        <div class="layui-card layui-form" lay-filter="component-form-element">
+          <div class="layui-card-header">headscale 进程管理</div>
+          <div class="layui-card-body layui-row layui-col-space10">
+            <div class="layui-col-md12">
+              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
             </div>
           </div>
         </div>
       </div>
 
-
-        <div class="layui-col-md4">
-            <div class="layui-card layui-form" lay-filter="component-form-element">
-                <div class="layui-card-header">headscale 进程管理</div>
-                    <div class="layui-card-body layui-row layui-col-space10">
-                    <div class="layui-col-md12">
-                        <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="switch_up" {{ headscale_status }}><div class="layui-unselect layui-form-switch" lay-skin="switch"><div>关闭</div><i></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        </div>
-    </div>
-
     </div>
   </div>
 
   <script src="/static/layui/layui.js"></script>
-<script src="/static/csrf.js"></script>
+  <script src="/static/csrf.js"></script>
 
-<script>
-layui.use(function(){
-  var form = layui.form;
-  var layer = layui.layer;
-  var $ = layui.$;
-  var util = layui.util;
-  // 普通事件
-  util.on('lay-on', {
-    // 获取验证码
-    'get_apikey': function(othis){
-       $.ajax({
-          url:'/api/set/get_apikey',
-          type: 'post',
-          success:function(res){
-            if(res.code == 0){
-              layer.msg(res.msg, {icon: 6});
-              $('input[name="apiKey"]').val(res.data);
-            }else{
-              layer.msg(res.msg, {icon: 7});
-            }
-          }
-       });
-    },
+  <script>
+  layui.use(function(){
+    var form = layui.form;
+    var layer = layui.layer;
+    var $ = layui.$;
+    var util = layui.util;
 
-  });
-
-  // 指定开关事件
-  form.on('switch(switch_up)', function(data){
-
-
-    $.ajax({
-      url:'/api/set/switch_headscale',
-      type: 'post',
-      data: {Switch:this.checked},
-      dataType: 'json',
-      success:function(res){
-        if(res.code == 0){
-          layer.msg(res.msg, {icon: 6});
-        }else{
-          layer.msg(res.msg, {icon: 7});
-        }
-
-      }
+    // 自动保存开关
+    form.on('switch', function(data){
+      var val = data.elem.checked ? 'on' : 'off';
+      var key = $(data.elem).data('key');
+      if (!key) return;
+      saveField(key, val);
     });
 
-  });
+    // 自动保存文本输入（失焦时）
+    $('.autosave').on('blur', function(){
+      var key = $(this).data('key');
+      var val = $(this).val();
+      if (!key) return;
+      saveField(key, val);
+    });
 
+    // 自动保存下拉选择
+    $('select.autosave').on('change', function(){
+      var key = $(this).data('key');
+      var val = $(this).val();
+      if (!key) return;
+      saveField(key, val);
+    });
 
-  // 提交事件
-  form.on('submit(set_config)', function(data){
-    var field = data.field; // 获取表单字段值
-
-    // 解决关闭对外注册时，字段值为空的问题
-    console.log(field.openUserReg);
-    if (field.openUserReg == undefined){
-      field.openUserReg = "off"
+    function saveField(key, val){
+      var data = {};
+      data[key] = val;
+      $.ajax({
+        url:'/api/set/upset',
+        type:'post',
+        data: data,
+        dataType:'json',
+        success:function(res){
+          if (res.code == '0') { layer.msg('修改成功', {icon:1, time:800}); } else { layer.msg(res.msg, {icon:7}); }
+        },
+        error:function(){
+          layer.msg('保存失败', {icon:7});
+        }
+      });
     }
 
-    console.log(field.openUserReg);
-
-    $.ajax({
-      url:'/api/set/upset',
-      type: 'post',
-      data:field,
-      dataType: 'json',
-      success:function(res){
-        if(res.code == 0){
-          layer.msg(res.msg, {icon: 6});
-        }else{
-          layer.msg(res.msg, {icon: 7});
+    // headscale 进程开关
+    form.on('switch(switch_up)', function(data){
+      $.ajax({
+        url:'/api/set/switch_headscale',
+        type:'post',
+        data: {Switch:this.checked},
+        dataType:'json',
+        success:function(res){
+          layer.msg(res.msg, {icon: res.code == '0' ? 6 : 7});
         }
-
-      }
+      });
     });
 
-    return false; // 阻止默认 form 跳转
+    // 自动生成 apikey
+    util.on('lay-on', {
+      'get_apikey': function(){
+         $.ajax({
+            url:'/api/set/get_apikey',
+            type:'post',
+            success:function(res){
+              if(res.code == 0){
+                layer.msg(res.msg, {icon:6});
+                $('input[name="apiKey"]').val(res.data);
+              }else{
+                layer.msg(res.msg, {icon:7});
+              }
+            }
+         });
+      },
+    });
+
   });
-
-
-  
-
-
-});
-</script>
-
+  </script>
 
 </body>
 </html>

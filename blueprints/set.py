@@ -15,23 +15,29 @@ bp = Blueprint("set", __name__, url_prefix='/api/set')
 @login_required
 @role_required("manager")
 def upset():
-    # 反转 form_fields 字典的键值对
     form_fields = {
         'BEARER_TOKEN': 'apiKey',
         'SERVER_NET': 'serverNet',
-        'SERVER_URL':'serverUrl',
+        'SERVER_URL': 'serverUrl',
         'DEFAULT_NODE_COUNT': 'defaultNodeCount',
         'OPEN_USER_REG': 'openUserReg',
         'DEFAULT_REG_DAYS': 'defaultRegDays',
+        'SMTP_HOST': 'smtpHost',
+        'SMTP_PORT': 'smtpPort',
+        'SMTP_USER': 'smtpUser',
+        'SMTP_PASSWORD': 'smtpPassword',
+        'SMTP_FROM': 'smtpFrom',
+        'SMTP_FROM_NAME': 'smtpFromName',
+        'SMTP_SSL': 'smtpSsl',
+        'EMAIL_VERIFY_REG': 'emailVerifyReg',
     }
+    # 构建反向映射：form字段名 -> config key
+    form_to_config = {v: k for k, v in form_fields.items()}
 
-    # 构建字典
     config_mapping = {}
-
-    for config_key, form_value in form_fields.items():
-        value = request.form.get(form_value)
-        # 关键修复：将获取到的值存入 config_mapping 字典
-        if value is not None:  # 确保值不是None，避免覆盖现有配置为None
+    for key, value in request.form.items():
+        config_key = key if key in form_fields else form_to_config.get(key)
+        if config_key:
             config_mapping[config_key] = value
 
     return save_config_yaml(config_mapping)
