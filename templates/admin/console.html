@@ -293,15 +293,26 @@
     });
 
 
-    setInterval(function(){
-
+    function fetchSysInfo(){
+      if (document.hidden || window.innerWidth === 0) return;
+      // 检查父级 tab 是否为激活状态
+      if (parent && parent.document) {
+        var iframes = parent.document.querySelectorAll('.layadmin-iframe');
+        var found = false;
+        for (var i = 0; i < iframes.length; i++) {
+          var item = iframes[i].closest('.layadmin-tabsbody-item');
+          if (item && item.classList.contains('layui-show') && iframes[i].contentWindow === window) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) return;
+      }
       $.ajax({
         url:'/api/system/info',
         type: 'get',
         dataType: 'json',
         success:function(res){
-          // console.log(res)
-
           if(res.cpu_usage > 50){
             $('#cpu').addClass('layui-bg-red');
           }else{
@@ -318,11 +329,10 @@
           element.progress('memory-filter-progress', res.memory_usage_percent+'%');
           $('#sent').text((res.sent_speed/1024).toFixed(2)+'M');
           $('#recv').text((res.recv_speed/1024).toFixed(2)+'M');
-
         }
       });
-
-    },2000)
+    }
+    setInterval(fetchSysInfo, 2000);
 
 
   });

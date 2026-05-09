@@ -88,11 +88,21 @@
               </div>
 
               <div class="layui-form-item">
-                <label class="layui-form-label">IP查询Key</label>
-                <div class="layui-input-inline" style="width:350px">
-                  <input type="password" name="tianapiKey" value="{{ tianapi_key }}" placeholder="留空不启用，使用免费接口" class="layui-input autosave" lay-affix="eye" data-key="TIANAPI_KEY">
+                <label class="layui-form-label">IP地理位置</label>
+                <div class="layui-input-inline" style="width:180px">
+                  <select name="ipApiSource" id="ipApiSource" lay-filter="ipApiSource">
+                    <option value="none" {{ 'selected' if ip_api_source == 'none' else '' }}>不记录</option>
+                    <option value="tianapi" {{ 'selected' if ip_api_source == 'tianapi' else '' }}>天聚数行</option>
+                    <option value="ipapi" {{ 'selected' if ip_api_source == 'ipapi' else '' }}>ip-api.com</option>
+                  </select>
                 </div>
-                <div class="layui-form-mid layui-word-aux">天聚数行IP查询API Key，留空不查询位置</div>
+                <div class="layui-form-mid layui-word-aux">选择IP地理位置查询方式</div>
+              </div>
+              <div class="layui-form-item" id="tianapiKeyRow" style="{{ '' if ip_api_source == 'tianapi' else 'display:none' }}">
+                <label class="layui-form-label">天聚Key</label>
+                <div class="layui-input-inline" style="width:350px">
+                  <input type="password" name="tianapiKey" value="{{ tianapi_key }}" placeholder="天聚数行API Key" class="layui-input autosave" lay-affix="eye" data-key="TIANAPI_KEY">
+                </div>
               </div>
 
               <hr style="margin:20px 0;border-color:#e6e6e6">
@@ -296,6 +306,20 @@
           layer.msg(res.msg, {icon: res.code == '0' ? 6 : 7});
         }
       });
+    });
+
+    // IP API 源切换
+    var ipApiInitVal = '{{ ip_api_source }}';
+    form.on('select(ipApiSource)', function(data){
+      if (data.value === 'tianapi') {
+        $('#tianapiKeyRow').show();
+      } else {
+        $('#tianapiKeyRow').hide();
+      }
+      if (ipApiInitVal !== data.value) {
+        ipApiInitVal = data.value;
+        saveField('IP_API_SOURCE', data.value);
+      }
     });
 
     // 自动生成 apikey

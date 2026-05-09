@@ -4,8 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>用户注册中心</title>
-  <!-- 请勿在项目正式环境中引用该 layui.css 地址 -->
-    {#  <link href="//unpkg.com/layui@2.9.18/dist/css/layui.css" rel="stylesheet">#}
   <link href="static/layui/css/layui.css" rel="stylesheet">
   <link href="static/adminui/dist/css/admin.css" rel="stylesheet">
   <link href="static/adminui/dist/css/login.css" rel="stylesheet">
@@ -24,7 +22,6 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
 <form class="layui-form">
   <div class="demo-reg-container">
 
-
     <div class="layui-form-item">
       <div class="layui-input-wrap">
         <div class="layui-input-prefix">
@@ -33,7 +30,6 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
         <input type="text" name="username" value="" lay-verify="required" placeholder="用户名" autocomplete="off" class="layui-input" lay-affix="clear">
       </div>
     </div>
-
 
     <div class="layui-form-item">
       <div class="layui-row">
@@ -45,19 +41,6 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
           </div>
       </div>
     </div>
-
-     <div class="layui-form-item">
-      <div class="layui-row">
-          <div class="layui-input-wrap">
-            <div class="layui-input-prefix">
-              <i class="layui-icon layui-icon-email"></i>
-            </div>
-            <input type="text" name="email" value="" lay-verify="required" placeholder="邮箱" lay-reqtext="请填写邮箱地址" autocomplete="off" class="layui-input" id="reg-email">
-          </div>
-      </div>
-    </div>
-
-
 
     <div class="layui-form-item">
       <div class="layui-input-wrap">
@@ -73,6 +56,17 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
           <i class="layui-icon layui-icon-password"></i>
         </div>
         <input type="password" name="confirmPassword" value="" lay-verify="required|confirmPassword" placeholder="确认密码" autocomplete="off" class="layui-input" lay-affix="eye">
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <div class="layui-row">
+          <div class="layui-input-wrap">
+            <div class="layui-input-prefix">
+              <i class="layui-icon layui-icon-email"></i>
+            </div>
+            <input type="text" name="email" value="" lay-verify="required" placeholder="邮箱" lay-reqtext="请填写邮箱地址" autocomplete="off" class="layui-input" id="reg-email">
+          </div>
       </div>
     </div>
 
@@ -94,7 +88,6 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
         </div>
       </div>
     </div>
-
     <div class="layui-form-item">
       <input type="checkbox" name="agreement" lay-verify="required" lay-skin="primary" title="同意">
       <a href="#terms" target="_blank" style="position: relative; top: 6px; left: -15px;">
@@ -109,13 +102,11 @@ h2{margin-top:35px;margin-bottom:50px;text-align:center;font-weight:300;font-siz
   </div>
 </form>
 
-<!-- 请勿在项目正式环境中引用该 layui.js 地址 -->
   <script src="/static/layui/layui.js"></script>
 <script src="/static/csrf.js"></script>
 <script>
 
 function generateUUID(){
-    {#alert("123")#}
     var d = new Date().getTime();
     var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       var r = (d + Math.random()*16)%16 | 0;
@@ -123,7 +114,6 @@ function generateUUID(){
       return (c=='x' ? r : (r&0x3|0x8)).toString(16);
     });
     return uuid;
-
 }
 
 function get_captcha(){
@@ -138,7 +128,7 @@ layui.use(function(){
   var layer = layui.layer;
   var util = layui.util;
   var emailVerify = {{ email_verify }};
-  
+
   // 邮箱验证码模式
   if (emailVerify) {
     $('#captchaImgBox').hide();
@@ -152,7 +142,9 @@ layui.use(function(){
       $.ajax({
         url:'/send_email_code', type:'post', data:{email:email}, dataType:'json',
         success:function(res){
-          if(res.code == '0'){ layer.msg('验证码已发送', {icon:6}); }
+          if(res.code == '0'){
+            layer.alert('验证码已发送至邮箱，请登录邮箱查收并填写验证码', {icon: 1, title: '发送成功'});
+          }
           else { layer.msg(res.msg, {icon:7}); btn.text('发送验证码').prop('disabled', false); }
         },
         error:function(){ layer.msg('发送失败', {icon:7}); btn.text('发送验证码').prop('disabled', false); }
@@ -168,19 +160,11 @@ layui.use(function(){
 
   var captcha_uuid = get_captcha();
 
-
-  // 点击按钮更新验证码
   $('#captchaImage').click(function(){
       captcha_uuid = get_captcha();
-      console.log(captcha_uuid)
   });
 
-
-  console.log(captcha_uuid)
-
-  // 自定义验证规则
   form.verify({
-    // 确认密码
     confirmPassword: function(value, item){
       var passwordValue = $('#reg-password').val();
       if(value !== passwordValue){
@@ -189,17 +173,13 @@ layui.use(function(){
     }
   });
 
-  // 提交事件
   form.on('submit(demo-reg)', function(data){
-    var field = data.field; // 获取表单字段值
+    var field = data.field;
     field['captcha_uuid'] = captcha_uuid;
-    console.log(field)
-    // 是否勾选同意
     if(!field.agreement){
       layer.msg('您必须勾选同意用户协议才能注册');
       return false;
     }
-
 
     $.ajax({
         url:'./reg',
@@ -208,23 +188,18 @@ layui.use(function(){
         dataType: 'json',
         success:function(res){
           if(res.code == 0){
-            layer.msg(res.msg, {icon: 6});
-            setTimeout(function() {
-                location.href="login?username="+field.username
-                {#alert('success')#}
-            }, 1000);
+            layer.alert(res.msg, {icon: 1, title: '注册成功'}, function(){
+              location.href="login?username="+field.username;
+            });
           }else{
             layer.msg(res.msg, {icon: 7});
             captcha_uuid = get_captcha();
           }
-
         }
     });
 
-    return false; // 阻止默认 form 跳转
+    return false;
   });
-
-
 
 });
 </script>

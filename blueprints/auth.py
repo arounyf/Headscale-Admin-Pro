@@ -245,16 +245,28 @@ def reg():
             first_value = form.errors[first_key]
             res_code, res_msg = '1', str(first_value[0])
             # 记录注册失败IP
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            username = request.form.get('username', '').strip()
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
             ip_addr = ip_addr.split(",")[0].strip()
             import threading
             app_ctx = current_app._get_current_object()
             def fail_reg_log():
                 with app_ctx.app_context():
+                    with SqliteDB() as c:
+                        u = c.execute("SELECT id, name, email, cellphone FROM users WHERE email =? OR cellphone =?", (email, phone)).fetchone()
+                    uid = u['id'] if u else None
                     loc = get_ip_location(ip_addr)
-                    msg = f"注册失败：{res_msg}。IP地址：{ip_addr}"
+                    detail = ''
+                    if u:
+                        if u['email'] == email:
+                            detail = f'，使用与用户 {u["name"]}(ID:{uid}) 相同的邮箱 {email}'
+                        elif u['cellphone'] == phone:
+                            detail = f'，使用与用户 {u["name"]}(ID:{uid}) 相同的手机号 {phone}'
+                    msg = f"注册失败：{res_msg}，用户 {username} 注册失败{detail}。IP地址：{ip_addr}"
                     if loc: msg += f"，位置：{loc}"
-                    record_log(0, msg)
+                    record_log(uid, msg)
             threading.Thread(target=fail_reg_log).start()
             return res(res_code, res_msg, '')
 
@@ -296,16 +308,20 @@ def login():
             first_value = form.errors[first_key]
             res_code,res_msg,res_data ='1',str(first_value[0]),''
             # 记录登录失败IP
+            username = request.form.get('username', '').strip()
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
             ip_addr = ip_addr.split(",")[0].strip()
             import threading
             app_ctx = current_app._get_current_object()
             def fail_log():
                 with app_ctx.app_context():
+                    with SqliteDB() as c:
+                        u = c.execute("SELECT id FROM users WHERE name =?", (username,)).fetchone()
+                    uid = u['id'] if u else None
                     loc = get_ip_location(ip_addr)
-                    msg = f"登录失败：{res_msg}。IP地址：{ip_addr}"
+                    msg = f"登录失败：用户 {username}，{res_msg}。IP地址：{ip_addr}"
                     if loc: msg += f"，位置：{loc}"
-                    record_log(0, msg)
+                    record_log(uid, msg)
             threading.Thread(target=fail_log).start()
         return res(res_code,res_msg,res_data)
 #

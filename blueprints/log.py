@@ -24,7 +24,7 @@ def getLogs():
                 strftime('%Y-%m-%d %H:%M:%S', log.created_at, 'localtime') as created_at
             FROM
                 log
-            JOIN
+            LEFT JOIN
                 users ON log.user_id = users.id
         """
 
@@ -52,7 +52,7 @@ def getLogs():
         logs_list.append({
             'id': log['id'],
             'content': log['content'],
-            'name': log['name'],
+            'name': log['name'] or '-',
             'create_time': log['created_at']
         })
 

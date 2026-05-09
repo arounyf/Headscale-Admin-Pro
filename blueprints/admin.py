@@ -178,6 +178,7 @@ def set():
                                headscale_status = hs_status_checked,
                                user_mode_checked = user_mode_checked,
                                tianapi_key = current_app.config.get('TIANAPI_KEY', ''),
+                               ip_api_source = current_app.config.get('IP_API_SOURCE', 'none'),
                            )
 
 

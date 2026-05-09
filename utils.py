@@ -508,18 +508,23 @@ def _is_private_ip(ip):
 
 
 def get_ip_location(ip):
-    """查询IP地理位置，JSON文件缓存。未配置Key不查询"""
+    """查询IP地理位置，JSON文件缓存。根据IP_API_SOURCE配置选择API"""
     from flask import current_app as ca
-    if not ca.config.get('TIANAPI_KEY', ''):
+    source = ca.config.get('IP_API_SOURCE', 'none')
+    if source == 'none':
         return ''
     if _is_private_ip(ip):
-        return ''
+        return '内网IP'
 
     cache = _load_ip_cache()
     if ip in cache:
         return cache[ip]
 
-    loc = _query_tianapi(ip)
+    loc = ''
+    if source == 'tianapi':
+        loc = _query_tianapi(ip)
+    elif source == 'ipapi':
+        loc = _query_ipapi(ip)
     if not loc:
         return ''
 
@@ -542,6 +547,18 @@ def _query_tianapi(ip):
             return f"{r.get('country','')} {r.get('province','')} {r.get('city','')} {r.get('district','')} {r.get('isp','')}"
     except Exception as e:
         print(f'[_query_tianapi] error: {e}')
+    return ''
+
+
+def _query_ipapi(ip):
+    try:
+        resp = _requests.get(f'http://ip-api.com/json/{ip}?lang=zh-CN', timeout=3)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('status') == 'success':
+                return f"{data.get('country','')} {data.get('regionName','')} {data.get('city','')}"
+    except Exception:
+        pass
     return ''
 
 
