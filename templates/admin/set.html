@@ -79,7 +79,7 @@
               <div class="layui-form-item">
                 <label class="layui-form-label">网卡名</label>
                 <div class="layui-input-inline" style="width:300px">
-                  <select name="serverNet" class="autosave" data-key="SERVER_NET">
+                  <select name="serverNet" class="autosave" data-key="SERVER_NET" lay-filter="serverNet">
                     <option value=""></option>
                     {{ server_net|safe }}
                   </select>
@@ -309,6 +309,14 @@
     });
 
     // IP API 源切换
+    // 网卡切换
+    form.on('select(serverNet)', function(data){
+      if (_init['SERVER_NET'] !== data.value) {
+        var old = _init['SERVER_NET'];
+        saveField('SERVER_NET', data.value, function(){ _init['SERVER_NET'] = data.value; }, function(){ _init['SERVER_NET'] = old; $('select[name="serverNet"]').val(old); form.render('select'); });
+      }
+    });
+
     var ipApiInitVal = '{{ ip_api_source }}';
     form.on('select(ipApiSource)', function(data){
       if (data.value === 'tianapi') {
