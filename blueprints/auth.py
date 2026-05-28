@@ -177,7 +177,8 @@ def reg():
                 expire = create_time + timedelta(days=int(default_reg_days))  # 新用户注册默认?天后到期
 
             email_verify = current_app.config.get('EMAIL_VERIFY_REG', 'off') == 'on'
-            enable_val = 0 if email_verify else (1 if default_reg_days != '0' else 0)
+            # 邮箱验证码模式下已在注册时验证了邮箱，直接启用；否则按天数判断
+            enable_val = 0 if str(default_reg_days) == '0' else 1
 
             # headscale用户注册请求参数构建
             json_data =  {
@@ -211,8 +212,11 @@ def reg():
                 )
                 cursor.execute(update_query, values)
 
+                # 获取本地用户ID用于ACL
+                local_user = cursor.execute("SELECT id FROM users WHERE name = ?", (username,)).fetchone()
+                local_user_id = local_user['id'] if local_user else user_id
                 init_acl = f'{{"action": "accept","src": ["{username}@"],"dst": ["{username}@:*"]}}'
-                cursor.execute("INSERT INTO acl (acl, user_id) VALUES (?,?);", (init_acl, user_id))
+                cursor.execute("INSERT INTO acl (acl, user_id) VALUES (?,?);", (init_acl, local_user_id))
 
             to_rewrite_acl()
             reload_headscale()
@@ -231,14 +235,7 @@ def reg():
                             record_log(u['id'], f"新用户注册。IP地址：{ip_addr}，位置：{loc}" if loc else f"新用户注册。IP地址：{ip_addr}")
             threading.Thread(target=reg_log).start()
 
-            if email_verify:
-                token = generate_email_token(user_id)
-                verify_url = f"{current_app.config.get('SERVER_URL', request.host_url)}/verify/{token}"
-                body = f'<h3>欢迎注册</h3><p>请点击以下链接验证邮箱：</p><p><a href="{verify_url}">{verify_url}</a></p><p>链接1小时内有效</p>'
-                send_email(email, '邮箱验证', body)
-                return res('0', '注册成功，请查收验证邮件', '')
-            else:
-                return res('0','注册成功','')
+            return res('0','注册成功','')
 
         else:
             first_key = next(iter(form.errors.keys()))
