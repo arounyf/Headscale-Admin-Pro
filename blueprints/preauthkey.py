@@ -57,10 +57,11 @@ def getPreAuthKey():
             expiration_local = expiration_utc.astimezone()
             expiration = expiration_local.strftime('%Y-%m-%d %H:%M:%S')
 
+        user = key.get('user') or {}
         pre_auth_keys_list.append({
             'id': key['id'],
             'key': key['key'],
-            'name': key['user']['name'],
+            'name': user.get('name', '-'),
             'create_time': create_time,
             'expiration': expiration,
             'reusable': key.get('reusable', False),
