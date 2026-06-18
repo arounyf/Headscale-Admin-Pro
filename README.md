@@ -78,8 +78,7 @@ cp -r data data.bak.$(date +%Y%m%d)        # 备份
 rm -rf app/*                                 # 删旧代码
 docker rm hs-admin                           # 删旧容器
 docker rmi runyf/hs-admin:latest            # 删旧镜像
-# 修改 docker-compose.yml 中的镜像版本为新版本号
-docker-compose up -d
+docker-compose up -d                         # 自动拉取最新镜像
 ```
 
 
