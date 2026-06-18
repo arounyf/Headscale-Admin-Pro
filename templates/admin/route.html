@@ -39,10 +39,9 @@
 
           {% raw %}
           <script type="text/html" id="switchTpl">
-            <input type="checkbox" name="enabled" lay-skin="switch" lay-text="ON|OFF"
+            <input type="checkbox" name="开关" lay-skin="switch" lay-text="是|否"
              lay-filter="route-switch" value="{{ d.enabled }}"
-             data-id="{{ d.id }}" data-nodeid="{{ d.nodeId }}" data-route="{{ d.route }}"
-             {{ d.enabled ? 'checked' : '' }}>
+             data-json="{{ encodeURIComponent(JSON.stringify(d)) }}" {{ d.enabled ? 'checked' : '' }}>
           </script>
           {% endraw %}
         </div>
@@ -105,17 +104,16 @@ layui.config({
   });
   {% endif %}
 
-  // 开关切换事件
+  // 路由开关切换
   form.on('switch(route-switch)', function(obj){
+    var json = JSON.parse(decodeURIComponent($(this).data('json')));
+    json = table.clearCacheKey(json);
     var enabled = obj.elem.checked;
-    var nodeId = this.getAttribute('data-nodeid');
-    var route = this.getAttribute('data-route');
 
     $.ajax({
       url: '/api/route/toggleRoute',
       type: 'POST',
-      data: { nodeId: nodeId, route: route, enable: enabled ? '1' : '0' },
-      
+      data: { nodeId: json.nodeId, route: json.route, enable: enabled ? '1' : '0' },
       success: function(res) {
         if (res.code === '0') {
           layer.msg(res.msg, {icon: 1});
