@@ -30,11 +30,13 @@ def getPreAuthKey():
     # 按角色过滤数据
     filtered_keys = []
     for key in all_pre_auth_keys:
+        # tagged keys 的 user 为 null，只对管理员可见
+        if key.get('user') is None:
+            continue
         if current_user.role != 'manager' or is_user_mode():
-            if int(key['user']['id']) == current_user.id:
-                filtered_keys.append(key)
-        else:
-            filtered_keys.append(key)
+            if int(key['user']['id']) != current_user.id:
+                continue
+        filtered_keys.append(key)
 
     # 计算总记录数
     total_count = len(filtered_keys)
