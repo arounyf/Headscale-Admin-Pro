@@ -69,40 +69,18 @@ docker-compose up -d
 
 # 从 v4.0 升级到 v5.0
 
-> **升级前务必备份数据！**
+> **升级前务必备份数据！** 详细步骤见 [Release v5.0](https://github.com/arounyf/Headscale-Admin-Pro/releases/tag/v5.0)
 
 ```bash
-# 1. 进入部署目录
 cd ~/hs-admin
-
-# 2. 停止旧容器
 docker-compose down
-
-# 3. 备份数据
-cp -r data data.bak.$(date +%Y%m%d)
-cp -r config config.bak.$(date +%Y%m%d)
-
-# 4. 删除旧 app 代码（重要！新镜像会重新生成）
-rm -rf app/*
-
-# 5. 修改 config/config.yaml：
-#    - 删除 ephemeral_node_inactivity_timeout 行
-#    - 删除 randomize_client_port 行
-#    - 确认 derp.paths 指向有效的 DERP 配置文件
+cp -r data data.bak.$(date +%Y%m%d)        # 备份
+rm -rf app/*                                 # 删旧代码
 sed -i '/ephemeral_node_inactivity_timeout/d' config/config.yaml
 sed -i '/randomize_client_port/d' config/config.yaml
-
-# 6. 拉取新镜像
 docker pull runyf/hs-admin:v5.0
-
-# 7. 修改 docker-compose.yml 中的镜像版本
 sed -i 's|image:.*|image: runyf/hs-admin:v5.0|' docker-compose.yml
-
-# 8. 启动
 docker-compose up -d
-
-# 9. 查看日志确认启动成功
-docker-compose logs -f
 ```
 
 
