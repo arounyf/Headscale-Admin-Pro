@@ -39,5 +39,7 @@ jobs:
           context: .
           push: true
           no-cache: true
+          build-args: |
+            CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
