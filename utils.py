@@ -257,8 +257,8 @@ def to_rewrite_acl():
             SELECT acl.acl
             FROM acl
             LEFT JOIN users ON acl.user_id = users.id
-            WHERE acl.user_id = 0
-               OR (acl.user_id > 0 AND users.enable = '1')
+            WHERE acl.user_id IS NULL
+               OR (acl.user_id IS NOT NULL AND users.enable = '1')
         """
         cursor.execute(query)
         acls = cursor.fetchall()

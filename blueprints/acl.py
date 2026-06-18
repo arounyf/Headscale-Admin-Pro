@@ -63,10 +63,10 @@ def save_acl():
     # 同步到 acl 表（保持 to_rewrite_acl 一致性）
     try:
         with SqliteDB() as cursor:
-            cursor.execute("DELETE FROM acl WHERE user_id = 0")
+            cursor.execute("DELETE FROM acl WHERE user_id IS NULL")
             for acl in acl_data['acls']:
                 cursor.execute(
-                    "INSERT INTO acl (acl, user_id) VALUES (?, 0)",
+                    "INSERT INTO acl (acl, user_id) VALUES (?, NULL)",
                     (json.dumps(acl, ensure_ascii=False),)
                 )
     except Exception as e:
