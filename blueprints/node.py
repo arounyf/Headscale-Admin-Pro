@@ -212,10 +212,12 @@ def node_info():
     # 2. 构建查询SQL语句和参数
     # 严格参考 getNodes 函数中的字段
     base_query = """
-        SELECT
-            nodes.host_info, nodes.user_id
-        FROM
+        SELECT 
+            nodes.host_info
+        FROM 
             nodes
+        JOIN 
+            users ON nodes.user_id = users.id
     """
     
     conditions = []
