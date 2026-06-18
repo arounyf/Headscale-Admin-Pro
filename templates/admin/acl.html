@@ -1,9 +1,8 @@
-{% raw %}
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>访问控制 — ACL 规则管理</title>
+  <title>访问控制 — ACL 规则</title>
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,25 +15,29 @@
   <div class="layui-row layui-col-space15">
     <div class="layui-col-md12">
       <div class="layui-card">
-        <div class="layui-card-header">访问控制规则
-          <i class="layui-icon layui-icon-tips" style="margin-left:12px;color:#5FB878;cursor:pointer"
-             title="autogroup:self 自动限定同用户节点+子网路由（per-user primary routes 隔离）。全局规则适用于所有用户。tagged 节点路由全局可见。"></i>
+        <div class="layui-card-header">ACL 策略编辑器
+          <span style="margin-left:16px;color:#909399;font-size:12px;font-weight:400;">
+            <i class="layui-icon layui-icon-about"></i>
+            autogroup:self 自动限定同用户节点+子网路由 · tagged 节点路由全局可见 · per-user primary routes 隔离
+          </span>
         </div>
         <div class="layui-card-body">
-          <table class="layui-hide" id="acl-table" lay-filter="acl-table"></table>
 
-          <script type="text/html" id="toolbarDemo">
-            <div class="layui-btn-container">
-              <button class="layui-btn layui-btn-sm" lay-event="addRule">新增规则</button>
-              <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="writeConfig">写入配置</button>
-              <button class="layui-btn layui-btn-sm" lay-event="readConfig">读取配置</button>
-              <button class="layui-btn layui-btn-sm layui-btn-warm" lay-event="reload">重载配置</button>
+          <div class="layui-form">
+            <div class="layui-form-item">
+              <div class="layui-input-block">
+                <textarea id="acl-editor" class="layui-textarea" style="font-family:monospace;font-size:13px;min-height:420px;"
+                 placeholder="在此编辑 ACL JSON..."></textarea>
+              </div>
             </div>
-          </script>
+            <div class="layui-form-item">
+              <button class="layui-btn" lay-submit lay-filter="read">读取</button>
+              <button class="layui-btn layui-btn-normal" lay-submit lay-filter="save">保存</button>
+              <button class="layui-btn layui-btn-warm" lay-submit lay-filter="reload">重载</button>
+              <span id="status-msg" style="margin-left:12px;color:#67C23A;display:none;"></span>
+            </div>
+          </div>
 
-          <script type="text/html" id="barDemo">
-            <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
-          </script>
         </div>
       </div>
     </div>
@@ -44,174 +47,79 @@
 <script src="/static/layui/layui.js"></script>
 <script src="/static/csrf.js"></script>
 <script>
-layui.config({
-  base: '/static/'
-}).use(['index', 'table', 'dropdown', 'form', 'layer'], function(){
-  var table = layui.table, form = layui.form, $ = layui.$, layer = layui.layer;
+layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
+  var form = layui.form, $ = layui.$, layer = layui.layer;
 
-  var tableIns = table.render({
-    elem: '#acl-table'
-    ,url: '/api/acl/getACL'
-    ,toolbar: '#toolbarDemo'
-    ,defaultToolbar: ['filter', 'print', {
-      title: '帮助', layEvent: 'LAYTABLE_TIPS', icon: 'layui-icon-tips'
-    }]
-    ,height: 'full-100'
-    ,cellMinWidth: 80
-    ,totalRow: true
-    ,page: true
-    ,limit: 15
-    ,cols: [[
-      {field:'id', title:'ID', fixed: 'left', width:70, sort: true, totalRowText: '合计：'}
-      ,{field:'userName', title:'范围', width:130, sort: true, totalRow: '{{= d.TOTAL_ROW.count }} 😊'}
-      ,{field:'acl', title:'ACL 规则', edit: 'text'}
-      ,{fixed: 'right', title:'操作', width:80, toolbar: '#barDemo'}
-    ]]
-    ,error: function(res, msg){
-      console.log(res, msg)
+  // 页面加载时读取 ACL
+  $.post('/api/acl/get_acl', function(res){
+    if(res.code === '0'){
+      $('#acl-editor').val(res.data);
+    } else {
+      layer.msg('读取失败: ' + res.msg, {icon: 2});
     }
   });
 
-  // 工具栏事件
-  table.on('toolbar(acl-table)', function(obj){
-    switch(obj.event){
-      case 'addRule':
-        layer.prompt({
-          formType: 2,
-          title: '新增全局 ACL 规则 (JSON)',
-          area: ['600px', '200px'],
-          value: '{"action": "accept", "src": ["autogroup:member"], "dst": ["autogroup:self:*"]}'
-        }, function(value, index){
-          $.ajax({
-            url: '/api/acl/add_acl',
-            type: 'POST',
-            data: { acl: value },
-            success: function(res){
-              if(res.code === '0'){
-                layer.close(index);
-                layer.msg('添加成功', {icon: 1});
-                table.reload('acl-table');
-              } else {
-                layer.msg(res.msg, {icon: 2});
-              }
-            },
-            error: function(){
-              layer.msg('网络错误', {icon: 2});
-            }
-          });
-        });
-      break;
+  function showStatus(msg, ok){
+    var el = $('#status-msg');
+    el.css('color', ok ? '#67C23A' : '#F56C6C').text(msg).show();
+    setTimeout(function(){ el.hide(); }, 3000);
+  }
 
-      case 'writeConfig':
-        layer.load();
-        $.ajax({
-          url:'/api/acl/rewrite_acl',
-          type: 'POST',
-          dataType: 'json',
-          success:function(res){
-            layer.closeAll('loading');
-            layer.msg(res.msg, {icon: res.code === '0' ? 1 : 2});
-          },
-          error: function(){
-            layer.closeAll('loading');
-            layer.msg('网络错误', {icon: 2});
-          }
-        });
-      break;
-
-      case 'readConfig':
-        $.ajax({
-          url:'/api/acl/read_acl',
-          type: 'POST',
-          dataType: 'json',
-          success:function(res){
-            if(res.code === '0'){
-              layer.open({
-                type: 1,
-                area: ['1000px', '500px'],
-                title: '当前生效 ACL',
-                shade: 0.6,
-                shadeClose: true,
-                maxmin: true,
-                anim: 0,
-                content: res.data
-              });
-            }else{
-              layer.msg(res.msg, {icon: 7});
-            }
-          }
-        });
-      break;
-
-      case 'reload':
-        layer.load();
-        $.ajax({
-          url:'/api/acl/reload',
-          type: 'POST',
-          dataType: 'json',
-          success:function(res){
-            layer.closeAll('loading');
-            layer.msg(res.msg, {icon: res.code === '0' ? 1 : 2});
-          },
-          error: function(){
-            layer.closeAll('loading');
-            layer.msg('网络错误', {icon: 2});
-          }
-        });
-      break;
-    }
+  form.on('submit(read)', function(){
+    layer.load();
+    $.post('/api/acl/get_acl', function(res){
+      layer.closeAll('loading');
+      if(res.code === '0'){
+        $('#acl-editor').val(res.data);
+        showStatus('读取成功', true);
+      } else {
+        layer.msg('读取失败: ' + res.msg, {icon: 2});
+      }
+    });
+    return false;
   });
 
-  // 行操作：删除
-  table.on('tool(acl-table)', function(obj){
-    if(obj.event === 'del'){
-      layer.confirm('确定删除此规则？', function(index){
-        $.ajax({
-          url: '/api/acl/delete_acl',
-          type: 'POST',
-          data: { aclId: obj.data.id },
-          success: function(res){
-            if(res.code === '0'){
-              layer.msg('已删除', {icon: 1});
-              obj.del();
-            } else {
-              layer.msg(res.msg, {icon: 2});
-            }
-            layer.close(index);
-          },
-          error: function(){
-            layer.msg('网络错误', {icon: 2});
-          }
-        });
-      });
+  form.on('submit(save)', function(){
+    var acl = $('#acl-editor').val();
+    if(!acl.trim()){
+      layer.msg('ACL 内容为空', {icon: 2});
+      return false;
     }
-  });
-
-  // 单元格编辑
-  table.on('edit(acl-table)', function(obj){
+    layer.load();
     $.ajax({
-      url:'/api/acl/re_acl',
+      url: '/api/acl/save_acl',
       type: 'POST',
-      dataType: 'json',
-      data: { aclId: obj.data.id, newAcl: obj.value },
-      success:function(res){
+      data: { acl: acl },
+      success: function(res){
+        layer.closeAll('loading');
         if(res.code === '0'){
-          layer.msg('更新成功', {icon: 1});
-          obj.update({ acl: obj.value });
-        }else{
+          showStatus('保存成功，headscale 已重载', true);
+        } else {
           layer.msg(res.msg, {icon: 2});
-          obj.update({ acl: obj.oldValue });
         }
       },
       error: function(){
+        layer.closeAll('loading');
         layer.msg('网络错误', {icon: 2});
-        obj.update({ acl: obj.oldValue });
       }
     });
+    return false;
+  });
+
+  form.on('submit(reload)', function(){
+    layer.load();
+    $.post('/api/acl/reload', function(res){
+      layer.closeAll('loading');
+      if(res.code === '0'){
+        showStatus('重载成功', true);
+      } else {
+        layer.msg('重载失败: ' + res.msg, {icon: 2});
+      }
+    });
+    return false;
   });
 
 });
 </script>
 </body>
 </html>
-{% endraw %}
