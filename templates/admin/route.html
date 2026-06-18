@@ -62,7 +62,7 @@ layui.config({
     elem: '#route-table'
     ,url: '/api/route/getAllRoutes'
     ,toolbar: '#toolbarDemo'
-    ,defaultToolbar: ['filter', 'exports', 'print', {
+    ,defaultToolbar: ['filter', 'print', {
       title: '帮助', layEvent: 'LAYTABLE_TIPS', icon: 'layui-icon-tips'
     }]
     ,height: {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}'full-150'{% else %}'full-100'{% endif %}
