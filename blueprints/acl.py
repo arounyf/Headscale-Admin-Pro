@@ -1,6 +1,5 @@
 import json
 from flask_login import login_required, current_user
-from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
 from utils import reload_headscale, res
@@ -59,18 +58,6 @@ def save_acl():
             json.dump(acl_data, f, indent=4, ensure_ascii=False)
     except Exception as e:
         return res('1', f'写入文件失败: {e}')
-
-    # 同步到 acl 表（保持 to_rewrite_acl 一致性）
-    try:
-        with SqliteDB() as cursor:
-            cursor.execute("DELETE FROM acl WHERE user_id IS NULL")
-            for acl in acl_data['acls']:
-                cursor.execute(
-                    "INSERT INTO acl (acl, user_id) VALUES (?, NULL)",
-                    (json.dumps(acl, ensure_ascii=False),)
-                )
-    except Exception as e:
-        pass  # DB 同步失败不阻塞
 
     reload_headscale()
     return res('0', '保存成功，headscale 已重载')

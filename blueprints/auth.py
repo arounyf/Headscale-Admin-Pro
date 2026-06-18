@@ -4,7 +4,7 @@ import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 import json
-from utils import record_log, reload_headscale, to_rewrite_acl, to_request, reset_login_failures, send_email, generate_email_token, verify_email_token, get_ip_location, check_account_locked, record_login_failure
+from utils import record_log, to_request, reset_login_failures, send_email, generate_email_token, verify_email_token, get_ip_location, check_account_locked, record_login_failure
 from flask_login import login_user, logout_user, current_user, login_required
 from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from exts import SqliteDB
@@ -201,9 +201,7 @@ def reg():
                 )
                 cursor.execute(update_query, values)
 
-            # v5.0 使用全局 ACL，不再为每个用户单独创建规则
-            to_rewrite_acl()
-            reload_headscale()
+            # 注册完成
 
             # 记录注册IP
             ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr

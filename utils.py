@@ -249,37 +249,6 @@ def get_headscale_version():
     except subprocess.CalledProcessError as e:
         print({e.stderr})
 
-def to_rewrite_acl():
-    """将所有 ACL 规则（全局 + 各用户启用）合并写入 headscale 策略文件"""
-    acl_path = current_app.config['ACL_PATH']
-
-    with SqliteDB() as cursor:
-        # 全局规则（user_id = 0）+ 启用用户的规则
-        query = """
-            SELECT acl.acl
-            FROM acl
-            LEFT JOIN users ON acl.user_id = users.id
-            WHERE acl.user_id IS NULL
-               OR (acl.user_id IS NOT NULL AND users.enable = '1')
-        """
-        cursor.execute(query)
-        acls = cursor.fetchall()
-
-    acl_list = [json.loads(acl['acl']) for acl in acls]
-    acl_data = {
-        "randomizeClientPort": False,
-        "acls": acl_list
-    }
-
-    try:
-        with open(acl_path, 'w') as f:
-            json.dump(acl_data, f, indent=4)
-        return res('0', '写入成功', acl_data)
-    except Exception as e:
-        return res('1', '写入失败', str(e))
-
-
-
 def save_config_yaml(config_dict):
     print(config_dict)
     # 创建 YAML 对象，设置保留注释
