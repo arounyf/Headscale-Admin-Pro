@@ -115,7 +115,7 @@ layui.config({
       url: '/api/route/toggleRoute',
       type: 'POST',
       data: { nodeId: nodeId, route: route, enable: enabled ? '1' : '0' },
-      headers: {'X-CSRFToken': csrfToken},
+      
       success: function(res) {
         if (res.code === '0') {
           layer.msg(res.msg, {icon: 1});
