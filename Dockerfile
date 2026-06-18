@@ -26,7 +26,7 @@ RUN pip3 install --break-system-packages \
     email_validator
 
 # 下载 headscale（从 GitHub Release）
-RUN wget -O headscale https://github.com/arounyf/headscale/releases/download/v0.29.1-runyf/headscale
+RUN wget -O headscale https://github.com/arounyf/headscale/releases/download/v0.29.1-runyf.1/headscale
 
 # 复制项目并初始化配置
 COPY . /init_data
