@@ -25,8 +25,8 @@ RUN pip3 install --break-system-packages \
     ruamel.yaml \
     email_validator
 
-# 下载 headscale
-RUN wget -O headscale https://pan.runyf.cn/directlink/downloads/headscale/headscale-v0.28.0-runyf
+# 下载 headscale（从 GitHub Release）
+RUN wget -O headscale https://github.com/arounyf/headscale/releases/download/v0.29.0-runyf.1/headscale
 
 # 复制项目并初始化配置
 COPY . /init_data
