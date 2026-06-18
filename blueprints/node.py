@@ -67,7 +67,7 @@ def getNodes():
         for node in nodes:
             nodes_list.append({
                 'id': node['id'],
-                'userName': node['user']['name'],  # 从user对象中获取用户名
+                'userName': (node.get('user') or {}).get('name', '-'),  # tagged节点user为null
                 'name': node['givenName'],
                 'ip': ', '.join(node['ipAddresses']),  # 拼接IPv4和IPv6地址
                 'lastTime': node['lastSeen'],
