@@ -64,8 +64,19 @@ docker-compose up -d
 | v3.0 | v0.27.1-runyf |
 | v4.0 | v0.28.0-runyf |
 | v5.0 | v0.29.0-runyf |
+| v5.1 | v0.29.1-runyf.1 |
 
+## 版本规范
 
+- **Admin-Pro 版本**：`v{major}.{minor}`，例 `v5.0`、`v5.1`
+  - 重大变更（配置迁移、breaking change）升 major
+  - 功能增强/问题修复升 minor
+- **headscale 版本**：`v{upstream}-runyf.{build}`，例 `v0.29.1-runyf.1`（详见 headscale 仓库）
+- **Docker 标签**：
+  - `runyf/hs-admin:v5.1` — 固定版本
+  - `runyf/hs-admin:latest` — 最新版本
+- **Release 发布**：推送 `v*` 标签触发 GitHub Actions 自动构建并推送 Docker Hub
+- **升级说明**：每个 Release 必须包含从上一版本的升级步骤，大版本需列出配置变更
 
 # 如何升级
 
