@@ -67,19 +67,17 @@ docker-compose up -d
 
 
 
-# 从 v4.0 升级到 v5.0
+# 如何升级
 
-> **升级前务必备份数据！** 详细步骤见 [Release v5.0](https://github.com/arounyf/Headscale-Admin-Pro/releases/tag/v5.0)
+> **升级前务必备份数据！** 请勿跨 headscale 版本升级，在 [Release](https://github.com/arounyf/Headscale-Admin-Pro/releases) 中可查看当前版本详细升级说明。
 
 ```bash
 cd ~/hs-admin
 docker-compose down
 cp -r data data.bak.$(date +%Y%m%d)        # 备份
 rm -rf app/*                                 # 删旧代码
-sed -i '/ephemeral_node_inactivity_timeout/d' config/config.yaml
-sed -i '/randomize_client_port/d' config/config.yaml
-docker pull runyf/hs-admin:v5.0
-sed -i 's|image:.*|image: runyf/hs-admin:v5.0|' docker-compose.yml
+docker rm hs-admin                           # 删旧容器
+# 修改 docker-compose.yml 中的镜像版本为新版本号
 docker-compose up -d
 ```
 
