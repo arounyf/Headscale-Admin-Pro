@@ -18,20 +18,16 @@
           <div class="layui-card-header">节点中心</div>
           <div class="layui-card-body">
 
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
-              <div class="layui-form" lay-filter="searchForm" style="margin:0;">
-                <div class="layui-input-inline" style="width: 260px;">
-                  <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
-                </div>
-                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
-                  <i class="layui-icon layui-icon-search"></i> 搜索
-                </button>
+            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
+            <div class="layui-form" lay-filter="searchForm" style="margin-bottom:5px;">
+              <div class="layui-input-inline" style="width:260px;">
+                <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
               </div>
-              {% endif %}
-              <span style="color:#E6A23C;font-size:13px;max-width:280px;line-height:1.6;"><i class="layui-icon layui-icon-about"></i> 提示：节点客户端版本低于 <b>v1.80.0</b><br>的节点请尽快升级</span>
+              <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
+                <i class="layui-icon layui-icon-search"></i> 搜索
+              </button>
             </div>
-            
+            {% endif %}
 
             <!-- 表格：保留原有的所有配置 -->
             <table class="layui-table" id="test-table-index" lay-filter="test-table-index"></table>
@@ -43,7 +39,7 @@
                 <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
                 <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="multi-row">多行</button>
                 <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="default-row">单行</button>
-     
+                <span style="color:#E6A23C;font-size:13px;margin-left:8px;display:inline-flex;align-items:center;height:30px;"><i class="layui-icon layui-icon-about" style="margin-right:2px;"></i> 提示：节点客户端版本低于 <b>v1.80.0</b> 的节点请尽快升级</span>
               </div>
             </script>
 
@@ -117,38 +113,28 @@
             {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
                 ,{field:'userName', width:180, title: '用户名', sort: true,totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
             {% endif %}
-            ,{field:'name', width:180, title: '节点名', edit: 'text'
+            ,{field:'name', width:160, title: '节点名', edit: 'text'
                 {% if current_user.role == 'user' or session.get('user_mode', 'admin') == 'user' %}
                     ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
                 {% endif %}
             }
-            ,{
-                field: 'ip', 
-                width: 160, 
-                title: 'IP地址',
-                templet: function(d) {
-                    return d.ip.split(', ').join('<br>');
+            ,{field:'ip', width:160, title:'IP地址', templet: function(d){ return d.ip.split(', ').join('<br>'); }}
+            ,{field:'online', width:220, title:'状态', sort:true, templet: function(d){
+                var on = d.online;
+                var s = on ? '<span class="layui-badge layui-bg-green">在线</span> ' : '<span class="layui-badge layui-bg-gray">离线</span> ';
+                var cls = on ? ' layui-bg-green' : ' layui-bg-gray';
+                if (d.isExitNode) s += '<span class="layui-badge'+cls+'">Exit</span> ';
+                if (d.hasSubnets) s += '<span class="layui-badge'+cls+'">Subnet</span> ';
+                var ver = (d.Client||'').split('-')[0];
+                if (ver) {
+                    var parts = ver.split('.');
+                    var low = parts.length>=2 && parseInt(parts[1])<80;
+                    var vsty = low ? 'background:#F56C6C!important;color:#fff!important;' : '';
+                    s += '<span class="layui-badge layui-bg-gray" style="'+vsty+'">v'+ver+'</span>';
                 }
-            }
-            ,{
-                field: 'online', 
-                width: 100, 
-                title: '状态',
-                sort: true, 
-                templet: function(d) {
-                    return d.online ? '<span class="layui-badge layui-bg-green">在线</span>' : '<span class="layui-badge layui-bg-gray">离线</span>';
-                }
-            }
-            ,{
-                field: 'createTime', 
-                title: '创建时间', 
-                width: 180, 
-                sort: true,
-                templet: function(d) {
-                    return util.timeAgo(d.createTime);
-                }
-            }
-            ,{fixed: 'right', title:'操作', width: 120, toolbar: '#barDemo'}
+                return s;
+            }}
+            ,{fixed:'right', title:'操作', width:120, toolbar: '#barDemo'}
         ]]
       ,error: function(res, msg){
         console.log(res, msg)
@@ -270,12 +256,11 @@
           layer.close(index);
         });
       }else if(obj.event === 'detail'){
-        var dialogContent = `<div id="node-detail-content" style="padding: 20px;"></div>`;
         layer.open({
-          title: '节点信息',
+          title: '节点详情',
           type: 1,
-          area: ['600px','400px'],
-          content: dialogContent
+          area: ['550px','500px'],
+          content: '<div id="node-detail-content" style="padding:20px 25px;"></div>'
         });
         $.ajax({
           url:'/api/node/node_info',
@@ -283,18 +268,31 @@
           dataType: 'json',
           data: {NodeId: obj.data.id},
           success:function(res){
-            if (res.code === "0") {
-              const dataList = res.data;
-              const post_data = dataList.length > 0 ? dataList[0] : {};
-              var escapeHtml = function(str) {
-                var div = document.createElement('div');
-                div.appendChild(document.createTextNode(str));
-                return div.innerHTML;
-              };
-              $('#node-detail-content').html(`
-                <p><strong>客户端:</strong> ${escapeHtml(post_data.Client) || '未知'}</p>
-                <p><strong>操作系统:</strong> ${escapeHtml(post_data.OS) || '未知'}</p>
-              `);
+            console.log(res);
+            if (res.code === "0" && res.data && res.data.length > 0) {
+              var d = res.data[0];
+              var rows = [
+                ['节点名', d.name],
+                ['主机名', d.hostname],
+                ['用户名', d.userName],
+                ['邮箱', d.userEmail],
+                ['IPv4', d.ipv4],
+                ['IPv6', d.ipv6],
+                ['客户端版本', d.Client],
+                ['操作系统', (d.OS + ' ' + (d.OSVersion||'')).trim()],
+                ['发行版', (d.Distro + ' ' + (d.DistroVersion||'')).trim()],
+                ['架构', d.Machine],
+                ['设备型号', d.DeviceModel],
+                ['Go 版本', d.GoVersion],
+                ['发布路由', d.Routes],
+                ['创建时间', d.createdAt ? new Date(d.createdAt).toLocaleString() : ''],
+                ['最后在线', d.lastSeen ? new Date(d.lastSeen).toLocaleString() : ''],
+              ];
+              var html = '';
+              rows.forEach(function(r){
+                html += '<div style="display:flex;padding:4px 0;border-bottom:1px solid #f0f0f0;"><span style="color:#909399;width:90px;flex-shrink:0;">' + r[0] + '</span><span>' + (r[1] || '-') + '</span></div>';
+              });
+              $('#node-detail-content').html(html || '暂无数据');
             } else {
               layer.msg(res.msg, {icon: 7});
             }

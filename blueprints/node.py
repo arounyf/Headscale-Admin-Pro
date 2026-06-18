@@ -51,21 +51,35 @@ def getNodes():
         nodes = data.get('nodes', [])
         total_count = len(nodes)
         
-        # 数据格式化
+        # 批量查 host_info
+        host_map = {}
+        if nodes:
+            nids = [int(n['id']) for n in nodes]
+            ph = ','.join(['?']*len(nids))
+            with SqliteDB() as cur:
+                cur.execute(f"SELECT id,host_info FROM nodes WHERE id IN({ph}) AND host_info!=''", nids)
+                for row in cur.fetchall():
+                    host_map[row['id']] = json.loads(row['host_info'])
+
         nodes_list = []
         for node in nodes:
+            hid = host_map.get(int(node['id']), {})
+            routes = node.get('approvedRoutes', [])
+            isExit = any(r in ('0.0.0.0/0','::/0') for r in routes)
+            hasSub = any(r not in ('0.0.0.0/0','::/0') for r in routes)
             nodes_list.append({
                 'id': node['id'],
-                'userName': (node.get('user') or {}).get('name', '-'),  # tagged节点user为null
+                'userName': (node.get('user') or {}).get('name', '-'),
                 'name': node['givenName'],
-                'ip': ', '.join(node['ipAddresses']),  # 拼接IPv4和IPv6地址
+                'ip': ', '.join(node['ipAddresses']),
                 'lastTime': node['lastSeen'],
                 'createTime': node['createdAt'],
-                'OS': '',  # 原数据中未包含host_info，暂时留空
-                'Client': '',  # 原数据中未包含IPNVersion，暂时留空
+                'OS': hid.get('OS',''),
+                'Client': hid.get('IPNVersion',''),
                 'online': node['online'],
-                'approvedRoutes': ', '.join(node['approvedRoutes']),
-                'availableRoutes': ', '.join(node['availableRoutes'])
+                'isExitNode': isExit,
+                'hasSubnets': hasSub,
+                'approvedRoutes': ', '.join(routes),
             })
         
         return table_res('0', '获取成功', nodes_list, total_count, len(nodes_list))
@@ -198,53 +212,66 @@ def node_info():
     except ValueError:
         return res("1", "NodeId 必须是整数", [])
 
-    # 2. 构建查询SQL语句和参数
-    # 严格参考 getNodes 函数中的字段
+    # 2. 构建查询SQL
     base_query = """
-        SELECT 
-            nodes.host_info
-        FROM 
-            nodes
-        JOIN 
-            users ON nodes.user_id = users.id
+        SELECT
+            nodes.id, nodes.hostname, nodes.given_name,
+            nodes.ipv4, nodes.ipv6, nodes.last_seen, nodes.created_at,
+            nodes.host_info, nodes.approved_routes,
+            users.name as user_name, users.email as user_email
+        FROM nodes
+        JOIN users ON nodes.user_id = users.id
     """
-    
+
     conditions = []
     params = []
 
-    # 根据角色添加用户ID过滤
     if current_user.role != 'manager' or is_user_mode():
         conditions.append("nodes.user_id = ?")
         params.append(current_user.id)
-    
-    # 添加节点ID过滤
+
     conditions.append("nodes.id = ?")
     params.append(node_id)
 
-    # 拼接 WHERE 子句
     if conditions:
         base_query += " WHERE " + " AND ".join(conditions)
 
-    # 3. 使用封装的 SqliteDB 执行查询
     with SqliteDB() as cursor:
         cursor.execute(base_query, params)
         node = cursor.fetchone()
 
-    # 4. 检查查询结果
     if not node:
-        return res("1", f"未找到ID为 {node_id} 的节点，或您没有权限查看。", [])
+        return res("1", f"未找到ID为 {node_id} 的节点", [])
 
-    # 5. 数据格式化
-    # 这里的格式化逻辑也参考了 getNodes 函数
     host_info = json.loads(node['host_info']) if node['host_info'] else {}
-    
+    try:
+        routes = json.loads(node['approved_routes']) if node['approved_routes'] else []
+    except (json.JSONDecodeError, TypeError):
+        routes = []
+
     formatted_item = {
-        "OS": (host_info.get("OS") or "") + (host_info.get("OSVersion") or ""),
-        "Client": host_info.get("IPNVersion") or "",
-        # 你可以根据需要，从 host_info 中提取更多字段
+        "name": node['given_name'] or node['hostname'],
+        "hostname": node['hostname'],
+        "userName": node['user_name'],
+        "userEmail": node['user_email'] or '',
+        "ipv4": node['ipv4'] or '',
+        "ipv6": node['ipv6'] or '',
+        "lastSeen": str(node['last_seen']) if node['last_seen'] else '',
+        "createdAt": str(node['created_at']) if node['created_at'] else '',
+        "OS": host_info.get('OS', ''),
+        "OSVersion": host_info.get('OSVersion', ''),
+        "Client": host_info.get('IPNVersion') or '',
+        "Machine": host_info.get('Machine', ''),
+        "DeviceModel": host_info.get('DeviceModel', ''),
+        "Distro": host_info.get('Distro', ''),
+        "DistroVersion": host_info.get('DistroVersion', ''),
+        "GoVersion": host_info.get('GoVersion', ''),
+        "Desktop": host_info.get('Desktop', False),
+        "Container": host_info.get('Container', False),
+        "Userspace": host_info.get('Userspace', False),
+        "Routes": ', '.join(routes),
     }
 
-    # 6. 返回格式化后的结果
     return res("0", "获取成功", [formatted_item])
 
 
