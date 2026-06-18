@@ -24,7 +24,23 @@ if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
     cp -r $INIT_DATA_APP_DIR/config.yaml $CONTAINER_CONFIG_DIR
     cp -r $INIT_DATA_APP_DIR/derp.yaml $CONTAINER_CONFIG_DIR
 	echo "复制headscale配置文件"
-	touch $CONTAINER_CONFIG_DIR/acl.hujson
+	cat > $CONTAINER_CONFIG_DIR/acl.hujson << 'ACLEOF'
+{
+    "randomizeClientPort": false,
+    "acls": [
+        {
+            "action": "accept",
+            "src": ["autogroup:member"],
+            "dst": ["autogroup:self:*"]
+        },
+        {
+            "action": "accept",
+            "src": ["group:admin"],
+            "dst": ["autogroup:internet:*"]
+        }
+    ]
+}
+ACLEOF
 	echo "创建ACL文件"
 else
     echo "检测到headscale存在配置文件"
