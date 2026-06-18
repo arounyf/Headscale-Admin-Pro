@@ -206,13 +206,13 @@
           window.location.href = '/admin';
           break;
         case 'addNode':
-          layer.prompt({title: '请输入节点id'}, function(value, index){
-            if(value === '') return elem.focus();
+          layer.prompt({title: '请输入节点注册密钥 (nodekey)'}, function(value, index){
+            if(value === '') return;
             $.ajax({
               url:'/api/node/register',
               type: 'post',
               dataType: 'json',
-              data: {nodekey: util.escape(value)},
+              data: {nodekey: value},
               success:function(res){
                 if(res.code == 0){
                   layer.msg(res.msg, {icon: 6});

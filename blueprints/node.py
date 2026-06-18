@@ -12,26 +12,15 @@ from utils import res, table_res, to_request, is_user_mode
 bp = Blueprint("node", __name__, url_prefix='/api/node')
 
 
-@bp.route('/register', methods=['GET','POST'])
+@bp.route('/register', methods=['POST'])
 @login_required
 def register():
-    nodekey = request.form.get('nodekey')
-    register_node_response = register_node(nodekey)
-
-    print(register_node_response)
-    if register_node_response['code'] == '0':
-        try:
-            # 获取 ipAddresses 的值
-            ip_address = json.loads(register_node_response['data'])["node"]["ipAddresses"][0]
-            code,msg,data = '0',ip_address,''
-        except Exception as e:
-            print(f"发生错误: {e}")
-            headscale_error_msg = json.loads(register_node_response['data']).get('message')
-            code, msg, data = '1', headscale_error_msg, ''
-    else:
-        error_msg = register_node_response['msg']
-        code, msg, data = '1', error_msg, ''
-    return res(code,msg,data)
+    """通过 nodekey 调用 headscale API 注册节点"""
+    from blueprints.auth import register_node
+    nodekey = request.form.get('nodekey', '')
+    if not nodekey:
+        return res('1', '缺少 nodekey', '')
+    return register_node(nodekey)
 
 
 

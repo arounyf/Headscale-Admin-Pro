@@ -64,16 +64,15 @@ def send_email_code():
     return res('1', '验证码发送失败，请联系管理员', '')
 
 def register_node(registrationID):
+    """调用 headscale API 注册节点（用户已登录时自动完成）"""
     url_path = f'/api/v1/node/register?user={current_user.name}&key={registrationID}'
 
     with SqliteDB() as cursor:
-        # 查询当前用户的节点数量
         query = "SELECT COUNT(*) as count FROM nodes WHERE user_id =?;"
         cursor.execute(query, (current_user.id,))
         result = cursor.fetchone()
         node_count = result['count'] if result else 0
 
-        # 查询当前用户允许的节点数
         user_query = "SELECT node FROM users WHERE id =?;"
         cursor.execute(user_query, (current_user.id,))
         user_result = cursor.fetchone()
@@ -81,69 +80,59 @@ def register_node(registrationID):
 
     if int(node_count) >= int(user_node_limit):
         return res('2', '超过此用户节点限制', '')
-    else:
 
-        result_post = to_request('POST',url_path)
-        if result_post['code'] == '0':
-            # 记录节点IP
-            import threading
-            app_ctx = current_app._get_current_object()
-            def node_log():
-                with app_ctx.app_context():
-                    try:
-                        node_data = json.loads(result_post['data'])
-                        node_ip = node_data['node']['ipAddresses'][0]
-                    except Exception:
-                        node_ip = ''
-                    ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-                    ip_addr = ip_addr.split(",")[0].strip()
-                    loc = get_ip_location(ip_addr)
-                    msg = f"节点添加成功。节点IP：{node_ip}，请求IP：{ip_addr}"
-                    if loc:
-                        msg += f"，位置：{loc}"
-                    record_log(current_user.id, msg)
-            threading.Thread(target=node_log).start()
-            return res('0', '节点添加成功', result_post['data'])
-        else:
-            return res(result_post['code'], result_post['msg'])
+    result_post = to_request('POST', url_path)
+    if result_post['code'] == '0':
+        import threading
+        app_ctx = current_app._get_current_object()
+        def node_log():
+            with app_ctx.app_context():
+                try:
+                    node_data = json.loads(result_post['data'])
+                    node_ip = node_data['node']['ipAddresses'][0]
+                except Exception:
+                    node_ip = ''
+                ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
+                ip_addr = ip_addr.split(",")[0].strip()
+                loc = get_ip_location(ip_addr)
+                msg = f"节点添加成功。节点IP：{node_ip}，请求IP：{ip_addr}"
+                if loc:
+                    msg += f"，位置：{loc}"
+                record_log(current_user.id, msg)
+        threading.Thread(target=node_log).start()
+        return res('0', '节点添加成功', result_post['data'])
+    else:
+        return res(result_post['code'], result_post['msg'])
 
 @bp.route('/register/<registrationID>', methods=['GET', 'POST'])
 def register(registrationID):
+    """节点注册页面 — headscale 配置 admin_url 后直接重定向到此页面。
+    已登录用户自动完成注册，未登录用户先登录。
+    """
     if request.method == 'GET':
-        # 如果用户已经登录，重定向到 admin 页面
         if current_user.is_authenticated:
-            # 已登录，直接添加节点
             register_node_response = register_node(registrationID)
             error_info = ''
-            print(register_node_response)
             if register_node_response['code'] == '0':
                 try:
-                    # 获取 ipAddresses 的值
                     ip_address = json.loads(register_node_response['data'])["node"]["ipAddresses"][0]
                 except Exception as e:
-                    print(f"发生错误: {e}")
-                    ip_address = 'error'  # headscale 错误提示
-                    error_info = json.loads(register_node_response['data']).get('message')
+                    ip_address = 'error'
+                    error_info = json.loads(register_node_response['data']).get('message', str(e))
             else:
-                ip_address = 'error' # hs-admin 错误提示
+                ip_address = 'error'
                 error_info = register_node_response['msg']
-
-            return render_template('admin/node.html', error_info = error_info, ip_address = ip_address)
+            return render_template('admin/node.html', error_info=error_info, ip_address=ip_address)
         else:
-            return render_template('auth/register.html',registrationID = registrationID)
+            return render_template('auth/register.html', registrationID=registrationID)
     else:
         form = LoginForm(request.form)
-
         if form.validate():
-            user = form.user  # 获取表单中查询到的用户对象
+            user = form.user
             login_user(user)
-            res_code,res_msg,res_data = '0','登录成功',''
-        else:
-            # return form.errors
-            first_key = next(iter(form.errors.keys()))
-            first_value = form.errors[first_key]
-            res_code, res_msg,res_data = '1',str(first_value[0]),''
-        return res(res_code,res_msg,res_data)
+            return res('0', '登录成功', '')
+        first_key = next(iter(form.errors.keys()))
+        return res('1', str(form.errors[first_key][0]), '')
 
 
 @bp.route('/reg', methods=['GET','POST'])
