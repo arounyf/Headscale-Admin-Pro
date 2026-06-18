@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>layui table 组件综合演示</title>
+  <title>路由管理</title>
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,329 +11,95 @@
 </head>
 <body>
 
+<div class="layui-fluid">
+  <div class="layui-row layui-col-space15">
+    <div class="layui-col-md12">
+      <div class="layui-card">
+        <div class="layui-card-header">路由管理</div>
+        <div class="layui-card-body">
+          <table class="layui-hide" id="route-table" lay-filter="route-table"></table>
 
-  
-  <div class="layui-fluid">
-    <div class="layui-row layui-col-space15">
-      <div class="layui-col-md12">
-        <div class="layui-card">
-          <div class="layui-card-header">路由中心</div>
-          <div class="layui-card-body">
-            <table class="layui-hide" id="test-table-index" lay-filter="test-table-index"></table>
+          <script type="text/html" id="toolbarDemo">
+            <div class="layui-btn-container">
+              <button class="layui-btn layui-btn-sm" lay-event="refresh">刷新</button>
+            </div>
+          </script>
 
-            <script type="text/html" id="toolbarDemo">
-              <div class="layui-btn-container">
-                <button class="layui-btn layui-btn-sm" lay-event="reload">刷新</button>
-                <button class="layui-btn layui-btn-sm" lay-event="add">路由通告</button>
-              </div>
-            </script>
-             
-
-            {% raw %}
-            <script type="text/html" id="test-table-switchTpl">
-              <!-- 这里的 checked 的状态只是演示 -->
-              <input type="checkbox" name="启用" lay-skin="switch" lay-text="是|否" lay-filter="test-table-sexDemo"
-               value="{{ d.enable }}" data-json="{{ encodeURIComponent(JSON.stringify(d)) }}" {{ d.enable == "1" ? 'checked' : '' }}>
-               &nbsp;
-               <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
-            </script>
-            {% endraw %}
-             
-
-          </div>
+          {% raw %}
+          <script type="text/html" id="switchTpl">
+            <input type="checkbox" name="enabled" lay-skin="switch" lay-text="ON|OFF"
+             lay-filter="route-switch" value="{{ d.enabled }}"
+             data-nodeid="{{ d.nodeId }}" data-route="{{ d.route }}"
+             {{ d.enabled ? 'checked' : '' }}>
+          </script>
+          {% endraw %}
         </div>
       </div>
     </div>
   </div>
-  
-  <script src="/static/layui/layui.js"></script>
-  <script src="/static/csrf.js"></script>
-  <script>
-  layui.config({
-    base: '/static/' // 静态资源所在路径
-  }).use(['index', 'table', 'dropdown','form'], function(){
-    var table = layui.table
-    ,form = layui.form
-    ,$ = layui.$;
-    var dropdown = layui.dropdown;
-    
-    // 创建渲染实例
-    table.render({
-      elem: '#test-table-index'
-      ,url: '/api/route/getRoute' // 此处为静态模拟数据，实际使用时需换成真实接口
-      ,toolbar: '#toolbarDemo'
-      ,defaultToolbar: ['filter', 'exports', 'print', {
-        title: '帮助'
-        ,layEvent: 'LAYTABLE_TIPS'
-        ,icon: 'layui-icon-tips'
-      }]
-      ,height: 'full-100' // 最大高度减去其他容器已占有的高度差
-      ,cellMinWidth: 80
-      ,totalRow: true // 开启合计行
-      ,page: true
-      ,cols: [[
-            //{type: 'checkbox'}
-            {field:'id', title:'ID', fixed: 'left', width:80, unresize: true, sort: true, totalRowText: '合计：'}
-            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
-                ,{field:'name', title:'用户名',width:200, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
-            {% endif %}
-            ,{field:'NodeName', title:'节点',width:300
-                {% if current_user.role == 'user' or session.get('user_mode', 'admin') == 'user' %}
-                    ,totalRow: ' {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'
-                {% endif %}
-            }
-            ,{field:'route', title:'路由',width:280}
-            ,{field:'createTime', title: '创建时间', width:200, sort: true}
-        
-        ]]
-      ,error: function(res, msg){
-        console.log(res, msg)
-      }
-    });
+</div>
 
+<script src="/static/layui/layui.js"></script>
+<script src="/static/csrf.js"></script>
+<script>
+layui.config({
+  base: '/static/'
+}).use(['table', 'form'], function(){
+  var table = layui.table, form = layui.form, $ = layui.$;
 
-   
-// 工具栏事件
-table.on('toolbar(test-table-index)', function(obj){
-  var $ = layui.$;
-  var form = layui.form; // 确保引入form模块
-  var util = layui.util;
-  var id = obj.config.id;
-  var checkStatus = table.checkStatus(id);
-  var othis = lay(this);
-  switch(obj.event){
-    case 'reload':
-      var data = checkStatus.data;
-      table.reload('test-table-index',true);
-    break;
-    case 'add':
-       layer.open({
-      type: 1,
-      content: `
-        <div class="layui-form" lay-filter="filter-test-layer" style="margin: 20px 35px 30px 0; padding: 10px 0;">
-      <div class="demo-login-container">
-        {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
-        <!-- 用户选择下拉框 - 仅管理员显示 -->
-        <div class="layui-form-item">
-          <label class="layui-form-label">用户选择</label>
-          <div class="layui-input-block">
-            <select name="userId" lay-verify="required" lay-reqtext="请选择用户" lay-filter="userIdFilter">
-              <option value="">加载中...</option>
-            </select>
-          </div>
-        </div>
-        {% endif %}
-        
-        <!-- 节点选择下拉框 -->
-        <div class="layui-form-item">
-          <label class="layui-form-label">节点选择</label>
-          <div class="layui-input-block">
-            <select name="nodeId" lay-verify="required" lay-reqtext="请选择节点" lay-filter="nodeIdFilter">
-              <option value="">加载中...</option>
-            </select>
-          </div>
-        </div>
-        
-        <!-- 路由选择下拉框 -->
-        <div class="layui-form-item">
-          <label class="layui-form-label">路由选择</label>
-          <div class="layui-input-block">
-            <select name="routes" lay-verify="required" lay-reqtext="请选择路由">
-              <option value="">请先选择节点</option>
-            </select>
-          </div>
-        </div>
-      
-        <div class="layui-form-item">
-          <div class="layui-input-block">
-            <button class="layui-btn" lay-submit lay-filter="demo-login">提交</button>
-          </div>
-        </div>
-      </div>
-    </div>
-      `,
-  
-      // 根据角色调整弹窗高度（管理员多一个用户选择框，高度增加50px）
-      area: ['320px', {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}'295px'{% else %}'245px'{% endif %}],
-      maxmin: true,
-      success: function(layero, index){
-        layer.full(index); // 最大化
-        
-        // 存储用户列表数据（仅管理员需要）
-        var userList = [];
-        // 当前用户信息（普通用户直接使用）
-        var currentUser = {
-          id: '{{ current_user.id }}',
-          username: '{{ current_user.username }}'
-        };
-        
-        // 仅管理员加载用户列表
-        {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
-        $.ajax({
-          url: '/api/user/getUsers', // 用户列表接口
-          type: 'get',
-          dataType: 'json',
-          success: function(res) {
-            if (res.code === "0" && res.data && res.data.length > 0) {
-              userList = res.data;
-              var userIdSelect = layero.find('select[name="userId"]');
-              userIdSelect.html('<option value="">请选择用户</option>');
-              res.data.forEach(function(user) {
-                userIdSelect.append(`<option value="${user.id}">${user.userName}</option>`);
-              });
-            } else {
-              layero.find('select[name="userId"]').html(`<option value="">${res.msg || '暂无用户数据'}</option>`);
-            }
-            form.render('select', 'filter-test-layer');
-          },
-          error: function(xhr) {
-            console.error('用户请求失败：', xhr);
-            layero.find('select[name="userId"]').html('<option value="">用户数据加载失败（网络错误）</option>');
-            form.render('select', 'filter-test-layer');
-          }
-        });
-        {% endif %}
-        
-        // 加载节点列表（管理员需选择用户后加载，普通用户直接加载）
-        var loadNodes = function(userId, userName) {
-          var nodeSelect = layero.find('select[name="nodeId"]');
-          var routeSelect = layero.find('select[name="routes"]');
-          
-          // 重置节点和路由选择框状态
-          nodeSelect.html('<option value="">节点加载中...</option>');
-          routeSelect.html('<option value="">请先选择节点</option>');
-          form.render('select', 'filter-test-layer');
-          
-          // 请求节点列表接口（保持原接口地址不变）
-          $.ajax({
-            url: '/api/node/getNodes',
-            type: 'get',
-            data: { 
-              userId: userId,
-              search_name: userName // 保持原参数传递逻辑
-            },
-            dataType: 'json',
-            success: function(res) {
-              if (res.code === "0" && res.data && res.data.length > 0) {
-                nodeSelect.html('<option value="">请选择节点</option>');
-                res.data.forEach(function(node) {
-                  var displayText = `${node.name} (${node.ip})`;
-                  nodeSelect.append(`<option value="${node.id}">${displayText}</option>`);
-                });
-              } else {
-                nodeSelect.html(`<option value="">${res.msg || '该用户无可用节点'}</option>`);
-              }
-              form.render('select', 'filter-test-layer');
-            },
-            error: function(xhr) {
-              console.error('节点请求失败：', xhr);
-              nodeSelect.html('<option value="">节点数据加载失败（网络错误）</option>');
-              form.render('select', 'filter-test-layer');
-            }
-          });
-        };
-        
-        // 管理员监听用户选择变化
-        {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
-        form.on('select(userIdFilter)', function(data){
-          var userId = data.value;
-          if (!userId) {
-            layero.find('select[name="nodeId"]').html('<option value="">请先选择用户</option>');
-            form.render('select', 'filter-test-layer');
-            return;
-          }
-          // 根据用户ID查找用户名
-          var userName = '';
-          for (var i = 0; i < userList.length; i++) {
-            if (userList[i].id == userId) {
-              userName = userList[i].userName;
-              break;
-            }
-          }
-          // 加载该用户的节点
-          loadNodes(userId, userName);
-        });
-        {% else %}
-        // 普通用户直接加载自己的节点
-        loadNodes(currentUser.id, currentUser.username);
-        {% endif %}
-        
-        // 监听节点选择变化（保持原逻辑不变）
-        form.on('select(nodeIdFilter)', function(data){
-          var nodeId = data.value;
-          var routesSelect = layero.find('select[name="routes"]');
-          
-          if (!nodeId) {
-            routesSelect.html('<option value="">请先选择节点</option>');
-            form.render('select', 'filter-test-layer');
-            return;
-          }
-          
-          routesSelect.html('<option value="">路由加载中...</option>');
-          form.render('select', 'filter-test-layer');
-          
-          $.ajax({
-            url: '/api/node/node_route_info',
-            type: 'post',
-            data: { NodeId: nodeId },
-            dataType: 'json',
-            success: function(routeRes) {
-              if (routeRes.code === "0" && routeRes.data && routeRes.data.length > 0) {
-                var availableRoutes = routeRes.data[0].availableRoutes || [];
-                if (availableRoutes.length > 0) {
-                  routesSelect.html('<option value="">请选择需要通告路由</option>');
-                  availableRoutes.forEach(function(route) {
-                    routesSelect.append(`<option value="${route}">${route}</option>`);
-                  });
-                } else {
-                  routesSelect.html('<option value="">该节点无可用路由</option>');
-                }
-              } else {
-                routesSelect.html(`<option value="">${routeRes.msg || '路由数据获取失败'}</option>`);
-              }
-              form.render('select', 'filter-test-layer');
-            },
-            error: function(xhr) {
-              console.error('路由请求失败：', xhr);
-              routesSelect.html('<option value="">路由请求失败（网络错误）</option>');
-              form.render('select', 'filter-test-layer');
-            }
-          });
-        });
-        
-        // 监听表单提交（保持原逻辑不变）
-        form.on('submit(demo-login)', function(data) {
-          // 普通用户补充userId参数
-          {% if current_user.role != 'manager' or session.get('user_mode', 'admin') == 'user' %}
-          data.field.userId = currentUser.id;
-          {% endif %}
-          
-          $.ajax({
-            url: '/api/node/approve_routes',
-            type: 'post',
-            data: data.field,
-            success: function(res) {
-              if (res.code === "0") {
-                layer.msg(res.msg, {icon: 6});
-                layer.close(index);
-                table.reload('test-table-index');
-              } else {
-                layer.msg(res.msg || '操作失败', {icon: 7});
-              }
-            }
-          });
-          
-          return false;
-        });
-      }
-    });
-
-    break;
-  };
-});
-   
-
+  table.render({
+    elem: '#route-table'
+    ,url: '/api/route/getAllRoutes'
+    ,toolbar: '#toolbarDemo'
+    ,height: 'full-100'
+    ,page: true
+    ,limits: [20, 50, 100]
+    ,limit: 50
+    ,cols: [[
+      {field:'userName', title:'用户', width:150}
+      ,{field:'nodeName', title:'节点', width:200}
+      ,{field:'route', title:'路由前缀', width:220}
+      ,{field:'enabled', title:'状态', width:100, templet: '#switchTpl', unresize: true}
+    ]]
   });
-  </script>
+
+  // 工具栏事件
+  table.on('toolbar(route-table)', function(obj){
+    if(obj.event === 'refresh'){
+      table.reload('route-table');
+    }
+  });
+
+  // 开关切换事件
+  form.on('switch(route-switch)', function(obj){
+    var enabled = obj.elem.checked;
+    var nodeId = this.getAttribute('data-nodeid');
+    var route = this.getAttribute('data-route');
+
+    $.ajax({
+      url: '/api/route/toggleRoute',
+      type: 'POST',
+      data: {
+        nodeId: nodeId,
+        route: route,
+        enable: enabled ? '1' : '0'
+      },
+      headers: {'X-CSRFToken': csrfToken},
+      success: function(res) {
+        if (res.code === '0') {
+          layer.msg(res.msg, {icon: 1});
+        } else {
+          layer.msg(res.msg || '操作失败', {icon: 2});
+          table.reload('route-table');
+        }
+      },
+      error: function() {
+        layer.msg('网络错误', {icon: 2});
+        table.reload('route-table');
+      }
+    });
+  });
+});
+</script>
 </body>
 </html>
