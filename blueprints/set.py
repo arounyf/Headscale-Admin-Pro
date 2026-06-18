@@ -19,6 +19,7 @@ def upset():
         'BEARER_TOKEN': 'apiKey',
         'SERVER_NET': 'serverNet',
         'SERVER_URL': 'serverUrl',
+        'ADMIN_URL': 'adminUrl',
         'DEFAULT_NODE_COUNT': 'defaultNodeCount',
         'OPEN_USER_REG': 'openUserReg',
         'DEFAULT_REG_DAYS': 'defaultRegDays',

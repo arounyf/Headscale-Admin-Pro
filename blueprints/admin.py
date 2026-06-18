@@ -77,6 +77,7 @@ def route():
 @login_required
 def deploy():
     server_url = current_app.config['SERVER_URL']
+    admin_url = current_app.config.get('ADMIN_URL', '')
     return render_template('admin/deploy.html',server_url = server_url)
 
 
@@ -137,6 +138,7 @@ def info():
 def set():
     apikey = current_app.config['BEARER_TOKEN']
     server_url = current_app.config['SERVER_URL']
+    admin_url = current_app.config.get('ADMIN_URL', '')
     server_net = current_app.config['SERVER_NET']
     default_reg_days = current_app.config['DEFAULT_REG_DAYS']
     default_node_count = current_app.config['DEFAULT_NODE_COUNT']
@@ -162,6 +164,7 @@ def set():
 
     return render_template('admin/set.html',apikey = apikey,
                                server_url = server_url,
+                               admin_url = admin_url,
                                server_net = options_html,
                                default_reg_days = default_reg_days,
                                default_node_count = default_node_count,

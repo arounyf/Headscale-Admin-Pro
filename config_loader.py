@@ -78,3 +78,5 @@ SMTP_SSL = config_yaml.get('smtp_ssl', 'true')
 EMAIL_VERIFY_REG = config_yaml.get('email_verify_reg', 'off')
 TIANAPI_KEY = config_yaml.get('tianapi_key', '')
 IP_API_SOURCE = config_yaml.get('ip_api_source', 'none')
+
+ADMIN_URL = config_yaml.get('admin_url', '')
