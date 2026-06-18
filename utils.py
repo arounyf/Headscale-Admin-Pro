@@ -263,6 +263,7 @@ def to_rewrite_acl():
 
     acl_list = [json.loads(acl['acl']) for acl in acls]
     acl_data = {
+        "randomizeClientPort": False,
         "acls": acl_list
     }
 

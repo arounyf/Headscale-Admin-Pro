@@ -47,7 +47,8 @@ SERVER_HOST = f'http://127.0.0.1:{port_str}'  #从headscale配置文件中获取
 
 SERVER_URL = config_yaml.get('server_url', {})
 DATABASE_URI =  config_yaml.get('database', {}).get('sqlite', {}).get('path')
-ACL_PATH = "/etc/headscale/"+config_yaml.get('policy', {}).get('path')
+_policy_path = config_yaml.get('policy', {}).get('path') or 'acl.hujson'
+ACL_PATH = os.path.join('/etc/headscale', _policy_path) if not os.path.isabs(_policy_path) else _policy_path
 
 
 
