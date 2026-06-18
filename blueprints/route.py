@@ -32,8 +32,14 @@ def getAllRoutes():
             if str(user_info.get('id', '')) != str(current_user.id):
                 continue
 
+        # 搜索过滤
+        search_name = request.args.get('search_name', '').strip()
+        if search_name and search_name.lower() not in user_name.lower():
+            continue
+
         for route in advertised:
             routes_list.append({
+                'id': len(routes_list) + 1,
                 'nodeId': node_id,
                 'userName': user_name,
                 'nodeName': node_name,

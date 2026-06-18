@@ -17,7 +17,19 @@
       <div class="layui-card">
         <div class="layui-card-header">路由管理</div>
         <div class="layui-card-body">
-          <table class="layui-hide" id="route-table" lay-filter="route-table"></table>
+
+          {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
+          <div class="layui-form" lay-filter="searchForm" style="margin-bottom: 5px;">
+            <div class="layui-input-inline" style="width: 300px;">
+              <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
+            </div>
+            <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
+              <i class="layui-icon layui-icon-search"></i> 搜索
+            </button>
+          </div>
+          {% endif %}
+
+          <table class="layui-table" id="route-table" lay-filter="route-table"></table>
 
           <script type="text/html" id="toolbarDemo">
             <div class="layui-btn-container">
@@ -29,7 +41,7 @@
           <script type="text/html" id="switchTpl">
             <input type="checkbox" name="enabled" lay-skin="switch" lay-text="ON|OFF"
              lay-filter="route-switch" value="{{ d.enabled }}"
-             data-nodeid="{{ d.nodeId }}" data-route="{{ d.route }}"
+             data-id="{{ d.id }}" data-nodeid="{{ d.nodeId }}" data-route="{{ d.route }}"
              {{ d.enabled ? 'checked' : '' }}>
           </script>
           {% endraw %}
@@ -44,23 +56,35 @@
 <script>
 layui.config({
   base: '/static/'
-}).use(['table', 'form'], function(){
+}).use(['index', 'table', 'form'], function(){
   var table = layui.table, form = layui.form, $ = layui.$;
 
-  table.render({
+  var tableIns = table.render({
     elem: '#route-table'
     ,url: '/api/route/getAllRoutes'
     ,toolbar: '#toolbarDemo'
-    ,height: 'full-100'
+    ,defaultToolbar: ['filter', 'exports', 'print', {
+      title: '帮助', layEvent: 'LAYTABLE_TIPS', icon: 'layui-icon-tips'
+    }]
+    ,height: {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}'full-150'{% else %}'full-100'{% endif %}
+    ,cellMinWidth: 80
+    ,totalRow: true
     ,page: true
-    ,limits: [20, 50, 100]
+    ,limits: [30, 50, 100]
     ,limit: 50
+    ,where: {}
     ,cols: [[
-      {field:'userName', title:'用户', width:150}
-      ,{field:'nodeName', title:'节点', width:200}
-      ,{field:'route', title:'路由前缀', width:220}
-      ,{field:'enabled', title:'状态', width:100, templet: '#switchTpl', unresize: true}
+      {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
+      {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
+      ,{field:'userName', width:150, title: '用户名', sort: true, totalRow: '  {% raw %}{{= d.TOTAL_ROW.count   }}{% endraw %} 😊'}
+      {% endif %}
+      ,{field:'nodeName', width:200, title: '节点'}
+      ,{field:'route', width:220, title: '路由前缀'}
+      ,{field:'enabled', width:100, title: '状态', templet: '#switchTpl', unresize: true}
     ]]
+    ,error: function(res, msg){
+      console.log(res, msg)
+    }
   });
 
   // 工具栏事件
@@ -69,6 +93,17 @@ layui.config({
       table.reload('route-table');
     }
   });
+
+  // 管理员搜索
+  {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
+  form.on('submit(demo-table-search)', function(data){
+    tableIns.reload({
+      where: { search_name: data.field.search_name },
+      page: { curr: 1 }
+    });
+    return false;
+  });
+  {% endif %}
 
   // 开关切换事件
   form.on('switch(route-switch)', function(obj){
@@ -79,11 +114,7 @@ layui.config({
     $.ajax({
       url: '/api/route/toggleRoute',
       type: 'POST',
-      data: {
-        nodeId: nodeId,
-        route: route,
-        enable: enabled ? '1' : '0'
-      },
+      data: { nodeId: nodeId, route: route, enable: enabled ? '1' : '0' },
       headers: {'X-CSRFToken': csrfToken},
       success: function(res) {
         if (res.code === '0') {
