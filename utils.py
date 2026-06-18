@@ -5,6 +5,8 @@ import subprocess
 import sys
 import time
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import psutil
 
 from flask import current_app, session
@@ -50,7 +52,7 @@ def to_request(method,url_path,data=None,flag = True):
     url = server_host+url_path
 
     request_method = getattr(requests, method.lower())
-    response = request_method(url, headers=headers, json=data)
+    response = request_method(url, headers=headers, json=data, verify=False)
 
     if current_app.debug:
         print(f'{method} {url} -> {response.status_code}')
@@ -344,7 +346,7 @@ def get_headscale_status(app):
     attempt = 0
     while attempt < max_attempts:
         try:
-            response = requests.get(url, timeout=2)
+            response = requests.get(url, timeout=2, verify=False)
             if response.status_code == 200 and response.json() == {"status": "pass"}:
                 print("Success: Headscale is healthy and running.")
                 return True
@@ -473,6 +475,8 @@ def send_email(to_email, subject, body):
 # ---- IP 地理位置 ----
 
 import requests as _requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 _IP_CACHE_FILE = '/var/lib/headscale/ip_locations.json'
 

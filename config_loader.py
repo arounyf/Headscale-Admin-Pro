@@ -37,9 +37,12 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = os.environ.get('HTTPS', '').lower() in ('true', '1', 'on', 'yes')
 
-listen_addr = config_yaml.get('listen_addr', '0.0.0.0:8080') 
+listen_addr = config_yaml.get('listen_addr', '0.0.0.0:8080')
 _, port_str = listen_addr.rsplit(':', 1)
-SERVER_HOST = f'http://127.0.0.1:{port_str}'  #从headscale配置文件中获取端口号，内部通信使用
+# 自动检测 TLS，内部通信使用对应协议
+_tls_configured = config_yaml.get('tls_cert_path') or config_yaml.get('tls_letsencrypt_hostname')
+_proto = 'https' if _tls_configured else 'http'
+SERVER_HOST = f'{_proto}://127.0.0.1:{port_str}'  #从headscale配置文件中获取端口号，内部通信使用
 
 
 
