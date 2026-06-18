@@ -215,7 +215,11 @@ def reg():
                 # 获取本地用户ID用于ACL
                 local_user = cursor.execute("SELECT id FROM users WHERE name = ?", (username,)).fetchone()
                 local_user_id = local_user['id'] if local_user else user_id
-                init_acl = f'{{"action": "accept","src": ["{username}@"],"dst": ["{username}@:*"]}}'
+                # 使用 autogroup:self 实现多租户隔离：
+                # - autogroup:member 作为源：tailnet 中所有用户节点
+                # - autogroup:self 作为目标：自动限定为同用户节点+子网路由
+                # per-user primary routes 确保跨用户路由自动隔离
+                init_acl = '{"action": "accept","src": ["autogroup:member"],"dst": ["autogroup:self:*"]}'
                 cursor.execute("INSERT INTO acl (acl, user_id) VALUES (?,?);", (init_acl, local_user_id))
 
             to_rewrite_acl()
