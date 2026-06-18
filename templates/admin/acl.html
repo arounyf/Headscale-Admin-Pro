@@ -59,6 +59,9 @@ layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
 
   var templateACL = '{\n' +
     '    "randomizeClientPort": false,\n' +
+    '    "groups": {\n' +
+    '        "group:admin": ["admin@"]\n' +
+    '    },\n' +
     '    "acls": [\n' +
     '        {\n' +
     '            "action": "accept",\n' +

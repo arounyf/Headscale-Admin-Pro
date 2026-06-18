@@ -27,6 +27,9 @@ if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
 	cat > $CONTAINER_CONFIG_DIR/acl.hujson << 'ACLEOF'
 {
     "randomizeClientPort": false,
+    "groups": {
+        "group:admin": ["admin@"]
+    },
     "acls": [
         {
             "action": "accept",
