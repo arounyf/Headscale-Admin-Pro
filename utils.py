@@ -248,15 +248,17 @@ def get_headscale_version():
         print({e.stderr})
 
 def to_rewrite_acl():
+    """将所有 ACL 规则（全局 + 各用户启用）合并写入 headscale 策略文件"""
     acl_path = current_app.config['ACL_PATH']
 
     with SqliteDB() as cursor:
-        # 构建 SQL 查询语句
+        # 全局规则（user_id = 0）+ 启用用户的规则
         query = """
             SELECT acl.acl
             FROM acl
-            JOIN users user ON acl.user_id = user.id
-            WHERE user.enable = '1'
+            LEFT JOIN users ON acl.user_id = users.id
+            WHERE acl.user_id = 0
+               OR (acl.user_id > 0 AND users.enable = '1')
         """
         cursor.execute(query)
         acls = cursor.fetchall()
@@ -266,7 +268,6 @@ def to_rewrite_acl():
         "randomizeClientPort": False,
         "acls": acl_list
     }
-
 
     try:
         with open(acl_path, 'w') as f:
