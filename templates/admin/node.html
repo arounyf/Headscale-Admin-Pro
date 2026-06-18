@@ -17,6 +17,10 @@
         <div class="layui-card">
           <div class="layui-card-header">节点中心</div>
           <div class="layui-card-body">
+
+            <blockquote class="layui-elem-quote" style="border-left:5px solid #E6A23C;background:#FDF6EC;color:#E6A23C;font-size:13px;margin-bottom:15px;">
+              <i class="layui-icon layui-icon-about"></i> 提示：v0.29 最低客户端版本要求为 <b>v1.80</b>，低于此版本的设备将无法连接。请尽快通知相关用户升级 Tailscale 客户端。
+            </blockquote>
             
             {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
                     <!-- 搜索框：嵌套在layui-form中，添加margin-bottom避免与表格重叠 -->
