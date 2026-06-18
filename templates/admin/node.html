@@ -18,22 +18,19 @@
           <div class="layui-card-header">节点中心</div>
           <div class="layui-card-body">
 
-            {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
-                    <!-- 搜索框：嵌套在layui-form中，添加margin-bottom避免与表格重叠 -->
-            <div class="layui-form" lay-filter="searchForm" style="margin-bottom: 5px;">
-              <div class="layui-input-inline" style="width: 300px;">
-
-                <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+              {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}
+              <div class="layui-form" lay-filter="searchForm" style="margin:0;">
+                <div class="layui-input-inline" style="width: 260px;">
+                  <input type="text" name="search_name" placeholder="请输入用户名搜索" class="layui-input" lay-affix="clear">
+                </div>
+                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
+                  <i class="layui-icon layui-icon-search"></i> 搜索
+                </button>
               </div>
-              <button class="layui-btn layui-btn-sm" lay-submit lay-filter="demo-table-search">
-                <i class="layui-icon layui-icon-search"></i> 搜索
-              </button>
+              {% endif %}
+              <span style="color:#E6A23C;font-size:13px;"><i class="layui-icon layui-icon-about"></i> 提示：节点客户端版本低于 <b>v1.80.0</b> 的节点请尽快升级</span>
             </div>
-            {% endif %}
-
-            <blockquote class="layui-elem-quote" style="border-left:5px solid #E6A23C;background:#FDF6EC;color:#E6A23C;font-size:13px;margin-bottom:15px;">
-              <i class="layui-icon layui-icon-about"></i> 提示：节点客户端版本低于 <b>v1.80.0</b> 的节点请尽快升级
-            </blockquote>
             
 
             <!-- 表格：保留原有的所有配置 -->
