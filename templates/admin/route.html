@@ -68,9 +68,7 @@ layui.config({
     ,height: {% if current_user.role == 'manager' and session.get('user_mode', 'admin') != 'user' %}'full-150'{% else %}'full-100'{% endif %}
     ,cellMinWidth: 80
     ,totalRow: true
-    ,page: true
-    ,limits: [30, 50, 100]
-    ,limit: 50
+    ,page: false
     ,where: {}
     ,cols: [[
       {field:'id', fixed: 'left', width:80, title: 'ID', sort: true, totalRowText: '合计：'}
