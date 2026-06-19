@@ -11,5 +11,7 @@ regions:
         stunport: 3478
         stunonly: false
         derpport: 12340
-        
+        # 自签证书时设为 true，跳过 TLS 验证（v0.29.1-runyf+ 支持）
+        # insecure_for_tests: true
+
         
