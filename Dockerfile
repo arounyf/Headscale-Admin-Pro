@@ -28,7 +28,7 @@ RUN pip3 install --break-system-packages \
 # 下载 headscale（从 GitHub Release）
 # CACHE_BUST 每次构建不同，确保 wget 层不被缓存
 ARG CACHE_BUST
-RUN wget -O headscale https://github.com/arounyf/headscale/releases/download/v0.29.1-runyf.4/headscale
+RUN wget -O headscale https://github.com/arounyf/headscale/releases/download/v0.29.1-runyf.5/headscale
 
 # 复制项目并初始化配置
 COPY . /init_data
