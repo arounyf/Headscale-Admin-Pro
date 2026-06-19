@@ -26,7 +26,7 @@ if [ -z "$(ls -A $CONTAINER_CONFIG_DIR 2>/dev/null)" ]; then
 	echo "复制headscale配置文件"
 	cat > $CONTAINER_CONFIG_DIR/acl.hujson << 'ACLEOF'
 {
-    "randomizeClientPort": false,
+    "randomizeClientPort": true,
     "groups": {
         "group:admin": ["admin@"]
     },
