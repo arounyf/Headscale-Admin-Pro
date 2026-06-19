@@ -108,6 +108,10 @@ derp:
     ipv4: 1.2.3.4
     ipv6: 2001:db8::1
 
+    # Allow self-signed certificates for external DERP servers.
+    # Enable this when connecting to DERP servers with untrusted TLS certificates.
+    insecure_for_tests: false
+
   # List of externally available DERP maps encoded in JSON
   urls:
   #  - https://controlplane.tailscale.com/derpmap/default
