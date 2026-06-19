@@ -21,7 +21,7 @@ listen_addr: 0.0.0.0:8080
 # to keep this endpoint private to your internal
 # network
 #
-metrics_listen_addr: 127.0.0.1:9090
+metrics_listen_addr: 127.0.0.1:9099
 
 # Address to listen for gRPC.
 # gRPC is used for controlling a headscale server
@@ -134,7 +134,9 @@ derp:
 disable_check_updates: false
 
 # Time before an inactive ephemeral node is deleted?
-ephemeral_node_inactivity_timeout: 30m
+node:
+  ephemeral:
+    inactivity_timeout: 30m
 
 database:
   # Database type. Available options: sqlite, postgres
@@ -399,7 +401,43 @@ logtail:
 # Enabling this option makes devices prefer a random port for WireGuard traffic over the
 # default static port 41641. This option is intended as a workaround for some buggy
 # firewall devices. See https://tailscale.com/kb/1181/firewalls/ for more information.
-randomize_client_port: false
+# randomize_client_port has been moved to the ACL file (randomizeClientPort)
+
+# Admin URL for client registration redirects (optional).
+# When set, tailscale up --login-server will redirect to this URL.
+# Defaults to server_url when not set.
+admin_url: ""
+
+# Network interface for traffic statistics
+server_net: eth0
+
+# ===== Headscale-Admin-Pro 自定义配置 =====
+# 以下配置仅在 Admin-Pro 中使用，headscale 会忽略
+
+# 节点注册开关（on/off）
+open_user_reg: on
+
+# 新用户默认到期天数
+default_reg_days: '7'
+
+# 新用户默认节点数量
+default_node_count: '2'
+
+# 是否开启邮箱验证注册
+email_verify_reg: off
+
+# SMTP 配置（邮箱验证用）
+smtp_host: smtp.example.com
+smtp_from: noreply@example.com
+smtp_user: noreply@example.com
+smtp_password: ""
+smtp_from_name: "Headscale 组网"
+
+# IP 查询 API 来源（tianapi / ip-api）
+ip_api_source: ip-api
+
+# 天行 API key（ip_api_source=tianapi 时需要）
+tianapi_key: ""
 
 
 
