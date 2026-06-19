@@ -66,8 +66,11 @@ def to_request(method,url_path,data=None,flag = True):
             return to_request(method, url_path, data, False)
         else:
             return res('1', 'apikey刷新失败', '')
-    else:
-        return res('0','请求成功',response.text)
+
+    if not response.ok:
+        return res(str(response.status_code), response.text)
+
+    return res('0', '请求成功', response.text)
 
 
 
