@@ -64,7 +64,7 @@ docker-compose up -d
 | v3.0 | v0.27.1-runyf |
 | v4.0 | v0.28.0-runyf |
 | v5.0 | v0.29.0-runyf |
-| v5.1 | v0.29.1-runyf.1 |
+| v5.1 | v0.29.1-runyf |
 
 ## 版本规范
 
