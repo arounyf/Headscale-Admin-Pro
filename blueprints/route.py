@@ -71,13 +71,18 @@ def toggleRoute():
     current_approved = node_data.get('node', {}).get('approvedRoutes', [])
 
     # 计算新路由列表
+    EXIT_ROUTES = {'0.0.0.0/0', '::/0'}
     if enable == '1':
         if route_cidr not in current_approved:
             new_routes = current_approved + [route_cidr]
         else:
             return res('0', '路由已启用', '')
     else:
-        new_routes = [r for r in current_approved if r != route_cidr]
+        if route_cidr in EXIT_ROUTES:
+            # headscale 强制出口路由成对存在，停用一个必须同时停用两个
+            new_routes = [r for r in current_approved if r not in EXIT_ROUTES]
+        else:
+            new_routes = [r for r in current_approved if r != route_cidr]
 
     # 调用 headscale API 设置路由
     set_resp = to_request('POST', f'/api/v1/node/{node_id}/approve_routes',
