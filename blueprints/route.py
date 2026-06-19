@@ -37,7 +37,23 @@ def getAllRoutes():
         if search_name and search_name.lower() not in user_name.lower():
             continue
 
-        for route in advertised:
+        EXIT_ROUTES = {'0.0.0.0/0', '::/0'}
+        exit_routes = [r for r in advertised if r in EXIT_ROUTES]
+        other_routes = [r for r in advertised if r not in EXIT_ROUTES]
+
+        # 出口路由合并为一条显示（与 headscale 成对处理保持一致）
+        if exit_routes:
+            both_exit = ('0.0.0.0/0' in exit_routes and '::/0' in exit_routes)
+            routes_list.append({
+                'id': len(routes_list) + 1,
+                'nodeId': node_id,
+                'userName': user_name,
+                'nodeName': node_name,
+                'route': '0.0.0.0/0,::/0' if both_exit else list(exit_routes)[0],
+                'enabled': all(r in approved for r in exit_routes),
+            })
+
+        for route in other_routes:
             routes_list.append({
                 'id': len(routes_list) + 1,
                 'nodeId': node_id,
@@ -70,19 +86,19 @@ def toggleRoute():
     node_data = json.loads(resp['data'])
     current_approved = node_data.get('node', {}).get('approvedRoutes', [])
 
-    # 计算新路由列表
+    # 处理合并的出口路由（前端显示为 "0.0.0.0/0,::/0"）
     EXIT_ROUTES = {'0.0.0.0/0', '::/0'}
+    toggle_routes = [route_cidr]
+    if route_cidr == '0.0.0.0/0,::/0':
+        toggle_routes = ['0.0.0.0/0', '::/0']
+
     if enable == '1':
-        if route_cidr not in current_approved:
-            new_routes = current_approved + [route_cidr]
-        else:
-            return res('0', '路由已启用', '')
+        new_routes = list(current_approved)
+        for r in toggle_routes:
+            if r not in new_routes:
+                new_routes.append(r)
     else:
-        if route_cidr in EXIT_ROUTES:
-            # headscale 强制出口路由成对存在，停用一个必须同时停用两个
-            new_routes = [r for r in current_approved if r not in EXIT_ROUTES]
-        else:
-            new_routes = [r for r in current_approved if r != route_cidr]
+        new_routes = [r for r in current_approved if r not in toggle_routes]
 
     # 调用 headscale API 设置路由
     set_resp = to_request('POST', f'/api/v1/node/{node_id}/approve_routes',
