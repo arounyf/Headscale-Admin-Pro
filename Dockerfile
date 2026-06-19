@@ -47,6 +47,7 @@ WORKDIR /init_data
 # 安装运行时依赖（自带 Python3.12）
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
+        ca-certificates \
         tzdata \
         net-tools \
         iputils-ping \
