@@ -1,17 +1,24 @@
-# If you plan to somehow use headscale, please deploy your own DERP infra: https://tailscale.com/kb/1118/custom-derp-servers/
+# DERP 中继服务器配置示例
+# 官方文档：https://tailscale.com/kb/1118/custom-derp-servers/
+
+# 方式一：直接使用 Tailscale 官方 DERP（配置在 config.yaml 中）
+#   derp:
+#     urls:
+#       - https://controlplane.tailscale.com/derpmap/default
+
+# 方式二：自建 DERP（YAML 文件）
 regions:
   900:
     regionid: 900
-    regioncode: localhost
-    regionname: localhost
+    regioncode: my-derp
+    regionname: my-derp
     nodes:
       - name: 900a
         regionid: 900
-        hostname: localhost
+        hostname: your-derp-server.com
         stunport: 3478
         stunonly: false
-        derpport: 12340
-        # 自签证书时设为 true，跳过 TLS 验证（v0.29.1-runyf+ 支持）
+        derpport: 12345
+        # 自签证书时设为 true（v0.29.1-runyf+ 支持）
         # insecure_for_tests: true
-
-        
+        # ipv4: 1.2.3.4
