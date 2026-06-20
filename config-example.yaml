@@ -114,7 +114,7 @@ derp:
 
   # List of externally available DERP maps encoded in JSON
   urls:
-  #  - https://controlplane.tailscale.com/derpmap/default
+    - https://controlplane.tailscale.com/derpmap/default
 
   # Locally available DERP map files encoded in YAML
   #
@@ -124,7 +124,8 @@ derp:
   #
   # paths:
   #   - /etc/headscale/derp-example.yaml
-  paths: /etc/headscale/derp.yaml
+  # paths:
+  #   - /etc/headscale/derp.yaml
 
   # If enabled, a worker will be set up to periodically
   # refresh the given sources and update the derpmap
