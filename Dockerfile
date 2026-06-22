@@ -15,15 +15,16 @@ RUN apt-get update && \
 # 安装 Python 依赖
 RUN pip3 install --break-system-packages \
     flask \
-    wtforms \
     flask-wtf \
+    wtforms \
     captcha \
     psutil \
     flask_login \
     requests \
     apscheduler \
     ruamel.yaml \
-    email_validator
+    email_validator \
+    waitress
 
 # 下载 headscale（从 GitHub Release）
 # CACHE_BUST 每次构建不同，确保 wget 层不被缓存
