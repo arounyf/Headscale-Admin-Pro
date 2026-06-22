@@ -62,5 +62,7 @@ COPY --from=builder /init_data /init_data
 COPY --from=builder /usr/local/lib/python3.12/dist-packages /usr/local/lib/python3.12/dist-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+ENV PYTHONUNBUFFERED=1
+
 # 启动
 CMD ["sh", "-c", "./init.sh 'python3 app.py'"]
