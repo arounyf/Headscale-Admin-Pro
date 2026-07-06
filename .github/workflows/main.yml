@@ -9,6 +9,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,10 +31,26 @@ jobs:
         with:
           images: runyf/hs-admin
           tags: |
-            # 删掉 type=ref,event=branch（避免生成main标签）
-            type=ref,event=tag  # 标签触发时生成：runyf/hs-admin:v1.0.0
-            # 仅main分支触发时生成latest标签（无main标签）
+            type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Determine if stable release
+        id: release
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+            if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+              echo "stable=true" >> $GITHUB_OUTPUT
+              echo "prerelease=false" >> $GITHUB_OUTPUT
+              echo "Stable release: $TAG → will push as :latest"
+            else
+              echo "stable=false" >> $GITHUB_OUTPUT
+              echo "prerelease=true" >> $GITHUB_OUTPUT
+              echo "Pre-release: $TAG (no :latest)"
+            fi
+          else
+            echo "stable=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -43,3 +62,26 @@ jobs:
             CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Tag stable release as latest
+        if: steps.release.outputs.stable == 'true'
+        run: |
+          docker buildx imagetools create \
+            runyf/hs-admin:${{ github.ref_name }} \
+            --tag runyf/hs-admin:latest
+
+      - name: Create GitHub Release (stable)
+        if: steps.release.outputs.stable == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: false
+
+      - name: Create GitHub Release (pre-release)
+        if: steps.release.outputs.prerelease == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: true
