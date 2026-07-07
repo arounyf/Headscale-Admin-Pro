@@ -127,7 +127,7 @@ def switch_headscale():
             if status == "false":
                 return res('0', '操作成功', {})
         time.sleep(0.5)
-    return res('1', '操作可能未生效，请检查端口占用或稍后重试', {})
+    return res('1', '请检查端口占用或者查看详细日志', {})
 
 
 @bp.route('/user_mode', methods=['POST'])
