@@ -123,7 +123,7 @@
                 var on = d.online;
                 var s = on ? '<span class="layui-badge layui-bg-green">在线</span> ' : '<span class="layui-badge layui-bg-gray">离线</span> ';
                 if (d.isExitNode) s += '<span class="layui-badge" style="background:#1E9FFF!important;">Exit</span> ';
-                if (d.hasSubnets) s += '<span class="layui-badge layui-bg-gray">Subnet</span> ';
+                if (d.hasSubnets) s += '<span class="layui-badge layui-bg-orange">Subnet</span> ';
                 var ver = (d.Client||'').split('-')[0];
                 if (ver) {
                     var parts = ver.split('.');
