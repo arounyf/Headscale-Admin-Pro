@@ -70,6 +70,27 @@ def get_apikey():
 
 
 
+@bp.route('/headscale_log', methods=['GET'])
+@login_required
+@role_required("manager")
+def headscale_log():
+    log_path = '/var/lib/headscale/headscale.log'
+    try:
+        with open(log_path, 'r') as f:
+            lines = f.readlines()
+            # 过滤掉 Flask health check 日志行，避免干扰显示
+            headscale_lines = [
+                l for l in lines
+                if 'Health check' not in l and 'Monitoring log' not in l
+            ]
+            content = ''.join(headscale_lines[-200:])
+        return res('0', 'ok', content)
+    except FileNotFoundError:
+        return res('1', '日志文件不存在', '')
+    except Exception as e:
+        return res('1', f'读取失败: {str(e)}', '')
+
+
 @bp.route('/switch_headscale', methods=['POST'])
 @login_required
 @role_required("manager")
