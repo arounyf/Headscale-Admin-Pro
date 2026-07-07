@@ -322,10 +322,10 @@
     function setHsBtn(running){
       var btn = $('#btn-headscale-toggle');
       if (running) {
-        btn.removeClass('layui-btn-disabled').addClass('layui-btn-warm')
+        btn.removeClass('layui-btn-normal').addClass('layui-btn-warm')
            .html('<i class=\"layui-icon layui-icon-pause\"></i> 关闭 headscale');
       } else {
-        btn.removeClass('layui-btn-warm').addClass('layui-btn-disabled')
+        btn.removeClass('layui-btn-warm').addClass('layui-btn-normal')
            .html('<i class=\"layui-icon layui-icon-play\"></i> 开启 headscale');
       }
     }
