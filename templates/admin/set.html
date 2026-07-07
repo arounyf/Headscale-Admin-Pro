@@ -325,13 +325,13 @@
       btn.removeClass('layui-btn-disabled layui-btn-warm layui-btn-normal');
       logBtn.removeClass('layui-btn-warm layui-btn-normal');
       if (running) {
-        btn.addClass('layui-btn-warm')
-           .html('<i class=\"layui-icon layui-icon-pause\"></i> 关闭 headscale');
-        logBtn.addClass('layui-btn-warm');
-      } else {
         btn.addClass('layui-btn-normal')
-           .html('<i class=\"layui-icon layui-icon-play\"></i> 开启 headscale');
+           .html('<i class=\"layui-icon layui-icon-pause\"></i> 关闭 headscale');
         logBtn.addClass('layui-btn-normal');
+      } else {
+        btn.addClass('layui-btn-warm')
+           .html('<i class=\"layui-icon layui-icon-play\"></i> 开启 headscale');
+        logBtn.addClass('layui-btn-warm');
       }
     }
 
@@ -347,7 +347,7 @@
     $('#btn-headscale-toggle').click(function(){
       if (hsBusy) return;
       var btn = $(this);
-      var currentlyOn = btn.hasClass('layui-btn-warm');
+      var currentlyOn = btn.hasClass('layui-btn-normal');
       var targetOn = !currentlyOn;
       hsBusy = true;
       btn.html('<i class=\"layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop\"></i> ' + (targetOn ? '启动中' : '停止中'));

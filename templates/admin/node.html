@@ -119,12 +119,11 @@
                 {% endif %}
             }
             ,{field:'ip', width:160, title:'IP地址', templet: function(d){ return d.ip.split(', ').join('<br>'); }}
-            ,{field:'online', width:220, title:'状态', sort:true, templet: function(d){
+            ,{field:'online', width:240, title:'状态', sort:true, templet: function(d){
                 var on = d.online;
                 var s = on ? '<span class="layui-badge layui-bg-green">在线</span> ' : '<span class="layui-badge layui-bg-gray">离线</span> ';
-                var cls = on ? ' layui-bg-green' : ' layui-bg-gray';
-                if (d.isExitNode) s += '<span class="layui-badge'+cls+'">Exit</span> ';
-                if (d.hasSubnets) s += '<span class="layui-badge'+cls+'">Subnet</span> ';
+                if (d.isExitNode) s += '<span class="layui-badge" style="background:#1E9FFF!important;">Exit</span> ';
+                if (d.hasSubnets) s += '<span class="layui-badge layui-bg-gray">Subnet</span> ';
                 var ver = (d.Client||'').split('-')[0];
                 if (ver) {
                     var parts = ver.split('.');
