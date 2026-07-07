@@ -196,6 +196,17 @@
         </div>
       </div>
 
+      <div class="layui-col-md4">
+        <div class="layui-card">
+          <div class="layui-card-header">headscale 日志</div>
+          <div class="layui-card-body">
+            <button class="layui-btn layui-btn-primary" id="btn-headscale-log">
+              <i class="layui-icon layui-icon-read"></i> 获取日志
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -355,6 +366,25 @@
         }
       }
     }, 'json');
+
+    // headscale 日志弹窗
+    $('#btn-headscale-log').click(function(){
+      layer.open({
+        type: 1,
+        title: 'headscale 日志',
+        area: ['850px', '520px'],
+        content: '<pre id=\"hs-log-pre\" style=\"max-height:420px; overflow:auto; background:#2d2d2d; color:#e0e0e0; padding:12px; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0; font-family:Menlo,Monaco,Consolas,monospace;\">加载中...</pre>',
+        success: function(layero){
+          $.get('/api/set/headscale_log', function(res){
+            if (res.code === '0') {
+              layero.find('#hs-log-pre').text(res.data);
+            } else {
+              layero.find('#hs-log-pre').text('加载失败: ' + res.msg);
+            }
+          }, 'json');
+        }
+      });
+    });
 
     // IP API 源切换
     // 网卡切换
