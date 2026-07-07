@@ -190,12 +190,13 @@
           <div class="layui-card-header">headscale 管理</div>
           <div class="layui-card-body layui-row layui-col-space10">
             <div class="layui-col-md12">
-              <span style="margin-right:8px; vertical-align:middle;">进程管理</span>
-              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
+              <span style="display:inline-block; width:70px;">进程管理</span>
+              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
             </div>
-            <div class="layui-col-md12" style="margin-top:4px;">
-              <a href="javascript:;" id="view-headscale-log" style="font-size:13px; color:#5FB878;">
-                <i class="layui-icon layui-icon-read"></i> 查看日志
+            <div class="layui-col-md12">
+              <span style="display:inline-block; width:70px;">日志</span>
+              <a href="javascript:;" id="view-headscale-log" style="color:#16b777;">
+                <i class="layui-icon layui-icon-read"></i> 查看
               </a>
             </div>
           </div>
@@ -204,9 +205,6 @@
 
     </div>
 
-    <div id="headscale-log-modal" style="display:none; padding:15px;">
-      <pre id="headscale-log-content" style="max-height:500px; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:12px; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all;"></pre>
-    </div>
   </div>
 
   <script src="/static/layui/layui.js"></script>
@@ -328,20 +326,21 @@
 
     // 查看 headscale 日志
     $('#view-headscale-log').click(function(){
-      $.get('/api/set/headscale_log', function(res){
-        if (res.code === '0') {
-          $('#headscale-log-content').text(res.data);
-          layer.open({
-            type: 1,
-            title: 'headscale.log',
-            area: ['800px', '550px'],
-            content: $('#headscale-log-modal'),
-            shadeClose: true
-          });
-        } else {
-          layer.msg(res.msg, {icon: 2});
+      layer.open({
+        type: 1,
+        title: 'headscale.log',
+        area: ['850px', '520px'],
+        content: '<pre class=\"layui-code\" style=\"max-height:480px;\">加载中...</pre>',
+        success: function(layero){
+          $.get('/api/set/headscale_log', function(res){
+            if (res.code === '0') {
+              layero.find('.layui-code').text(res.data);
+            } else {
+              layero.find('.layui-code').text('加载失败: ' + res.msg);
+            }
+          }, 'json');
         }
-      }, 'json');
+      });
     });
 
     // IP API 源切换
