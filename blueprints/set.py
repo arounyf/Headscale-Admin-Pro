@@ -91,19 +91,43 @@ def headscale_log():
         return res('1', f'读取失败: {str(e)}', '')
 
 
+@bp.route('/headscale_status', methods=['GET'])
+@login_required
+@role_required("manager")
+def headscale_status():
+    """健康检查：通过 HTTP 确认 headscale 是否真正在运行"""
+    import requests
+    try:
+        r = requests.get('http://127.0.0.1:8080/health', timeout=2)
+        return res('0', '运行中', {'running': r.status_code == 200})
+    except Exception:
+        return res('0', '已停止', {'running': False})
+
+
 @bp.route('/switch_headscale', methods=['POST'])
 @login_required
 @role_required("manager")
 def switch_headscale():
-    # 获取表单中的 Switch 参数
     status = request.form.get('Switch')
-    res_json = {'code': '', 'data': '', 'msg': ''}
-    if status=="true":
-        return start_headscale()
+    if status == "true":
+        result = start_headscale()
     else:
-        return stop_headscale()
+        result = stop_headscale()
 
-    return res_json
+    # 等待并验证实际状态
+    import time, requests
+    time.sleep(1.5)
+    for _ in range(10):
+        try:
+            r = requests.get('http://127.0.0.1:8080/health', timeout=2)
+            if (status == "true" and r.status_code == 200) or \
+               (status == "false" and r.status_code != 200):
+                return res('0', '操作成功', {})
+        except Exception:
+            if status == "false":
+                return res('0', '操作成功', {})
+        time.sleep(0.5)
+    return res('1', '操作可能未生效，请检查端口占用或稍后重试', {})
 
 
 @bp.route('/user_mode', methods=['POST'])

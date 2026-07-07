@@ -187,24 +187,16 @@
 
       <div class="layui-col-md4">
         <div class="layui-card layui-form" lay-filter="component-form-element">
-          <div class="layui-card-header">headscale 管理</div>
+          <div class="layui-card-header">headscale 进程管理</div>
           <div class="layui-card-body layui-row layui-col-space10">
             <div class="layui-col-md12">
-              <span style="display:inline-block; width:70px;">进程管理</span>
-              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
-              <button class="layui-btn layui-btn-xs layui-btn-primary" id="log-refresh" style="margin-left:10px;">
-                <i class="layui-icon layui-icon-refresh"></i> 刷新日志
-              </button>
+              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
             </div>
-          </div>
-          <div class="layui-card-body" style="padding:0 15px 15px 15px;">
-            <pre id="headscale-log-content" style="height:360px; overflow:auto; background:#2d2d2d; color:#e0e0e0; padding:10px; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0; border:none; font-family:Menlo,Monaco,Consolas,monospace;">点击"刷新日志"加载...</pre>
           </div>
         </div>
       </div>
 
     </div>
-
   </div>
 
   <script src="/static/layui/layui.js"></script>
@@ -311,31 +303,58 @@
       });
     });
 
-    // headscale 进程开关
+    // headscale 进程开关 — 带健康检查确认
     form.on('switch(switch_up)', function(data){
+      var sw = $(data.elem);
+      var checked = this.checked;
+      // 禁用开关 + 加载动画
+      sw.prop('disabled', true);
+      var loadIdx = layer.load(1, {shade: [0.1, '#000']});
+
       $.ajax({
         url:'/api/set/switch_headscale',
         type:'post',
-        data: {Switch:this.checked},
+        data: {Switch: checked},
         dataType:'json',
         success:function(res){
-          layer.msg(res.msg, {icon: res.code == '0' ? 6 : 7});
+          layer.close(loadIdx);
+          if (res.code === '0') {
+            layer.msg(res.msg, {icon: 6});
+            setTimeout(function(){ window.location.reload(); }, 800);
+          } else {
+            // 操作失败，恢复开关
+            layer.msg(res.msg, {icon: 7});
+            sw.prop('checked', !checked);
+            form.render('checkbox');
+            sw.prop('disabled', false);
+          }
+        },
+        error: function(){
+          layer.close(loadIdx);
+          layer.msg('请求失败', {icon: 7});
+          sw.prop('checked', !checked);
+          form.render('checkbox');
+          sw.prop('disabled', false);
         }
-      });
+        });
     });
 
-    // headscale 日志
-    function loadLog(){
-      $('#headscale-log-content').text('加载中...');
-      $.get('/api/set/headscale_log', function(res){
-        if (res.code === '0') {
-          $('#headscale-log-content').text(res.data);
-        } else {
-          $('#headscale-log-content').text('加载失败: ' + res.msg);
+    // 页面加载时健康检查，修正开关状态
+    $.get('/api/set/headscale_status', function(res){
+      if (res.code === '0' && res.data && res.data.running) {
+        // headscale 在运行，确保开关是开的
+        if (!$('input[name="zzz"]').prop('checked')) {
+          $('input[name="zzz"]').prop('checked', true);
+          form.render('checkbox');
         }
-      }, 'json');
-    }
-    $('#log-refresh').click(loadLog);
+      } else {
+        // headscale 没在运行，确保开关是关的
+        if ($('input[name="zzz"]').prop('checked')) {
+          $('input[name="zzz"]').prop('checked', false);
+          form.render('checkbox');
+        }
+      }
+    }, 'json');
 
     // IP API 源切换
     // 网卡切换
