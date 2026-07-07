@@ -189,19 +189,31 @@
         <div class="layui-card layui-form" lay-filter="component-form-element">
           <div class="layui-card-header">headscale 管理</div>
           <div class="layui-card-body layui-row layui-col-space10">
-            <div class="layui-col-md12">
+            <div class="layui-col-md12" style="margin-bottom:8px;">
               <span style="display:inline-block; width:70px;">进程管理</span>
               <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
             </div>
             <div class="layui-col-md12">
               <span style="display:inline-block; width:70px;">日志</span>
               <a href="javascript:;" id="view-headscale-log" style="color:#16b777;">
-                <i class="layui-icon layui-icon-read"></i> <span id="log-toggle-text">展开</span>
+                <i class="layui-icon layui-icon-read"></i> 查看
               </a>
             </div>
           </div>
-          <div class="layui-card-body" id="headscale-log-block" style="display:none; padding-top:0;">
-            <pre id="headscale-log-content" style="max-height:400px; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:10px; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0;">加载中...</pre>
+        </div>
+      </div>
+
+      <div class="layui-col-md12" id="headscale-log-card" style="display:none;">
+        <div class="layui-card">
+          <div class="layui-card-header">
+            headscale 运行日志
+            <div class="layui-btn-group" style="float:right;">
+              <button class="layui-btn layui-btn-xs layui-btn-primary" id="log-refresh"><i class="layui-icon layui-icon-refresh"></i> 刷新</button>
+              <button class="layui-btn layui-btn-xs layui-btn-primary" id="log-hide"><i class="layui-icon layui-icon-close"></i> 收起</button>
+            </div>
+          </div>
+          <div class="layui-card-body" style="padding:0;">
+            <pre id="headscale-log-content" style="height:400px; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:12px 15px; font-size:12px; line-height:1.6; white-space:pre-wrap; word-break:break-all; margin:0; border:none; font-family:Menlo,Monaco,Consolas,monospace;">加载中...</pre>
           </div>
         </div>
       </div>
@@ -327,24 +339,23 @@
       });
     });
 
-    // 查看 headscale 日志 — 内嵌折叠
+    // headscale 日志
+    function loadLog(){
+      $.get('/api/set/headscale_log', function(res){
+        if (res.code === '0') {
+          $('#headscale-log-content').text(res.data);
+        } else {
+          $('#headscale-log-content').text('加载失败: ' + res.msg);
+        }
+      }, 'json');
+    }
+
+    $('#log-refresh').click(loadLog);
+    $('#log-hide').click(function(){ $('#headscale-log-card').hide(); });
+
     $('#view-headscale-log').click(function(){
-      var block = $('#headscale-log-block');
-      var text = $('#log-toggle-text');
-      if (block.is(':visible')) {
-        block.hide();
-        text.text('展开');
-      } else {
-        block.show();
-        text.text('收起');
-        $.get('/api/set/headscale_log', function(res){
-          if (res.code === '0') {
-            $('#headscale-log-content').text(res.data);
-          } else {
-            $('#headscale-log-content').text('加载失败: ' + res.msg);
-          }
-        }, 'json');
-      }
+      $('#headscale-log-card').show();
+      loadLog();
     });
 
     // IP API 源切换
