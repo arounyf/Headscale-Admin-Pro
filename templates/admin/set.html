@@ -186,11 +186,13 @@
       </div>
 
       <div class="layui-col-md4">
-        <div class="layui-card layui-form" lay-filter="component-form-element">
+        <div class="layui-card layui-form">
           <div class="layui-card-header">headscale 进程管理</div>
           <div class="layui-card-body layui-row layui-col-space10">
             <div class="layui-col-md12">
-              <input type="checkbox" name="zzz" lay-skin="switch" lay-text="开启|关闭" title="开启|关闭" lay-filter="switch_up" {{ headscale_status }}>
+              <button class="layui-btn layui-btn-sm" id="btn-headscale-toggle" style="min-width:80px;">
+                <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"></i> 检测中
+              </button>
             </div>
           </div>
         </div>
@@ -316,58 +318,53 @@
       });
     });
 
-    // headscale 进程开关 — 带健康检查确认
-    form.on('switch(switch_up)', function(data){
-      var sw = $(data.elem);
-      var checked = this.checked;
-      // 禁用开关 + 加载动画
-      sw.prop('disabled', true);
-      var loadIdx = layer.load(1, {shade: [0.1, '#000']});
+    // 更新按钮状态
+    function setHsBtn(running){
+      var btn = $('#btn-headscale-toggle');
+      if (running) {
+        btn.removeClass('layui-btn-disabled').addClass('layui-btn-warm')
+           .html('<i class=\"layui-icon layui-icon-pause\"></i> 关闭 headscale');
+      } else {
+        btn.removeClass('layui-btn-warm').addClass('layui-btn-disabled')
+           .html('<i class=\"layui-icon layui-icon-play\"></i> 开启 headscale');
+      }
+    }
+
+    // 页面加载时检测状态
+    $.get('/api/set/headscale_status', function(res){
+      if (res.code === '0' && res.data) {
+        setHsBtn(res.data.running);
+      }
+    }, 'json');
+
+    // 按钮点击切换
+    var hsBusy = false;
+    $('#btn-headscale-toggle').click(function(){
+      if (hsBusy) return;
+      var btn = $(this);
+      var currentlyOn = btn.hasClass('layui-btn-warm');
+      var targetOn = !currentlyOn;
+      hsBusy = true;
+      btn.html('<i class=\"layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop\"></i> ' + (targetOn ? '启动中' : '停止中'));
+      btn.addClass('layui-btn-disabled');
 
       $.ajax({
         url:'/api/set/switch_headscale',
         type:'post',
-        data: {Switch: checked},
+        data: {Switch: targetOn.toString()},
         dataType:'json',
         success:function(res){
-          layer.close(loadIdx);
-          if (res.code === '0') {
-            layer.msg(res.msg, {icon: 6});
-            setTimeout(function(){ window.location.reload(); }, 800);
-          } else {
-            // 操作失败，恢复开关
-            layer.msg(res.msg, {icon: 7});
-            sw.prop('checked', !checked);
-            form.render('checkbox');
-            sw.prop('disabled', false);
-          }
+          setHsBtn(res.code === '0' ? targetOn : currentlyOn);
+          layer.msg(res.msg, {icon: res.code === '0' ? 6 : 7});
+          hsBusy = false;
         },
         error: function(){
-          layer.close(loadIdx);
+          setHsBtn(currentlyOn);
           layer.msg('请求失败', {icon: 7});
-          sw.prop('checked', !checked);
-          form.render('checkbox');
-          sw.prop('disabled', false);
+          hsBusy = false;
         }
-        });
+      });
     });
-
-    // 页面加载时健康检查，修正开关状态
-    $.get('/api/set/headscale_status', function(res){
-      if (res.code === '0' && res.data && res.data.running) {
-        // headscale 在运行，确保开关是开的
-        if (!$('input[name="zzz"]').prop('checked')) {
-          $('input[name="zzz"]').prop('checked', true);
-          form.render('checkbox');
-        }
-      } else {
-        // headscale 没在运行，确保开关是关的
-        if ($('input[name="zzz"]').prop('checked')) {
-          $('input[name="zzz"]').prop('checked', false);
-          form.render('checkbox');
-        }
-      }
-    }, 'json');
 
     // headscale 日志弹窗
     $('#btn-headscale-log').click(function(){
