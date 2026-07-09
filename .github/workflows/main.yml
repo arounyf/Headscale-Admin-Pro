@@ -35,7 +35,6 @@ jobs:
           images: runyf/hs-admin
           tags: |
             type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Determine if stable release
         id: release
@@ -59,7 +58,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: ${{ github.ref_type == 'tag' }}
           no-cache: true
           build-args: |
             CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
