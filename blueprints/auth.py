@@ -20,6 +20,17 @@ _LOGIN_LIMIT = 10
 _LOGIN_WINDOW = 60
 
 
+def _get_client_ip():
+    """获取客户端真实 IP，优先 X-Real-IP（nginx 单IP），其次 X-Forwarded-For"""
+    x_real = request.headers.get("X-Real-IP", "").strip()
+    if x_real:
+        return x_real.split(",")[0].strip()
+    x_forwarded = request.headers.get("X-Forwarded-For", "").strip()
+    if x_forwarded:
+        return x_forwarded.split(",")[0].strip()
+    return request.remote_addr or "0.0.0.0"
+
+
 def _check_login_rate(ip):
     now = time.time()
     cutoff = now - _LOGIN_WINDOW
@@ -92,8 +103,7 @@ def register_node(registrationID):
                     node_ip = node_data['node']['ipAddresses'][0]
                 except Exception:
                     node_ip = ''
-                ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-                ip_addr = ip_addr.split(",")[0].strip()
+                ip_addr = _get_client_ip()
                 loc = get_ip_location(ip_addr)
                 msg = f"节点添加成功。节点IP：{node_ip}，请求IP：{ip_addr}"
                 if loc:
@@ -204,8 +214,7 @@ def reg():
             # 注册完成
 
             # 记录注册IP
-            ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-            ip_addr = ip_addr.split(",")[0].strip()
+            ip_addr = _get_client_ip()
             import threading
             app_ctx = current_app._get_current_object()
             def reg_log():
@@ -227,8 +236,7 @@ def reg():
             email = request.form.get('email', '').strip()
             phone = request.form.get('phone', '').strip()
             username = request.form.get('username', '').strip()
-            ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-            ip_addr = ip_addr.split(",")[0].strip()
+            ip_addr = _get_client_ip()
             import threading
             app_ctx = current_app._get_current_object()
             def fail_reg_log():
@@ -260,7 +268,7 @@ def login():
         else:
             return render_template('auth/login.html')
     else:
-        if not _check_login_rate(request.remote_addr):
+        if not _check_login_rate(_get_client_ip()):
             return res('1', '登录过于频繁，请1分钟后再试', '')
         form = LoginForm(request.form)
 
@@ -269,8 +277,7 @@ def login():
             login_user(user)
             reset_login_failures(user.name)
             res_code,res_msg,res_data = '0', '登录成功',''
-            ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-            ip_addr = ip_addr.split(",")[0].strip()
+            ip_addr = _get_client_ip()
             import threading
             app_ctx = current_app._get_current_object()
             def login_log():
@@ -288,8 +295,7 @@ def login():
             res_code,res_msg,res_data ='1',str(first_value[0]),''
             # 记录登录失败IP
             username = request.form.get('username', '').strip()
-            ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr) or request.remote_addr
-            ip_addr = ip_addr.split(",")[0].strip()
+            ip_addr = _get_client_ip()
             import threading
             app_ctx = current_app._get_current_object()
             def fail_log():
