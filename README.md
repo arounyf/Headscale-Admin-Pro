@@ -59,13 +59,9 @@ docker-compose up -d
  注意 hs 代表非官方原版headscale，因数据库适配问题不得不对headscale代码进行修改。从v3.0开始支持从上一个版本升级，操作之前请一定要备份好你的数据
 | Headscale-Admin-Pro | headscale |
 | --- | --- |
-| v2.7 | v0.25.1 |
-| v2.8 | v0.26.1 |
-| v3.0 | v0.27.1-hs |
-| v4.0 | v0.28.0-hs |
-| v5.0 | v0.29.0-hs |
-| v5.1 | v0.29.1-hs |
-| v5.2 | v0.29.2-hs |
+| v3.x | v0.27.x-hs |
+| v4.x | v0.28.x-hs |
+| v5.x | v0.29.x-hs |
 
 ## 版本规范
 
