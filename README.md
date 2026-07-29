@@ -65,7 +65,6 @@ docker-compose up -d
 | v4.0 | v0.28.0-hs |
 | v5.0 | v0.29.0-hs |
 | v5.1 | v0.29.1-hs |
-| v6.0 | v0.29.3-hs |
 | v5.2 | v0.29.2-hs |
 
 ## 版本规范
@@ -75,7 +74,7 @@ docker-compose up -d
   - 功能增强/问题修复升 minor
 - **headscale 版本**：`v{upstream}-hs.{build}`，例 `v0.29.2-hs.1`（详见 headscale 仓库）
 - **Docker 标签**：
-  - `runyf/hs-admin:v5.1` — 固定版本
+  - `runyf/hs-admin:v5.2` — 固定版本
   - `runyf/hs-admin:latest` — 最新版本
 - **Release 发布**：推送 `v*` 标签触发 GitHub Actions 自动构建并推送 Docker Hub
 - **升级说明**：每个 Release 必须包含从上一版本的升级步骤，大版本需列出配置变更
