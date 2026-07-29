@@ -63,18 +63,6 @@ docker-compose up -d
 | v4.x | v0.28.x-hs |
 | v5.x | v0.29.x-hs |
 
-## 版本规范
-
-- **Admin-Pro 版本**：`v{major}.{minor}`，例 `v5.0`、`v5.1`
-  - 重大变更（配置迁移、breaking change）升 major
-  - 功能增强/问题修复升 minor
-- **headscale 版本**：`v{upstream}-hs.{build}`，例 `v0.29.2-hs.1`（详见 headscale 仓库）
-- **Docker 标签**：
-  - `runyf/hs-admin:v5.2` — 固定版本
-  - `runyf/hs-admin:latest` — 最新版本
-- **Release 发布**：推送 `v*` 标签触发 GitHub Actions 自动构建并推送 Docker Hub
-- **升级说明**：每个 Release 必须包含从上一版本的升级步骤，大版本需列出配置变更
-
 # 如何升级
 
 > **升级前务必备份数据！** 请勿跨 headscale 版本升级，在 [Release](https://github.com/arounyf/Headscale-Admin-Pro/releases) 中可查看当前版本详细升级说明。
