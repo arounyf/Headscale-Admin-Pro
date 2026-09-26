@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -159,19 +160,50 @@ def get_data_record():
 
 
 
+def _headscale_serve_pids():
+    """返回 argv 恰好是 `headscale serve` 的进程 PID 列表。
+
+    替换原来的
+    `ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1`：
+      * `tail -n 1` 在多实例时等于随机挑最后一个，而不是挑面板管的那个；
+      * `grep -E` 是子串匹配，`sh -c "headscale serve"` 这类包装进程也会命中；
+      * 精确比对 argv 还顺带排除了带 `-c <别的配置>` 手工起的实例 ——
+        start_headscale 是用 subprocess.Popen(['headscale', 'serve']) 拉起来的
+        （不带 -c），所以"面板管的那个"就是无参数的那个。
+
+    这里不用 docker API（容器没挂 docker socket）也不用 systemd（容器内没有 init）。
+    """
+    pids = []
+    for proc in psutil.process_iter(['pid', 'cmdline']):
+        try:
+            if proc.info['cmdline'] == ['headscale', 'serve']:
+                pids.append(proc.info['pid'])
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return sorted(pids)
+
+
+def _signal_headscale(sig, ok_msg):
+    """给面板管的 headscale 进程发信号。"""
+    pids = _headscale_serve_pids()
+    if not pids:
+        return res('1', '未检测到 headscale 进程')
+
+    failed = []
+    for pid in pids:
+        try:
+            os.kill(pid, sig)
+        except OSError as e:
+            failed.append(f'{pid}: {e}')
+
+    if failed:
+        return res('1', f"发送信号失败：{'; '.join(failed)}")
+
+    return res('0', ok_msg, f'已向 {len(pids)} 个进程发送信号：{pids}')
+
+
 def reload_headscale():
-    res_json = {'code': '', 'data': '', 'msg': ''}
-    # kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)
-    try:
-        # 执行重载headscale命令
-        # result = subprocess.run(['systemctl', 'reload', 'headscale'], check=True, capture_output=True, text=True)
-        reload_command = "kill -HUP $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
-        result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
-        
-        res_json['code'], res_json['msg'] ,res_json['data']= '0', '执行成功',result.stdout
-    except subprocess.CalledProcessError as e:
-        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
-    return res_json
+    return _signal_headscale(signal.SIGHUP, '执行成功')
 
 
 
@@ -213,35 +245,16 @@ def start_headscale():
 
 
 def stop_headscale():
-    res_json = {'code': '', 'data': '', 'msg': ''}
-    try:
-        reload_command = "kill -15 $(ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1)"
-        result = subprocess.run(reload_command, shell=True, capture_output=True, text=True, check=True)
-        res_json['code'], res_json['msg'], res_json['data'] = '0', '停止成功', result.stdout
-    except subprocess.CalledProcessError as e:
-        res_json['code'], res_json['msg'], res_json['data'] = '1', '执行失败', f"错误信息：{e.stderr}"
-    return res_json
-
+    return _signal_headscale(signal.SIGTERM, '停止成功')
 
 
 def get_headscale_pid():
-    try:
-        # 执行获取 headscale 进程 PID 的命令
-        command = "ps -ef | grep -E 'headscale serve' | grep -v grep | awk '{print $2}' | tail -n 1"
-        result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
-        pid = result.stdout.strip()
-        if pid:
-            print(f"headscale pid is {pid}")
-            return int(pid)
-        else:
-            return False
-    except subprocess.CalledProcessError as e:
-        print(f"执行命令时出现错误: {e.stderr}")
-        print(f"执行命令时出现错误: {e.stderr}")
+    """返回面板管的 headscale PID；没在跑时返回 False。"""
+    pids = _headscale_serve_pids()
+    if not pids:
         return False
-    except ValueError:
-        print("获取的 PID 无法转换为整数。")
-        return False
+    print(f"headscale pid is {pids[0]}")
+    return pids[0]
 
 def get_headscale_version():
     try:
