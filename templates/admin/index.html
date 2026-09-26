@@ -8,6 +8,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="/static/layui/css/layui.css" rel="stylesheet">
   <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
+  {#
+    顶栏右侧统一用这一个状态色：headscale 跑着是绿，停了是红。
+    「运行中/已停止」和「管理员模式/用户模式」都取它 —— 只有运行状态能改颜色，
+    当前是管理员还是用户模式都不影响，这样四个图标和四段文字永远是同一个色。
+  #}
+  {% set state_color = '#16baaa' if hs_running == 'running' else '#ff5722' %}
+  <style>
+    /* 顶栏这四个图标（运行中 / 已停止 / 管理员 / 用户模式）的尺寸：
+         · 三个 layui 字体图标（component 立方体 / pause / diamond 宝石）走
+           .layui-icon 的 16px —— 实测墨迹 component 14.00x16、pause 16x16、
+           diamond 15.25x13.38。
+         · 自绘单人盒子 13px，墨迹就是 13x13 —— 刻意比另外三枚小一号：它是
+           顶栏里唯一一个「实心块」，另外三枚都是细线描边，同尺寸下实心块看
+           起来更重更大，压小一号两者的观感反而更齐。
+       字形各自的宽高比保留：宝石本来就偏扁（1.16），立方体偏高（0.89），
+       强行拉成正方形墨迹只能靠拉伸字形，会变形。
+       用户模式那一枚之所以自绘：layui-icon-user 画的是两个人，那是「群组」
+       的意思，单人应该只有一个人形。fill 走 currentColor 跟着容器颜色变。 */
+    .hs-ico {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      fill: currentColor;
+      vertical-align: middle;
+      /* 对齐补偿：vertical-align:middle 是把盒子中心对齐到「基线 + 半个
+         x-height」，而中文字的墨迹重心比它高约 1.5px（实测）。补 1px 后落到
+         +0.5px 以内 —— 盒子变大时中心不动，所以这个值不随图标尺寸变。 */
+      position: relative;
+      top: -1px;
+      /* 不要再加 opacity 之类的"观感重量"补偿：图标颜色就是要和文字一模一样。
+         实心块看着比细笔画略重是正常的，压透明度反而让图标比文字浅一档。 */
+    }
+
+    /* 字体图标也套同一套尺寸与对齐：
+       · font-size 必须显式写死 —— layui.css 里有一条 `.layui-nav *{font-size:14px}`，
+         通用选择器，特异性和 .layui-icon{font-size:16px} 一样(0,1,0)，但位置更靠后，
+         所以顶栏导航内所有图标实际都被压到 14px（旁边的 note / 主题 / 全屏 也是）。
+         这里要的是 16px，只能再压回去。本 <style> 在 layui.css 之后加载，同特异性
+         下后者胜出。
+       · layui 给 .layui-icon 定的是 vertical-align:bottom，和上面 SVG 的 middle 不是
+         一套模型，不拉齐的话四枚图标高低会各差一两像素。 */
+    .hs-ico-font {
+      font-size: 16px;
+      vertical-align: middle;
+      position: relative;
+      top: -1px;
+    }
+
+    /* 模式按钮里图标占位的统一宽度。字体图标的字形宽 15.38、自绘 SVG 宽 16，
+       不套统一个盒子两个模式按钮就会差 0.6px，「运行中」会被挤动。盒子取两者
+       的上限 16px，字形在盒内居中，两边就真正等宽了。 */
+    .hs-mode-ico {
+      display: inline-block;
+      width: 16px;
+      text-align: center;
+    }
+
+    /* 「管理员模式」5 个字、「用户模式」4 个字，按钮宽度差一个中文字（实测
+       14px），切换时会把左边的「运行中」挤动 14px。给文字留出最宽那个的
+       宽度，两种模式下按钮等宽，左边就不动了。用 em 而非 px，字号变了也
+       跟着走。 */
+    .hs-mode-label {
+      display: inline-block;
+      min-width: 5em;
+    }
+  </style>
   <script>
   /^http(s*):\/\//.test(location.href) || alert('请通过 localhost 访问');;
   </script>
@@ -41,18 +107,22 @@
 
 
           <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <span style="font-size:12px;color:{{ '#16baaa' if hs_running == 'running' else '#ff5722' }};cursor:help" title="Headscale {{ hs_version }}">
-              <i class="layui-icon layui-icon-{{ 'component' if hs_running == 'running' else 'pause' }}" style="font-size:12px"></i>
+            <span style="font-size:12px;color:{{ state_color }};cursor:help" title="Headscale {{ hs_version }}">
+              <i class="layui-icon layui-icon-{{ 'component' if hs_running == 'running' else 'pause' }} hs-ico-font"></i>
               {{ '运行中' if hs_running == 'running' else '已停止' }}
             </span>
           </li>
           {% if current_user.role == 'manager' %}
           <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <a href="javascript:;" id="userModeToggle" title="点击切换查看模式">
+            <a href="javascript:;" id="userModeToggle" title="点击切换查看模式" style="color:{{ state_color }}">
               {% if user_mode == 'user' %}
-              <i class="layui-icon layui-icon-user"></i> 用户模式
+              {# 单人 = 用户模式：顶栏四个图标里唯一自绘的一个，因为 layui-icon-user
+                 画的是两个人，那是「群组」的意思。外面套 .hs-mode-ico 是为了和
+                 下面字体图标的占位宽度对齐，否则两模式按钮不等宽。 #}
+              <span class="hs-mode-ico"><svg class="hs-ico" viewBox="1 1 10 10"><circle cx="6" cy="3.5" r="2.5"/><path d="M6 7.1 C3.2 7.1 1.3 8.7 1 11 H11 C10.7 8.7 8.8 7.1 6 7.1 Z"/></svg></span> <span class="hs-mode-label">用户模式</span>
               {% else %}
-              <i class="layui-icon layui-icon-diamond"></i> 管理员模式
+              {# 宝石 = 管理员模式，回到最早的 layui 字体图标 #}
+              <i class="layui-icon layui-icon-diamond hs-mode-ico hs-ico-font"></i> <span class="hs-mode-label">管理员模式</span>
               {% endif %}
             </a>
           </li>
@@ -180,11 +250,13 @@
         dataType: 'json',
         success: function(res){
           if (res.code == '0'){
-            // 更新标题栏显示
+            // 更新标题栏显示。这两段必须和上面模板里的那两段逐字一致
+            // —— 这里重写的是整个按钮内容，不同步的话一点「切换模式」就会
+            // 把图标换成和模板里不一样的版本
             if (newMode === 'user') {
-              $modeToggle.html('<i class="layui-icon layui-icon-user"></i> 用户模式');
+              $modeToggle.html('<span class="hs-mode-ico"><svg class="hs-ico" viewBox="1 1 10 10"><circle cx="6" cy="3.5" r="2.5"/><path d="M6 7.1 C3.2 7.1 1.3 8.7 1 11 H11 C10.7 8.7 8.8 7.1 6 7.1 Z"/></svg></span> <span class="hs-mode-label">用户模式</span>');
             } else {
-              $modeToggle.html('<i class="layui-icon layui-icon-diamond"></i> 管理员模式');
+              $modeToggle.html('<i class="layui-icon layui-icon-diamond hs-mode-ico hs-ico-font"></i> <span class="hs-mode-label">管理员模式</span>');
             }
             // 刷新所有 iframe
             document.querySelectorAll('.layadmin-iframe').forEach(function(f){
