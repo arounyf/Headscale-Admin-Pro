@@ -51,17 +51,24 @@ jobs:
 
       - name: Generate release notes
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            echo "## Changes since $PREV_TAG" > /tmp/notes.md
-            echo '```' >> /tmp/notes.md
-            git log --oneline $PREV_TAG..HEAD >> /tmp/notes.md
-            echo '```' >> /tmp/notes.md
+          # A body written by hand at .github/release-notes/<tag>.md wins;
+          # the generated commit list is only a fallback.
+          NOTES=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [ -f "$NOTES" ]; then
+            cp "$NOTES" /tmp/notes.md
           else
-            echo "## Commits" > /tmp/notes.md
-            echo '```' >> /tmp/notes.md
-            git log --oneline --max-count=20 >> /tmp/notes.md
-            echo '```' >> /tmp/notes.md
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              echo "## Changes since $PREV_TAG" > /tmp/notes.md
+              echo '```' >> /tmp/notes.md
+              git log --oneline $PREV_TAG..HEAD >> /tmp/notes.md
+              echo '```' >> /tmp/notes.md
+            else
+              echo "## Commits" > /tmp/notes.md
+              echo '```' >> /tmp/notes.md
+              git log --oneline --max-count=20 >> /tmp/notes.md
+              echo '```' >> /tmp/notes.md
+            fi
           fi
 
       - name: Create Release
