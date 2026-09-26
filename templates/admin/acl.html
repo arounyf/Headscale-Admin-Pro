@@ -8,6 +8,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="/static/layui/css/layui.css" rel="stylesheet">
   <link href="/static/adminui/dist/css/admin.css" rel="stylesheet">
+  <link href="/static/codemirror/lib/codemirror.css" rel="stylesheet">
+  <link href="/static/codemirror/addon/fold/foldgutter.css" rel="stylesheet">
+  <link href="/static/codemirror/addon/dialog/dialog.css" rel="stylesheet">
+  <style>
+    /* 编辑器高度跟着窗口走，别写死：这一页在 iframe 里，vh 就是内容区高度。
+       留 300px 给卡片头 + 提示条 + 按钮行 + 边距。 */
+    .CodeMirror {
+      height: calc(100vh - 300px);
+      min-height: 360px;
+      border: 1px solid #e6e6e6;
+      border-radius: 2px;
+      font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .CodeMirror-focused { border-color: #16baaa; }
+    .CodeMirror-gutters { background: #fafafa; border-right: 1px solid #eee; }
+    /* 保存失败时定位到的那一行 */
+    .cm-error-line { background: #fff1f0; }
+    .cm-error-gutter { color: #F56C6C !important; font-weight: bold; }
+  </style>
 </head>
 <body>
 
@@ -27,12 +48,12 @@
           <div class="layui-form">
             <div class="layui-form-item">
               <div class="layui-input-block">
-                <textarea id="acl-editor" class="layui-textarea" style="font-family:monospace;font-size:13px;min-height:420px;"
-                 placeholder="在此编辑 ACL JSON..."></textarea>
+                <textarea id="acl-editor" class="layui-textarea" placeholder="在此编辑 ACL JSON..."></textarea>
               </div>
             </div>
             <div class="layui-form-item">
               <button class="layui-btn layui-btn-primary" id="btn-template">模板</button>
+              <button class="layui-btn layui-btn-primary" id="btn-format">格式化</button>
               <button class="layui-btn" lay-submit lay-filter="read">刷新</button>
               <button class="layui-btn layui-btn-normal" lay-submit lay-filter="save">保存</button>
               <button class="layui-btn layui-btn-warm" lay-submit lay-filter="reload">重载</button>
@@ -40,7 +61,7 @@
             </div>
             <div class="layui-form-item" style="margin-top:-10px;">
               <div class="layui-input-block">
-                <span style="color:#E6A23C;font-size:12px;"><i class="layui-icon layui-icon-tips"></i> 请点击 <b>模板</b> 查看 ACL 模板，手动复制修改后点击 <b>保存</b>。</span>
+                <span style="color:#E6A23C;font-size:12px;"><i class="layui-icon layui-icon-tips"></i> 保存失败会自动跳到出错行。快捷键：<b>Ctrl+S</b> 保存、<b>Ctrl+F</b> 搜索、<b>Shift+Alt+F</b> 格式化。</span>
               </div>
             </div>
           </div>
@@ -53,6 +74,18 @@
 
 <script src="/static/layui/layui.js"></script>
 <script src="/static/csrf.js"></script>
+<script src="/static/codemirror/lib/codemirror.js"></script>
+<script src="/static/codemirror/mode/javascript/javascript.js"></script>
+<script src="/static/codemirror/addon/edit/matchbrackets.js"></script>
+<script src="/static/codemirror/addon/edit/closebrackets.js"></script>
+<script src="/static/codemirror/addon/fold/foldcode.js"></script>
+<script src="/static/codemirror/addon/fold/foldgutter.js"></script>
+<script src="/static/codemirror/addon/fold/brace-fold.js"></script>
+<script src="/static/codemirror/addon/search/searchcursor.js"></script>
+<script src="/static/codemirror/addon/search/search.js"></script>
+<script src="/static/codemirror/addon/dialog/dialog.js"></script>
+<script src="/static/codemirror/addon/display/placeholder.js"></script>
+<script src="/static/codemirror/addon/selection/active-line.js"></script>
 <script>
 layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
   var form = layui.form, $ = layui.$, layer = layui.layer;
@@ -76,10 +109,238 @@ layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
     '    ]\n' +
     '}';
 
+  var errorLine = null;   // 当前高亮的报错行号，下次保存/编辑时清掉
+
+  // ---- CodeMirror 实例 ----
+  // mode 用 javascript 而不是 application/json：headscale 的 ACL 文件是
+  // .hujson，允许 // 注释和尾逗号，而 json 模式会把它们全标成错误。
+  // （注意后端保存时仍按严格 JSON 校验，注释会被拒绝 —— 见下面 doSave 的报错跳转。）
+  var cm = CodeMirror.fromTextArea(document.getElementById('acl-editor'), {
+    mode: 'javascript',
+    lineNumbers: true,
+    lineWrapping: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    foldGutter: true,
+    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+    styleActiveLine: true,
+    placeholder: '在此编辑 ACL JSON...',
+    tabSize: 4,
+    indentUnit: 4,
+    indentWithTabs: false,
+    extraKeys: {
+      'Ctrl-S': function(){ doSave(); },
+      'Cmd-S': function(){ doSave(); },
+      'Shift-Alt-F': function(){ doFormat(); },
+      'Ctrl-F': 'findPersistent',
+      'Cmd-F': 'findPersistent'
+    }
+  });
+
+  // iframe 里的编辑器偶尔量不到真实尺寸（父页面切标签、字体后到都会），
+  // 刷新一次行高就正常了
+  setTimeout(function(){ cm.refresh(); }, 200);
+
+  function clearErrorLine(){
+    if (errorLine === null) return;
+    cm.removeLineClass(errorLine, 'background', 'cm-error-line');
+    cm.removeLineClass(errorLine, 'gutter', 'cm-error-gutter');
+    errorLine = null;
+  }
+
+  // 整篇替换。用 replaceRange 而不是 setValue：setValue 会清空撤销历史，
+  // 手滑点一下「刷新」就再也 Ctrl+Z 不回来了
+  function setEditorValue(text){
+    text = text || '';
+    var last = cm.lastLine();
+    cm.replaceRange(text, {line: 0, ch: 0}, {line: last, ch: cm.getLine(last).length});
+    clearErrorLine();
+    cm.refresh();
+  }
+
+  // ---- HuJSON 重新排版 ----
+  // 只做「缩进 + 换行」，不解析成对象再序列化 —— 那样注释会被整段丢掉，
+  // 而 acl.hujson 本来就是允许注释的格式。token 级别原样搬运，注释、键的
+  // 顺序、尾逗号全部保留。
+  function tokenizeHuJSON(src){
+    var toks = [], i = 0, n = src.length, broken = false;
+    while (i < n) {
+      var c = src[i];
+      if (/\s/.test(c)) { i++; continue; }
+      // 注释要在结构符号之前认，否则 // 里的 { } 会被当成括号
+      if (c === '/' && src[i + 1] === '/') {
+        var e = src.indexOf('\n', i); if (e < 0) { e = n; }
+        toks.push({ t: 'lcomment', text: src.slice(i, e).replace(/\s+$/, '') });
+        i = e; continue;
+      }
+      if (c === '/' && src[i + 1] === '*') {
+        var e2 = src.indexOf('*/', i);
+        if (e2 < 0) { e2 = n; broken = true; } else { e2 += 2; }
+        toks.push({ t: 'bcomment', text: src.slice(i, e2) });
+        i = e2; continue;
+      }
+      // 字符串要先于结构符号认：dst 里写着 "https://..." 这种带 // 的值，
+      // 先当注释切就把后面的内容全吃掉了
+      if (c === '"' || c === "'") {
+        var j = i + 1;
+        while (j < n) {
+          if (src[j] === '\\') { j += 2; continue; }
+          if (src[j] === c) { j++; break; }
+          j++;
+        }
+        if (j > n || src[j - 1] !== c) { broken = true; }
+        toks.push({ t: 'str', text: src.slice(i, j) });
+        i = j; continue;
+      }
+      if (c === '{' || c === '[') { toks.push({ t: 'open',  text: c }); i++; continue; }
+      if (c === '}' || c === ']') { toks.push({ t: 'close', text: c }); i++; continue; }
+      if (c === ',') { toks.push({ t: 'comma', text: ',' }); i++; continue; }
+      if (c === ':') { toks.push({ t: 'colon', text: ':' }); i++; continue; }
+      var k = i;
+      while (k < n && !/[\s{}\[\],:"']/.test(src[k]) &&
+             !(src[k] === '/' && (src[k + 1] === '/' || src[k + 1] === '*'))) k++;
+      if (k === i) { k = i + 1; }
+      toks.push({ t: 'atom', text: src.slice(i, k) });
+      i = k;
+    }
+    // 配对括号：顺带查类型对不对（{ 配 ] 也算坏），并挑出「该保持一行」的容器。
+    // 不配平说明用户正改到一半，这时候排版只会越排越乱，直接放弃。
+    var stack = [];
+    for (var x = 0; x < toks.length; x++) {
+      if (toks[x].t === 'open') { stack.push(x); continue; }
+      if (toks[x].t !== 'close') continue;
+      var o = stack.pop();
+      if (o === undefined ||
+          toks[o].text !== (toks[x].text === '}' ? '{' : '[')) { broken = true; break; }
+      toks[o].pair = x; toks[x].pair = o;
+      // 空的 {} / [] 贴一行；里面全是标量的短数组也贴一行 —— src/dst 基本都写成
+      // ["autogroup:member"] 这样，摊成三行只会让文件变长、跟 headscale 示例不一致。
+      // 对象不适用：哪怕只有一个键也展开，这是 JSON 的通行排法。
+      var flat = true;
+      for (var y = o + 1; y < x; y++) { if (toks[y].t === 'open') { flat = false; break; } }
+      if (flat && (x - o === 1 || toks[o].text === '[')) { toks[o].inline = toks[x].inline = true; }
+    }
+    if (stack.length) { broken = true; }
+    return { toks: toks, broken: broken };
+  }
+
+  function prettyHuJSON(src){
+    var r = tokenizeHuJSON(src);
+    if (r.broken) return null;          // null = 放弃排版，原文不动
+
+    var toks = r.toks, out = '', indent = 0, inInline = 0;
+    var pending = -1, pendingSpace = false, PAD = '    ';
+    function pad(k){ return new Array(k + 1).join(PAD); }
+    // 换行是「懒」的：结构符号和注释只是登记「下一个 token 前要换到第 k 层」，
+    // 真正落笔在下一个 token 上。否则行注释后面再来一个 close，就会多出一个空行。
+    function brk(k){ if (out) { pending = k; } }
+    function emit(text){
+      if (pending >= 0) { out += '\n' + pad(pending); pending = -1; }
+      else if (pendingSpace && out && !/\s$/.test(out) && !/^[\s,}\]]/.test(text)) { out += ' '; }
+      pendingSpace = false;
+      out += text;
+    }
+    // 注释前面补一个空格，但已经在行首时不补
+    function lead(){ if (pending < 0 && out && !/\s$/.test(out)) { out += ' '; } }
+
+    for (var t = 0; t < toks.length; t++) {
+      var tk = toks[t], nx = toks[t + 1];
+      if (tk.t === 'open') {
+        if (tk.inline) { inInline++; emit(tk.text); continue; }
+        emit(tk.text); indent++; brk(indent);
+      } else if (tk.t === 'close') {
+        if (tk.inline) { inInline--; emit(tk.text); continue; }
+        indent = Math.max(0, indent - 1); brk(indent); emit(tk.text);
+      } else if (tk.t === 'comma') {
+        if (inInline > 0) { emit(nx && nx.t === 'close' ? ',' : ', '); continue; }  // 尾逗号不留空格
+        emit(',');
+        if (nx && nx.t !== 'close') brk(indent);                                   // 尾逗号交给 close
+      } else if (tk.t === 'colon') {
+        emit(': ');
+      } else if (tk.t === 'lcomment') {
+        lead(); emit(tk.text); brk(indent);                                        // 行注释自己占一行
+      } else if (tk.t === 'bcomment') {
+        lead(); emit(tk.text); pendingSpace = true;                                // 块注释后面留个空格
+      } else {
+        emit(tk.text);
+      }
+    }
+    return out.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '') + '\n';
+  }
+
+  function doFormat(){
+    var src = cm.getValue();
+    if (!src.trim()) { layer.msg('内容为空，没有可格式化的东西', {icon: 0}); return; }
+    var pretty = prettyHuJSON(src);
+    if (pretty === null) {
+      layer.msg('括号或引号没配平，先补齐再格式化', {icon: 2});
+      return;
+    }
+    if (pretty === src) { showStatus('已经是格式化好的', true); return; }
+    setEditorValue(pretty);
+    showStatus('已格式化', true);
+  }
+
+  // ---- 保存 ----
+  function doSave(){
+    var acl = cm.getValue();
+    if (!acl.trim()) {
+      layer.msg('ACL 内容为空', {icon: 2});
+      return false;
+    }
+    layer.load();
+    $.ajax({
+      url: '/api/acl/save_acl',
+      type: 'POST',
+      data: { acl: acl },
+      success: function(res){
+        layer.closeAll('loading');
+        if (res.code === '0'){
+          clearErrorLine();
+          showStatus('保存成功，headscale 已生效', true);
+        } else {
+          layer.msg(res.msg, {icon: 2, time: 6000});
+          jumpToError(res.msg);
+        }
+      },
+      error: function(){
+        layer.closeAll('loading');
+        layer.msg('网络错误', {icon: 2});
+      }
+    });
+    return false;
+  }
+
+  // 保存失败时跳到报错那一行并高亮。后端 json.JSONDecodeError 的文本形如
+  // "Expecting ',' delimiter: line 5 column 3 (char 84)"，行号列号都在里面；
+  // headscale 自己的报错也是 "line N, column M" 这个形状，一并认。
+  // 认不出来就只弹提示、不乱跳。
+  function jumpToError(msg){
+    var m = /line[ :]+(\d+)(?:[ ,]+(?:column|col)[ :]+(\d+))?/i.exec(msg || '');
+    if (!m) return false;
+    var ln = parseInt(m[1], 10) - 1;
+    if (!(ln >= 0) || ln >= cm.lineCount()) return false;
+    var ch = m[2] ? Math.max(0, parseInt(m[2], 10) - 1) : 0;
+    ch = Math.min(ch, cm.getLine(ln).length);
+
+    clearErrorLine();
+    cm.addLineClass(ln, 'background', 'cm-error-line');
+    cm.addLineClass(ln, 'gutter', 'cm-error-gutter');
+    errorLine = ln;
+
+    cm.setCursor({line: ln, ch: ch});
+    cm.scrollIntoView({line: ln, ch: ch}, 120);
+    cm.focus();
+    return true;
+  }
+
+  // 用户一动键盘就把报错高亮撤掉 —— 那行已经改过了，还红着是误导
+  cm.on('change', function(){ clearErrorLine(); });
+
   // 页面加载时读取已有 ACL
   $.post('/api/acl/get_acl', function(res){
-    if(res.code === '0' && res.data){
-      $('#acl-editor').val(res.data);
+    if (res.code === '0' && res.data){
+      setEditorValue(res.data);
     }
   });
 
@@ -87,17 +348,26 @@ layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
   $('#btn-template').on('click', function(){
     layer.open({
       type: 1,
-      title: 'ACL 模板 — 手动复制',
-      area: ['560px', '380px'],
+      title: 'ACL 模板 — 插入或复制',
+      // 高度跟着内容走。原先写死 380px，而 pre 又限了 max-height:260px，
+      // 两者一对不上就同时出现「pre 内部」和「弹窗内容区」两条滚动条
+      area: ['660px', 'auto'],
       content: '<div style="padding:15px 20px;">' +
-        '<div style="margin-bottom:10px;color:#909399;font-size:12px;"><i class="layui-icon layui-icon-tips"></i> 请复制以下内容到编辑器中，根据实际需求修改：</div>' +
-        '<pre style="background:#f6f8fa;border:1px solid #e4e7ed;padding:15px;border-radius:2px;font-size:13px;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto;-webkit-user-select:all;user-select:all;">' +
+        '<div style="margin-bottom:10px;color:#909399;font-size:12px;"><i class="layui-icon layui-icon-tips"></i> 可直接插入编辑器（会覆盖当前内容，按 <b>Ctrl+Z</b> 可撤销），也可以手动复制：</div>' +
+        // 只留一道兜底：模板长到超过一屏时才在 pre 内部滚，平时一条滚动条都不出现
+        '<pre style="background:#f6f8fa;border:1px solid #e4e7ed;padding:15px;border-radius:2px;font-size:13px;white-space:pre-wrap;word-break:break-all;max-height:calc(100vh - 220px);overflow:auto;-webkit-user-select:all;user-select:all;">' +
         templateACL.replace(/</g,'&lt;').replace(/>/g,'&gt;') +
         '</pre></div>',
-      btn: ['关闭'],
-      yes: function(idx){ layer.close(idx); }
+      btn: ['插入到编辑器', '关闭'],
+      yes: function(idx){
+        setEditorValue(templateACL);
+        layer.close(idx);
+        showStatus('模板已插入，记得按需修改后再保存', true);
+      }
     });
   });
+
+  $('#btn-format').on('click', function(){ doFormat(); return false; });
 
   function showStatus(msg, ok){
     var el = $('#status-msg');
@@ -110,7 +380,7 @@ layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
     $.post('/api/acl/get_acl', function(res){
       layer.closeAll('loading');
       if(res.code === '0' && res.data){
-        $('#acl-editor').val(res.data);
+        setEditorValue(res.data);
         showStatus('刷新成功', true);
       } else {
         layer.msg('ACL 文件为空，请点击模板按钮查看参考', {icon: 0, time: 5000});
@@ -119,32 +389,7 @@ layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
     return false;
   });
 
-  form.on('submit(save)', function(){
-    var acl = $('#acl-editor').val();
-    if(!acl.trim()){
-      layer.msg('ACL 内容为空', {icon: 2});
-      return false;
-    }
-    layer.load();
-    $.ajax({
-      url: '/api/acl/save_acl',
-      type: 'POST',
-      data: { acl: acl },
-      success: function(res){
-        layer.closeAll('loading');
-        if(res.code === '0'){
-          showStatus('保存成功，headscale 已重载', true);
-        } else {
-          layer.msg(res.msg, {icon: 2});
-        }
-      },
-      error: function(){
-        layer.closeAll('loading');
-        layer.msg('网络错误', {icon: 2});
-      }
-    });
-    return false;
-  });
+  form.on('submit(save)', function(){ return doSave(); });
 
   form.on('submit(reload)', function(){
     layer.load();
