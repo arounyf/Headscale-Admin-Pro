@@ -265,10 +265,12 @@
             success:function(res){
               if (res.code == 2){
                 layer.msg("该用户存在节点未删除", {icon: 7});
-              }else{
+              }else if (res.code == 0){
                 layer.msg('删除成功', {icon: 6});
                 obj.del();
                 layer.close(index);
+              }else{
+                layer.msg(res.msg || '删除失败', {icon: 2});
               }
               
             }

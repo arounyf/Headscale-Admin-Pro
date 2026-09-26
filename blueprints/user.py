@@ -2,7 +2,7 @@ from flask_login import current_user, login_required
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import res, table_res, is_user_mode
+from utils import res, table_res, is_user_mode, to_request
 
 bp = Blueprint("user", __name__, url_prefix='/api/user')
 
@@ -142,15 +142,33 @@ def route_enable():
 @login_required
 @role_required("manager")
 def delUser():
+    """删除用户，由 headscale 执行。
+
+    以前是这里直接 DELETE FROM users，绕过了 headscale 的 DestroyUser：
+    那个函数在用户还有节点时会拒绝（db.ErrUserStillHasNodes），直接删库则会
+    留下一批 user_id 指向已消失用户的节点。前端
+    templates/admin/user.html 一直在等 code == 2（「该用户存在节点未删除」），
+    但后端从来没返回过 2，说明这个判断本来就该由 headscale 给。
+
+    交给 headscale 之后还多了一个好处：它会级联清掉该用户的预授权密钥。
+    """
     user_id = request.form.get('user_id')
 
     with SqliteDB() as cursor:
         user = cursor.execute("SELECT name FROM users WHERE id =?", (user_id,)).fetchone()
         if user and user['name'] == 'admin':
             return res('1', '删除失败，无法删除admin用户')
-        cursor.execute("DELETE FROM users WHERE id =?;", (user_id,))
 
-    return res('0', '删除成功')
+    response = to_request('DELETE', f'/api/v1/user/{user_id}')
+    if response['code'] == '0':
+        return res('0', '删除成功')
+
+    # to_request 失败时把 headscale 的原始响应体放在 msg 里，错误原文是
+    # "user not empty: node(s) found"。
+    if 'user not empty' in str(response['msg']):
+        return res('2', '该用户存在节点未删除')
+
+    return res('1', f"删除失败：{response['msg']}")
 
 
 @bp.route('/init_data',methods=['GET'])
