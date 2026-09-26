@@ -23,50 +23,10 @@ func TestSQLiteMigrationAndDataValidation(t *testing.T) {
 		dbPath   string
 		wantFunc func(*testing.T, *HSDatabase)
 	}{
-		// at 14:15:06 ❯ go run ./cmd/headscale preauthkeys list
-		// ID | Key      | Reusable | Ephemeral | Used  | Expiration | Created    | Tags
-		// 1  | 09b28f.. | false    | false     | false | 2024-09-27 | 2024-09-27 | tag:derp
-		// 2  | 3112b9.. | false    | false     | false | 2024-09-27 | 2024-09-27 | tag:derp
-		{
-			dbPath: "testdata/sqlite/failing-node-preauth-constraint_dump.sql",
-			wantFunc: func(t *testing.T, hsdb *HSDatabase) {
-				t.Helper()
-				// Comprehensive data preservation validation for node-preauth constraint issue
-				// Expected data from dump: 1 user, 2 api_keys, 6 nodes
+		// The pre-0.27 upstream dumps used to be listed here. They cannot be
+		// migrated by this fork -- see testdata/sqlite/upstream-pre-0.27/README.md
+		// -- and now live in that subdirectory.
 
-				// Verify users data preservation
-				users, err := Read(hsdb.DB, func(rx *gorm.DB) ([]types.User, error) {
-					return ListUsers(rx)
-				})
-				require.NoError(t, err)
-				assert.Len(t, users, 1, "should preserve all 1 user from original schema")
-
-				// Verify api_keys data preservation
-				var apiKeyCount int
-
-				err = hsdb.DB.Raw("SELECT COUNT(*) FROM api_keys").Scan(&apiKeyCount).Error
-				require.NoError(t, err)
-				assert.Equal(t, 2, apiKeyCount, "should preserve all 2 api_keys from original schema")
-
-				// Verify nodes data preservation and field validation
-				nodes, err := Read(hsdb.DB, func(rx *gorm.DB) (types.Nodes, error) {
-					return ListNodes(rx)
-				})
-				require.NoError(t, err)
-				assert.Len(t, nodes, 6, "should preserve all 6 nodes from original schema")
-
-				for _, node := range nodes {
-					assert.Falsef(t, node.MachineKey.IsZero(), "expected non zero machinekey")
-					assert.Contains(t, node.MachineKey.String(), "mkey:")
-					assert.Falsef(t, node.NodeKey.IsZero(), "expected non zero nodekey")
-					assert.Contains(t, node.NodeKey.String(), "nodekey:")
-					assert.Falsef(t, node.DiscoKey.IsZero(), "expected non zero discokey")
-					assert.Contains(t, node.DiscoKey.String(), "discokey:")
-					assert.Nil(t, node.AuthKey)
-					assert.Nil(t, node.AuthKeyID)
-				}
-			},
-		},
 		// Test for RequestTags migration (202601121700-migrate-hostinfo-request-tags)
 		// and forced_tags->tags rename migration (202511131445-node-forced-tags-to-tags)
 		//

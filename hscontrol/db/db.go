@@ -48,6 +48,87 @@ type HSDatabase struct {
 	cfg *types.Config
 }
 
+// usersCustomColumns are the hs-admin additions to the users table. They are
+// not declared on types.User, so AutoMigrate never creates them; both the
+// fresh-database path (InitSchema) and the upgrade path
+// (202609261200-add-users-custom-columns) have to add them with raw SQL.
+//
+// This list is the single source of truth on purpose. The same seven columns
+// used to be spelled out in three places that drifted apart, which is how
+// databases migrated by an earlier release ended up without them.
+var usersCustomColumns = []struct{ Name, Type string }{
+	{"password", "TEXT"},
+	{"expire", "DATETIME"},
+	{"cellphone", "TEXT"},
+	{"role", "TEXT"},
+	{"enable", "TEXT"},
+	{"route", "TEXT"},
+	{"node", "TEXT"},
+}
+
+// ensureUsersCustomColumns adds any of usersCustomColumns that the users
+// table is missing. It is idempotent and only ever issues ALTER TABLE ADD
+// COLUMN, so existing rows are untouched.
+//
+// SQLite only: column discovery goes through PRAGMA. Callers are responsible
+// for checking the dialect.
+func ensureUsersCustomColumns(tx *gorm.DB) error {
+	rows, err := tx.Raw("PRAGMA table_info(users)").Rows()
+	if err != nil {
+		return fmt.Errorf("getting table info: %w", err)
+	}
+	defer rows.Close()
+
+	existing := make(map[string]bool)
+
+	for rows.Next() {
+		var cid int
+
+		var name, colType string
+
+		var notNull int
+
+		var dfltValue *string
+
+		var pk int
+
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &dfltValue, &pk); err != nil {
+			return fmt.Errorf("scanning column info: %w", err)
+		}
+
+		existing[name] = true
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterating column info: %w", err)
+	}
+
+	// Close before altering: the ALTERs run on the same connection.
+	rows.Close()
+
+	for _, field := range usersCustomColumns {
+		if existing[field.Name] {
+			continue
+		}
+
+		alterQuery := fmt.Sprintf(
+			"ALTER TABLE users ADD COLUMN %s %s",
+			field.Name,
+			field.Type,
+		)
+
+		if err := tx.Exec(alterQuery).Error; err != nil {
+			return fmt.Errorf("adding column %s: %w", field.Name, err)
+		}
+
+		log.Info().
+			Str("column", field.Name).
+			Msg("added hs-admin column to users table")
+	}
+
+	return nil
+}
+
 // NewHeadscaleDatabase creates a new database connection and runs migrations.
 // It accepts the full configuration to allow migrations access to policy settings.
 //
@@ -843,6 +924,27 @@ WHERE tags IS NOT NULL AND tags != '[]' AND tags != '' AND tags != 'null'
 				},
 				Rollback: func(db *gorm.DB) error { return nil },
 			},
+			// hs-admin
+			// Databases that already recorded 202507021200 were built with
+			// upstream's version of it, which recreates the users table
+			// without the hs-admin columns. The fork's version of that
+			// migration never runs on them, so the columns are never created.
+			// squibble validates the schema against schema.sql on every
+			// SQLite startup, so such a database -- an upstream 0.28.x/0.29.x
+			// install switched over to this fork -- refuses to start until
+			// they exist. Add whichever are missing; databases that already
+			// have them (fresh installs, earlier fork releases) are no-ops.
+			{
+				ID: "202609261200-add-users-custom-columns",
+				Migrate: func(tx *gorm.DB) error {
+					if cfg.Database.Type != types.DatabaseSqlite {
+						return nil
+					}
+
+					return ensureUsersCustomColumns(tx)
+				},
+				Rollback: func(db *gorm.DB) error { return nil },
+			},
 		},
 	)
 
@@ -860,49 +962,8 @@ WHERE tags IS NOT NULL AND tags != '[]' AND tags != '' AND tags != 'null'
 		}
 
 		// ========== hs-admin: add custom fields to users table ==========
-		var existingColumns []string
-		rows, err := tx.Raw("PRAGMA table_info(users)").Rows()
-		if err != nil {
-			return fmt.Errorf("getting table info: %w", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var cid int
-			var name, colType string
-			var notNull int
-			var dfltValue *string
-			var pk int
-			if err := rows.Scan(&cid, &name, &colType, &notNull, &dfltValue, &pk); err != nil {
-				return fmt.Errorf("scanning column info: %w", err)
-			}
-			existingColumns = append(existingColumns, name)
-		}
-
-		customFields := []struct{ Name, Type string }{
-			{"password", "TEXT"},
-			{"expire", "DATETIME"},
-			{"cellphone", "TEXT"},
-			{"role", "TEXT"},
-			{"enable", "TEXT"},
-			{"route", "TEXT"},
-			{"node", "TEXT"},
-		}
-		for _, field := range customFields {
-			found := false
-			for _, col := range existingColumns {
-				if col == field.Name {
-					found = true
-					break
-				}
-			}
-			if !found {
-				alterQuery := fmt.Sprintf("ALTER TABLE users ADD COLUMN %s %s", field.Name, field.Type)
-				if err := tx.Exec(alterQuery).Error; err != nil {
-					return fmt.Errorf("adding column %s: %w", field.Name, err)
-				}
-				log.Info().Str("column", field.Name).Msg("Added column to users table")
-			}
+		if err := ensureUsersCustomColumns(tx); err != nil {
+			return err
 		}
 
 		// ========== hs-admin: create acl table ==========
@@ -1034,16 +1095,16 @@ WHERE tags IS NOT NULL AND tags != '[]' AND tags != '' AND tags != 'null'
 				// https://litestream.io/how-it-works
 				"_litestream_lock",
 				"_litestream_seq",
-					// hs-admin
-					"acl",
-					"log",
-					"alembic_version",
-					// 忽略所有迁移过程中可能残留的旧表
-					"users_old",
-					"pre_auth_keys_old",
-					"api_keys_old",
-					"nodes_old",
-					"policies_old",
+				// hs-admin
+				"acl",
+				"log",
+				"alembic_version",
+				// 忽略所有迁移过程中可能残留的旧表
+				"users_old",
+				"pre_auth_keys_old",
+				"api_keys_old",
+				"nodes_old",
+				"policies_old",
 			},
 		}
 
