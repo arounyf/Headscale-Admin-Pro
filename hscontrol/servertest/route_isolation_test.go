@@ -210,6 +210,25 @@ func TestSameRouteCrossUser(t *testing.T) {
 		routes = srv.State().RoutesForPeer(bNodeView, aR2View, bMatchers)
 		require.False(t, slices.Contains(routes, sameRoute),
 			"b-node should NOT see a-r2's route (cross-tenant leak!), got %v", routes)
+
+		// The checks above all use viewers that advertise nothing. A viewer
+		// that advertises the same prefix takes the co-router visibility
+		// branch, which is where multi-tenant isolation is easiest to lose:
+		// that branch exists so HA secondaries can learn which peer is
+		// primary for a prefix they share, and it must still refuse a peer
+		// from another scope.
+		aR1Matchers, _ := srv.State().MatchersForNode(aR1View)
+		aR2Matchers, _ := srv.State().MatchersForNode(aR2View)
+
+		// a-r1 is tenant-a's primary and advertises the prefix itself.
+		routes = srv.State().RoutesForPeer(aR1View, bR1View, aR1Matchers)
+		require.False(t, slices.Contains(routes, sameRoute),
+			"a-r1 (a router) should NOT see b-r1's route (cross-tenant leak!), got %v", routes)
+
+		// a-r2 is tenant-a's secondary and also advertises the prefix.
+		routes = srv.State().RoutesForPeer(aR2View, bR1View, aR2Matchers)
+		require.False(t, slices.Contains(routes, sameRoute),
+			"a-r2 (a router) should NOT see b-r1's route (cross-tenant leak!), got %v", routes)
 	})
 
 	t.Run("per-user primary election independent", func(t *testing.T) {

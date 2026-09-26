@@ -1372,9 +1372,13 @@ func (s *State) RoutesForPeer(
 	if len(viewerSubnets) > 0 {
 		for _, p := range allPrimaries {
 			if slices.Contains(viewerSubnets, p) && !slices.Contains(reduced, p) {
-				// Only add if the viewer can see routes from this scope
-				// (own user or tagged), maintaining multi-tenant isolation.
-				if _, ok := visibleRoutes[p]; ok {
+				// The peer must be the primary for p within a scope the
+				// viewer can see (own user or tagged) -- the same rule
+				// applied to the primaries above. Testing only that p is
+				// visible is not enough: it holds whenever the viewer's
+				// own scope has a primary for p, so a foreign tenant's
+				// primary for the same prefix would be let through.
+				if primaryNode, ok := visibleRoutes[p]; ok && primaryNode == peer.ID() {
 					reduced = append(reduced, p)
 				}
 			}
