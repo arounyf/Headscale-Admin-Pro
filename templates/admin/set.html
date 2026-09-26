@@ -8,6 +8,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/layui/css/layui.css" media="all">
   <link rel="stylesheet" href="/static/adminui/dist/css/admin.css" media="all">
+  <style>
+    /* headscale 日志弹窗底部的分页条 */
+    .hs-log-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px 12px;
+    }
+    .hs-log-btn {
+      padding: 4px 14px;
+      border: 1px solid #d2d2d2;
+      border-radius: 3px;
+      background: #fff;
+      color: #555;
+      font-size: 13px;
+      line-height: 20px;
+      cursor: pointer;
+    }
+    .hs-log-btn:hover:not(:disabled) {
+      border-color: #ff5722;
+      color: #ff5722;
+    }
+    .hs-log-btn:disabled {
+      color: #d2d2d2;
+      cursor: not-allowed;
+    }
+    /* 页码推到右侧，和「刷新」隔开 */
+    .hs-log-page {
+      margin-left: auto;
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
 </head>
 
   <body class="layui-fluid">
@@ -371,21 +404,101 @@
       });
     });
 
-    // headscale 日志弹窗
+    // headscale 日志弹窗。日志从早到晚排列，打开时落在最后一页（最新的一段）
+    var HS_LOG_SIZE = 100;
+    var hsLogMode = 'tail';   // tail：从末尾往回数；head：从开头往后数
+    var hsLogPage = 1;        // 当前方向上数到第几页
+    var hsLogTotal = 0;       // 总页数，打开时异步算，没算出来之前是 0
+    var hsLogOlder = false, hsLogNewer = false;
+
+    function hsLogBar(layero){
+      var text;
+      if (hsLogTotal) {
+        // 有总数就换算成正序页码：第 1 页最早，最后一页最新
+        var p = hsLogMode === 'head' ? hsLogPage : hsLogTotal - hsLogPage + 1;
+        text = '第 ' + p + ' / 共 ' + hsLogTotal + ' 页';
+      } else {
+        // 总数还没回来，先按所在的那一端描述
+        text = hsLogMode === 'head' ? '第 ' + hsLogPage + ' 页'
+          : (hsLogPage <= 1 ? '最后一页' : '倒数第 ' + hsLogPage + ' 页');
+      }
+      layero.find('#hs-log-page').text(text + ' · 每页 ' + HS_LOG_SIZE + ' 行');
+      layero.find('#hs-log-first').prop('disabled', hsLogMode === 'head' && hsLogPage <= 1);
+      layero.find('#hs-log-last').prop('disabled', hsLogMode === 'tail' && hsLogPage <= 1);
+      layero.find('#hs-log-prev').prop('disabled', !hsLogOlder);
+      layero.find('#hs-log-next').prop('disabled', !hsLogNewer);
+    }
+
+    function hsLogLoad(layero, mode, page){
+      var pre = layero.find('#hs-log-pre');
+      pre.text('加载中...');
+      var q = {page: page, size: HS_LOG_SIZE};
+      if (mode === 'head') q.pos = 'head';
+      $.get('/api/set/headscale_log', q, function(res){
+        if (res.code === '0' && res.data) {
+          hsLogMode = mode;
+          hsLogPage = res.data.page;
+          hsLogOlder = res.data.has_older;
+          hsLogNewer = res.data.has_newer;
+          pre.text(res.data.lines || '（没有日志）');
+          // 每页内部仍是「早 → 晚」的顺序，落到页尾才是和相邻页衔接的地方
+          pre.scrollTop(pre[0] ? pre[0].scrollHeight : 0);
+        } else {
+          pre.text('加载失败: ' + res.msg);
+        }
+        hsLogBar(layero);
+      }, 'json').fail(function(){
+        pre.text('加载失败：请求出错');
+        hsLogBar(layero);
+      });
+    }
+
+    // 总页数得扫一遍整个日志文件才数得出来（这台机器上 480MB 约一秒），
+    // 所以单独异步要一次，不挡着日志先显示出来
+    function hsLogTotalLoad(layero){
+      $.get('/api/set/headscale_log', {page: 1, size: HS_LOG_SIZE, total: 1}, function(res){
+        if (res.code === '0' && res.data && res.data.total_pages) {
+          hsLogTotal = res.data.total_pages;
+          hsLogBar(layero);
+        }
+      }, 'json');
+    }
+
     $('#btn-headscale-log').click(function(){
+      hsLogMode = 'tail';
+      hsLogPage = 1;
+      hsLogTotal = 0;
       layer.open({
         type: 1,
         title: 'headscale 日志',
         area: ['850px', '520px'],
-        content: '<pre id=\"hs-log-pre\" style=\"max-height:420px; overflow:auto; background:#2d2d2d; color:#e0e0e0; padding:12px; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0; font-family:Menlo,Monaco,Consolas,monospace;\">加载中...</pre>',
+        content:
+          '<div>'
+          + '<pre id="hs-log-pre" style="max-height:380px; overflow:auto; background:#2d2d2d; color:#e0e0e0; padding:12px; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0; font-family:Menlo,Monaco,Consolas,monospace;">加载中...</pre>'
+          + '<div class="hs-log-bar">'
+          + '<button type="button" class="hs-log-btn" id="hs-log-first">起始</button>'
+          + '<button type="button" class="hs-log-btn" id="hs-log-prev">上一页</button>'
+          + '<button type="button" class="hs-log-btn" id="hs-log-next">下一页</button>'
+          + '<button type="button" class="hs-log-btn" id="hs-log-last">末尾</button>'
+          + '<span class="hs-log-page" id="hs-log-page"></span>'
+          + '<button type="button" class="hs-log-btn" id="hs-log-refresh">刷新</button>'
+          + '</div>'
+          + '</div>',
         success: function(layero){
-          $.get('/api/set/headscale_log', function(res){
-            if (res.code === '0') {
-              layero.find('#hs-log-pre').text(res.data);
-            } else {
-              layero.find('#hs-log-pre').text('加载失败: ' + res.msg);
-            }
-          }, 'json');
+          var go = function(mode, page){ hsLogLoad(layero, mode, page); };
+          layero.find('#hs-log-first').click(function(){ go('head', 1); });
+          layero.find('#hs-log-last').click(function(){ go('tail', 1); });
+          // 页码是各自按所在的那一端编的：在末尾那端「上一页」= 更早 = +1，
+          // 在开头那端「上一页」= 更早 = -1
+          layero.find('#hs-log-prev').click(function(){
+            go(hsLogMode, hsLogPage + (hsLogMode === 'tail' ? 1 : -1));
+          });
+          layero.find('#hs-log-next').click(function(){
+            go(hsLogMode, hsLogPage + (hsLogMode === 'tail' ? -1 : 1));
+          });
+          layero.find('#hs-log-refresh').click(function(){ go(hsLogMode, hsLogPage); });
+          hsLogLoad(layero, 'tail', 1);   // 打开就落在最后一页
+          hsLogTotalLoad(layero);
         }
       });
     });

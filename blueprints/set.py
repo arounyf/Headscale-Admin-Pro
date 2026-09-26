@@ -70,21 +70,133 @@ def get_apikey():
 
 
 
+def _tail_lines(path, want, skip=0):
+    """读日志末尾 want 行，跳过最新的 skip 行 —— 分页往回翻用。
+
+    返回 (行列表, 是否还有更早的行)。
+
+    headscale 的日志只增不删，原先 readlines() 是整读再切尾，文件一大光
+    读就要卡很久。这里从末尾按档往回读（256KB 起，凑不够再翻四倍），绝
+    大多数情况只碰最后一段。Health check / Monitoring log 是探活刷出来
+    的噪声，顺手滤掉 —— 滤完不够行数就多读一段，不会因此少给。
+
+    页码从 1 数起，第 1 页就是文件末尾那一段，往后翻看更早的。
+    """
+    noise = (b'Health check', b'Monitoring log')
+    need = want + skip
+    kept = []
+    start = 0
+    with open(path, 'rb') as f:
+        size = f.seek(0, 2)               # 挪到末尾，返回值即文件大小
+        for limit in (256 * 1024, 1024 * 1024, 4 * 1024 * 1024):
+            start = max(0, size - limit)
+            f.seek(start)
+            # 按 \n 切分，每行都是完整的字节串（换行符不会落进多字节字符
+            # 中间），所以单独解码某一行的中文不会切坏
+            lines = f.read().split(b'\n')
+            if start > 0:
+                lines = lines[1:]         # 从中间切进去的，头一段是半行，丢掉
+            kept = [l for l in lines if l and not any(n in l for n in noise)]
+            if len(kept) >= need or start == 0 or limit == 4 * 1024 * 1024:
+                break
+
+    # 跳过末尾 skip 行，再往前取 want 行
+    end = len(kept) - skip
+    begin = max(0, end - want)
+    page = kept[begin:max(0, end)]
+    # begin > 0 是缓冲区里还有更早的行，start > 0 是文件更早的部分根本没
+    # 读（撞上 4MB 上限）。两者都否就是翻到头了；这一页已经取空的话，也
+    # 别再让前端继续往前翻 —— 否则翻过去只会是一片空白
+    more = (begin > 0 or start > 0) and bool(page)
+    return [l.decode('utf-8', 'replace') + '\n' for l in page], more
+
+
+def _head_lines(path, want, skip=0):
+    """从文件开头读 want 行，跳过最前面的 skip 行。
+
+    翻到最早那段时用。最早的日志就在文件开头，只读前面一小段就够，不
+    必碰后面几百 MB —— 和 _tail_lines 正好相反，两边各自负责近的那一端。
+
+    返回 (行列表, 是否还有更晚的行)。
+    """
+    noise = (b'Health check', b'Monitoring log')
+    kept = []
+    with open(path, 'rb') as f:
+        for raw in f:
+            line = raw.rstrip(b'\n')
+            if not line or any(n in line for n in noise):
+                continue
+            kept.append(line)
+            if len(kept) > skip + want:   # 多留一行，用来判断后面还有没有
+                break
+    page = kept[skip:skip + want]
+    more = len(kept) > skip + want
+    return [l.decode('utf-8', 'replace') + '\n' for l in page], more
+
+
+def _count_lines(path):
+    """数日志的有效行数（滤掉探活噪声），用来算总页数。
+
+    逐行 decode 再判断要好几秒（日志已经 480MB），所以按块读、用
+    bytes.count 数行数和噪声出现次数 —— 两次都在 C 层完成，一秒上下
+    就能扫完。噪声串正好跨块边界时会漏计一次、一行里同时出现两种噪声
+    时会多计一次，两个误差都远小于一页，对页数没有影响。
+    """
+    noise = (b'Health check', b'Monitoring log')
+    total = 0
+    with open(path, 'rb') as f:
+        while True:
+            chunk = f.read(4 * 1024 * 1024)
+            if not chunk:
+                break
+            total += chunk.count(b'\n')
+            for n in noise:
+                total -= chunk.count(n)
+        # 末行没有换行符时，上面按 \n 数的那个循环漏掉了它
+        size = f.seek(0, 2)
+        if size:
+            f.seek(size - 1)
+            if f.read(1) != b'\n':
+                total += 1
+    return max(0, total)
+
+
 @bp.route('/headscale_log', methods=['GET'])
 @login_required
 @role_required("manager")
 def headscale_log():
     log_path = '/var/lib/headscale/headscale.log'
     try:
-        with open(log_path, 'r') as f:
-            lines = f.readlines()
-            # 过滤掉 Flask health check 日志行，避免干扰显示
-            headscale_lines = [
-                l for l in lines
-                if 'Health check' not in l and 'Monitoring log' not in l
-            ]
-            content = ''.join(headscale_lines[-200:])
-        return res('0', 'ok', content)
+        page = int(request.args.get('page', 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        size = int(request.args.get('size', 100))
+    except (TypeError, ValueError):
+        size = 100
+    page = max(1, page)
+    size = min(max(size, 10), 500)        # 挡住手改参数，别一次拉爆
+    try:
+        # pos=head 从文件开头往后数（最早那端），默认从末尾往回数
+        if request.args.get('pos') == 'head':
+            lines, more = _head_lines(log_path, size, (page - 1) * size)
+            has_older, has_newer = page > 1, more
+        else:
+            lines, more = _tail_lines(log_path, size, (page - 1) * size)
+            has_older, has_newer = more, page > 1
+        data = {
+            'lines': ''.join(lines),
+            'page': page,
+            'size': size,
+            'has_older': has_older,
+            'has_newer': has_newer,
+        }
+        if request.args.get('total'):
+            # 数总行数要把整个文件扫一遍（480MB 约一秒），所以只在弹窗打开
+            # 时单独要一次，翻页不再重复算
+            total = _count_lines(log_path)
+            data['total_pages'] = max(1, (total + size - 1) // size)
+        return res('0', 'ok', data)
     except FileNotFoundError:
         return res('1', '日志文件不存在', '')
     except Exception as e:
