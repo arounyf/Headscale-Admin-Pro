@@ -16,155 +16,491 @@
         <div class="layui-card-header">指令中心</div>
 
           <div class="layui-card-body">
-    
+
             <pre class="layui-code code-tailscale" lay-options="{theme: 'dark'}"></pre>
             <br>
+
             <form class="layui-form" action="">
 
-               <div class="layui-form-item">
-                <label class="layui-form-label">接收DNS</label>
-                <div class="layui-input-block">
-                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptDNS" title="ON|OFF">
-                </div>
-              </div>
+              <div class="deploy-group-title">快捷开关</div>
 
-              <div class="layui-form-item">
-                <label class="layui-form-label">接收路由</label>
-                <div class="layui-input-block">
-                  <input type="checkbox" lay-skin="switch" lay-filter="AcceptRoutes" title="ON|OFF">
-                </div>
-              </div>
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">通告路由</label>
-                <div class="layui-inline">
-                  <input type="checkbox" lay-skin="switch" lay-filter="AdvertiseRoutes" title="ON|OFF">
-                  <div class="layui-input-inline" style="width: 120px;">
-                    <input type="text" id="subnet" placeholder="192.168.1.0" autocomplete="off" class="layui-input"  >
-                  </div>
-                  <div class="layui-form-mid">/</div>
-                  <div class="layui-input-inline" style="width: 80px;">
-                    <input type="number"  id="cidr" placeholder="24" autocomplete="off" class="layui-input" min="8" step="8" lay-affix="number">
+              <div class="layui-row">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">接收DNS</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="acceptDNS" lay-skin="switch" lay-filter="AcceptDNS" title="ON|OFF">
+                    </div>
                   </div>
                 </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">接收路由</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="acceptRoutes" lay-skin="switch" lay-filter="AcceptRoutes" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">节点隔离</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="shieldsUp" lay-skin="switch" lay-filter="ShieldsUp" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">内置SSH</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="ssh" lay-skin="switch" lay-filter="SSH" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">出口节点</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="advertiseExitNode" lay-skin="switch" lay-filter="AdvertiseExitNode" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">直连局域网</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="exitNodeLanAccess" lay-skin="switch" lay-filter="ExitNodeLanAccess" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">有状态过滤</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="statefulFiltering" lay-skin="switch" lay-filter="StatefulFiltering" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">禁用NAT</label>
+                    <div class="layui-input-block">
+                      <input type="checkbox" name="snatDisable" lay-skin="switch" lay-filter="SnatDisable" title="ON|OFF">
+                    </div>
+                  </div>
+                </div>
               </div>
 
+              <div class="deploy-group-title">高级配置<em>填了即加入命令，清空即移除</em></div>
 
-            <div class="layui-form-item">
-                <label class="layui-form-label">出口节点</label>
-                <div class="layui-input-block"><input type="checkbox" lay-skin="switch" lay-filter="AdvertiseExitNode" title="ON|OFF">
+              <div class="deploy-advanced">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">预授权密钥</label>
+                    <div class="layui-inline">
+                      <div class="layui-input-inline" style="width: 240px;">
+                        <input type="text" id="auth_key" placeholder="auth-key" autocomplete="off" class="layui-input">
+                      </div>
+                    </div>
+                    <div class="deploy-field-err" id="auth_key_err"></div>
+                  </div>
                 </div>
-            </div>
-
-
-              <div class="layui-form-item">
-                <label class="layui-form-label">指定出口</label>
-                <div class="layui-inline">
-                  <input type="checkbox" lay-skin="switch" lay-filter="ExitNode" title="ON|OFF">
-                  <div class="layui-input-inline" style="width: 120px;">
-                    <input type="text" id="exit_info" placeholder="100.64.0.1" autocomplete="off" class="layui-input"  >
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">自定义名称</label>
+                    <div class="layui-inline">
+                      <div class="layui-input-inline" style="width: 240px;">
+                        <input type="text" id="hostname_value" placeholder="my-node" autocomplete="off" class="layui-input">
+                      </div>
+                    </div>
+                    <div class="deploy-field-err" id="hostname_value_err"></div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">通告路由</label>
+                    <div class="layui-inline">
+                      <div class="layui-input-inline" style="width: 200px;">
+                        <input type="text" id="subnet" placeholder="192.168.6.0/24" autocomplete="off" class="layui-input">
+                      </div>
+                    </div>
+                    <div class="deploy-field-err" id="subnet_err"></div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">通告标签</label>
+                    <div class="layui-inline">
+                      <div class="layui-input-inline" style="width: 240px;">
+                        <input type="text" id="tags_value" placeholder="tag:server,tag:prod" autocomplete="off" class="layui-input">
+                      </div>
+                    </div>
+                    <div class="deploy-field-err" id="tags_value_err"></div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item">
+                    <label class="layui-form-label">指定出口</label>
+                    <div class="layui-inline">
+                      <div class="layui-input-inline" style="width: 240px;">
+                        <input type="text" id="exit_info" placeholder="100.64.0.1" autocomplete="off" class="layui-input">
+                      </div>
+                    </div>
+                    <div class="deploy-field-err" id="exit_info_err"></div>
                   </div>
                 </div>
               </div>
 
           </form>
+
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<style>
+  .deploy-group-title {
+    margin: 4px 0 14px;
+    padding-left: 10px;
+    border-left: 3px solid #16baaa;
+    color: #666;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .deploy-group-title em {
+    margin-left: 8px;
+    color: #bbb;
+    font-size: 12px;
+    font-style: normal;
+  }
+  /* 高级配置排两列，但不用 layui 的 .layui-row + .layui-col-md6：那套列
+     是 float: left，某列因为有提示而变高后，后面的列会往上挪去填撑出来
+     的空，字段跟着跳位（出现过通告路由跑到右列、通告标签跑到左列）。改
+     用 flex，行只由 DOM 顺序切分，高度差不会再引起重排 */
+  .deploy-advanced {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .deploy-advanced > .layui-col-md6 {
+    float: none;
+    width: 50%;
+  }
+  /* 每一格都固定留出提示的位置，出错与否高度都一样。留白由提示位本身
+     提供，所以要去掉 layui 默认的 margin-bottom —— 两者叠加会把行距顶
+     成原来的两倍（上一版"间隔太高"就是这么来的） */
+  .deploy-advanced .layui-form-item {
+    margin-bottom: 0;
+  }
+  /* 填值格式不对时的提示，和输入框的红框一起出现。放在输入框下方而不
+     是右侧 —— 半宽列里右侧只剩不到 200px，说不清"必须包含 / 和前缀
+     长度"这类要求 */
+  .deploy-field-err {
+    clear: both;
+    /* 缩进一个 .layui-form-label 的宽度，提示才会落在输入框正下方。
+       不缩进的话 clear 会让它退到整列最左边，看着像串到上一个字段下面 */
+    margin-left: 110px;
+    /* 输入框底下有一截 5px 的行内块空隙（实测：输入框下边框 521、文字
+       起始 526）。提示要贴住自己的框，就得把这截让出来，否则看着反倒
+       更靠近下一个框。相对定位挪，不参与布局，所以行距不变 */
+    position: relative;
+    top: -5px;
+    /* 38（输入框）+ 5（空隙）+ 15（这一行）＝ 58px，和原先 margin-bottom
+       时代的行距一致。空着的时候也占着，提示出现时不会把下面的推走 */
+    min-height: 15px;
+    color: #ff5722;
+    font-size: 12px;
+    line-height: 15px;
+  }
+  /* layui 自带的 layui-form-danger 只在 :focus 时变红，光标一移开就没
+     了，起不到标红的作用。这里让失焦时也保持红框，和下发的提示文字
+     一起出现 */
+  .layui-input.layui-form-danger {
+    border-color: #ff5722 !important;
+    box-shadow: 0 0 0 3px rgba(255, 87, 34, .08);
+  }
+  /* 窄屏下 layui 会把 label 撑成整行，提示跟着取消缩进；两列也并成一列 */
+  @media screen and (max-width: 768px) {
+    .deploy-field-err {
+      margin-left: 0;
+    }
+    .deploy-advanced > .layui-col-md6 {
+      width: 100%;
+    }
+  }
+
+  /* layui 的 code 组件把每行行高写死在 .layui-code-line 上，会盖掉
+     layui.code 的 style 参数（内联样式优先不过它自己的类选择器规则），
+     只能在这里用更高优先级的选择器覆盖。上下内边距维持 layui 默认的
+     11px 不动 —— 这里只放宽行距。 */
+  .code-tailscale .layui-code-wrap {
+    font-size: 20px;
+    /* 行高放大后，每行文字在自己行框里垂直居中，首尾两行各多出
+       (行高 - 字号) / 2 的留白，会把整块撑高。压掉内边距来抵消，
+       这样只有行与行之间变松，块的上下边距保持原样。 */
+    padding: 4px 0 !important;
+  }
+  .code-tailscale .layui-code-line {
+    line-height: 2;
+  }
+
+  /* 复制按钮：只保留图标，常驻左上角，并与首行命令对齐。
+     layui 把 fixbar 和里面的 span 都定位在 right:0，图标又是默认
+     display:none、只在悬停时出现，这三点都要覆盖。 */
+  .code-tailscale .layui-code-fixbar {
+    left: 11px;
+    right: auto;
+    /* 首行文字起点：wrap 上内边距 4px + 半行距 (40 - 20) / 2 = 10px，
+       即文字占 14px~34px、中心在 24px；图标高 20px，顶部落在 14px 才
+       和文字同一条水平线 */
+    top: 14px;
+    padding: 0;
+  }
+  .code-tailscale .layui-code-fixbar > span {
+    left: 0;
+    right: auto;
+    padding: 0 10px;
+    font-size: 20px;
+    /* 行框收到和图标等高，避免继承来的 1.6 行高把图标往下推 */
+    line-height: 20px;
+  }
+  .code-tailscale .layui-code-fixbar > span > i {
+    font-size: 20px;
+  }
+  .code-tailscale .layui-code-copy {
+    display: block;
+  }
+  /* 整块可点：悬停时描边和图标一起变色，提示这里点一下就能复制 */
+  .code-tailscale {
+    cursor: pointer;
+    transition: border-color .3s;
+  }
+  .code-tailscale:hover {
+    border-color: #16baaa;
+  }
+  .code-tailscale:hover .layui-code-fixbar > span {
+    color: #16baaa;
+  }
+  /* 给左上角的按钮让出位置，命令整体右移 */
+  .code-tailscale .layui-code-line-content {
+    padding-left: 60px;
+  }
+</style>
+
 <!-- 请勿在项目正式环境中引用该 layui.js 地址 -->
-<script src="//unpkg.com/layui@2.9.14/dist/layui.js"></script>  
+<script src="//unpkg.com/layui@2.9.14/dist/layui.js"></script>
 <script>
 layui.use(['form', 'laydate', 'util'], function(){
   var form = layui.form;
-  var layer = layui.layer;
   var laydate = layui.laydate;
   var util = layui.util;
   var $ = layui.$;
 
-  var tailscale_up = ["tailscale up --login-server={{ server_url }}"]
+  // 参数注册表：键的书写顺序即命令中的参数顺序，空值在渲染时跳过，
+  // 因此不会像拼接数组那样留下多余空格。
+  var opts = {
+    // 接入凭据排在 login-server 之后，读起来更顺
+    authKey:           '',
+    acceptDNS:         '--accept-dns=false',
+    acceptRoutes:      '',
+    hostname:          '',
+    shieldsUp:         '',
+    ssh:               '',
+    advertiseRoutes:   '',
+    advertiseTags:     '',
+    advertiseExitNode: '',
+    exitNode:          '',
+    exitNodeLanAccess: '',
+    statefulFiltering: '',
+    snatSubnetRoutes:  ''
+  };
 
+  function show_code(code){
+    // 字号/行高/间距统一写在页面底部的 <style> 里，不要用 style 参数：
+    // 它注入的是内联样式，压不过 layui 给 .layui-code-wrap 加的 !important，
+    // 也压不过 .layui-code-line 自带的行高，改在这里不生效。
+    layui.code({
+      elem: '.code-tailscale',
+      code: code,
+      // 只留复制图标：langMarker 会在图标旁边再放一份"复制"文字
+      langMarker: false,
+      ln: false
+    });
+  }
 
-    function show_code(code){
-      // code
-      var codeInst = layui.code({
-        elem: '.code-tailscale',
-        style: 'font-size: 20px;',
-        code: code,
-        lang: '复制',
-        langMarker: true,
-        ln: false
-      });
+  function render(){
+    var parts = ['tailscale', 'up', '--login-server={{ server_url }}'];
+    for (var key in opts){
+      if (opts[key]){
+        parts.push(opts[key]);
+      }
     }
+    show_code(parts.join(' '));
+  }
 
+  // 开关类参数：勾选即加入命令
+  var toggles = {
+    AcceptDNS:         function(on){ opts.acceptDNS         = on ? '--accept-dns' : '--accept-dns=false'; },
+    AcceptRoutes:      function(on){ opts.acceptRoutes      = on ? '--accept-routes' : ''; },
+    ShieldsUp:         function(on){ opts.shieldsUp         = on ? '--shields-up' : ''; },
+    SSH:               function(on){ opts.ssh               = on ? '--ssh' : ''; },
+    AdvertiseExitNode: function(on){ opts.advertiseExitNode = on ? '--advertise-exit-node' : ''; },
+    ExitNodeLanAccess: function(on){ opts.exitNodeLanAccess = on ? '--exit-node-allow-lan-access' : ''; },
+    StatefulFiltering: function(on){ opts.statefulFiltering = on ? '--stateful-filtering' : ''; },
+    // 源地址转换在客户端侧默认是开启的，所以这里表达的是"关掉它"，
+    // 只有需要显式关闭时才往命令里加参数
+    SnatDisable:       function(on){ opts.snatSubnetRoutes  = on ? '--snat-subnet-routes=false' : ''; }
+  };
 
-    
-  tailscale_up[1] = "--accept-dns=false"; // 去掉前面多余的空格
-  show_code(tailscale_up.join(' '));
-
-
-    // 接收DNS
-  form.on('switch(AcceptDNS)', function(data){
-    if(this.checked){
-      tailscale_up[1] = "--accept-dns"
-    }else{
-      tailscale_up[1] = "--accept-dns=false"
-    }
-    show_code(tailscale_up.join(' '))
+  Object.keys(toggles).forEach(function(name){
+    form.on('switch(' + name + ')', function(){
+      toggles[name](this.checked);
+      render();
+    });
   });
 
-
-  // 接收路由
-  form.on('switch(AcceptRoutes)', function(data){
-
-    if(this.checked){
-
-      tailscale_up[2] = "--accept-routes"
-    }else{
-      tailscale_up[2] = ""
+  // 整块代码区都能点着复制：把点击转发给 layui 内部那个复制按钮，
+  // 复用它的复制实现和成功提示，不必自己再写一套
+  $('.code-tailscale').on('click', function(e){
+    // 点在按钮自己身上时让它处理，否则这里再转发一次就成了复制两遍
+    if ($(e.target).closest('.layui-code-copy').length) {
+      return;
     }
-    show_code(tailscale_up.join(' '))
+    $(this).find('.layui-code-copy').trigger('click');
   });
 
+  // 单个 IPv4 是否合法
+  function isIPv4(s){
+    return /^(\d{1,3}\.){3}\d{1,3}$/.test(s) &&
+      s.split('.').every(function(n){ return Number(n) <= 255; });
+  }
 
-
-
-  // 通告路由
-  form.on('switch(AdvertiseRoutes)', function(data){
-
-    if(this.checked){
-      tailscale_up[3] = "--advertise-routes="+$('#subnet').val()+"/"+$('#cidr').val()
-    }else{
-      tailscale_up[3] = ""
+  // 单个 IPv6 是否合法。查字符集和段数 —— 不做完整压缩展开，够拦住
+  // 手误，也不会把合法写法误判成错的。
+  function isIPv6(s){
+    if (s.indexOf(':') < 0 || !/^[0-9a-fA-F:]+$/.test(s) || s.indexOf(':::') >= 0) {
+      return false;
     }
-    show_code(tailscale_up.join(' '))
-  });
 
-  // 出口节点
-  form.on('switch(AdvertiseExitNode)', function(data){
-    if(this.checked){
-      tailscale_up[4] = "--advertise-exit-node"
-    }else{
-      tailscale_up[4] = ""
+    var doubled = s.split('::').length - 1;
+    if (doubled > 1) {
+      return false;
     }
-    show_code(tailscale_up.join(' '))
-  });
 
-
-
-    // 指定出口
-  form.on('switch(ExitNode)', function(data){
-
-    if(this.checked){
-      tailscale_up[5] = "--exit-node="+$('#exit_info').val()
-    }else{
-      tailscale_up[5] = ""
+    var groups = s.split(':').filter(function(g){ return g !== ''; });
+    if (groups.some(function(g){ return g.length > 4; })) {
+      return false;
     }
-    show_code(tailscale_up.join(' '))
-  });
 
+    // 用了 :: 就表示省略了至少一段，否则必须写满八段
+    return doubled ? groups.length <= 7 : groups.length === 8;
+  }
+
+  // 单个 CIDR 是否合法
+  function isCIDR(s){
+    var parts = s.split('/');
+    if (parts.length !== 2 || !/^\d{1,3}$/.test(parts[1])) {
+      return false;
+    }
+    var mask = Number(parts[1]), ip = parts[0];
+
+    if (isIPv4(ip)) {
+      return mask <= 32;
+    }
+    if (isIPv6(ip)) {
+      return mask <= 128;
+    }
+    return false;
+  }
+
+  // DNS 名的一位。/^…/ 是 --hostname 的完整规则，也是 --exit-node 写
+  // 节点名时每一级的规则：字母数字开头结尾，长度不超过 63。
+  function isLabel(s){
+    return /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(s);
+  }
+
+  // 逗号分隔的列表，每一项都要过 check
+  function listOk(v, check){
+    return v.split(',').every(function(one){ return check($.trim(one)); });
+  }
+
+  // 每个要填值的输入框配一条规则：返回提示文字，合法则返回空串。
+  // 都在留空时放行 —— 这些参数本来就是填了才生效。
+  var rules = {
+    auth_key: function(v){
+      // tailscale 允许 file: 前缀，让密钥从文件读，不内联进命令
+      if (v.indexOf('file:') === 0) {
+        return '';
+      }
+      // headscale 生成的密钥固定是 hskey-auth-<12位>-<64位>。长度写死
+      // 是为了拦住只复制了一半的粘贴 —— 那串字符光看是看不出少了东西的
+      return /^hskey-auth-[A-Za-z0-9_=-]{12}-[A-Za-z0-9_=-]{64}$/.test(v)
+        ? '' : '需 hskey-auth- 开头';
+    },
+    hostname_value: function(v){
+      return isLabel(v) ? '' : '只能字母数字和 -';
+    },
+    subnet: function(v){
+      return listOk(v, isCIDR) ? '' :
+        '请输入 CIDR 格式的网段，例如 192.168.6.0/24' +
+        '（必须包含 / 和前缀长度，如 /24）';
+    },
+    tags_value: function(v){
+      return listOk(v, function(one){
+        return /^tag:[a-zA-Z][a-zA-Z0-9-]*$/.test(one);
+      }) ? '' : '需以 tag: 开头';
+    },
+    exit_info: function(v){
+      // --help 的原文：IP、base name 或 auto:any。节点名写成 FQDN 也
+      // 可以，所以是按点号逐级校验，不是整串当一个标签；但纯数字点号
+      // 的形状（300.1.1.1）只可能是打错的 IP，不该当成节点名放过去
+      var nameOk = !/^[\d.]+$/.test(v) && v.split('.').every(isLabel);
+      var ok = v === 'auto:any' || isIPv4(v) || isIPv6(v) || nameOk;
+      return ok ? '' : '需 IP 或节点名';
+    }
+  };
+
+  // 取一个输入框的值。逗号两侧的空格在 shell 里会把一个参数拆成好几个，
+  // 先归一化再交给校验和拼接。
+  function fieldValue(id){
+    var v = $.trim($('#' + id).val());
+    return (id === 'subnet' || id === 'tags_value')
+      ? v.replace(/\s*,\s*/g, ',') : v;
+  }
+
+  // 需要填值的参数：有值且格式合法才拼进命令。只判有值会产出
+  // --hostname= 这类残缺参数，格式不对时则会让用户复制到一条跑不通的
+  // 命令 —— 都不如先标红让他改对。
+  function updateValued(){
+    var val = {}, bad = {};
+
+    Object.keys(rules).forEach(function(id){
+      val[id] = fieldValue(id);
+      var msg = val[id] ? rules[id](val[id]) : '';  // 空值不校验也不提示
+      bad[id] = !!msg;
+      $('#' + id).toggleClass('layui-form-danger', bad[id]);
+      $('#' + id + '_err').text(msg);
+    });
+
+    var pick = function(id, flag){
+      return (val[id] && !bad[id]) ? flag + val[id] : '';
+    };
+
+    opts.authKey         = pick('auth_key', '--auth-key=');
+    opts.hostname        = pick('hostname_value', '--hostname=');
+    opts.advertiseRoutes = pick('subnet', '--advertise-routes=');
+    opts.advertiseTags   = pick('tags_value', '--advertise-tags=');
+    opts.exitNode        = pick('exit_info', '--exit-node=');
+  }
+
+  // 输入框改动即时反映到命令，不必来回拨动开关
+  $('#hostname_value, #subnet, #tags_value, #exit_info, #auth_key')
+    .on('input', function(){
+      updateValued();
+      render();
+    });
+
+  render();
 
 });
 </script>
