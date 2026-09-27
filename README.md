@@ -67,16 +67,6 @@ docker-compose up -d
 
 > **升级前务必备份数据！** 请勿跨 headscale 版本升级，在 [Release](https://github.com/arounyf/Headscale-Admin-Pro/releases) 中可查看当前版本详细升级说明。
 
-```bash
-cd ~/hs-admin
-docker-compose down
-cp -r data data.bak.$(date +%Y%m%d)        # 备份
-rm -rf app/*                                 # 删旧代码
-docker rm hs-admin                           # 删旧容器
-docker rmi runyf/hs-admin:latest            # 删旧镜像
-docker-compose up -d                         # 自动拉取最新镜像
-```
-
 
 
 
