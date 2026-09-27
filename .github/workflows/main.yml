@@ -33,6 +33,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: runyf/hs-admin
+          # latest=auto 是默认值，会给每个 tag 事件都追加一个 :latest，
+          # 预发布也不例外 —— 推 v5.4-beta 时它就这样把 :latest 从 v5.3
+          # 顶掉了。这里显式关掉，:latest 只由下面 "Tag stable release as
+          # latest" 那一步来加，而它仅在 stable tag 上才会执行。
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=tag
 
