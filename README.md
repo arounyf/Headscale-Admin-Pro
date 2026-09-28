@@ -72,6 +72,8 @@ docker-compose up -d
 
 
 # 系统截图
+<img width="1280" alt="登录页" src="docs/screenshots/login.png" />
+<img width="1280" alt="注册页" src="docs/screenshots/register.png" />
 <img width="1280" alt="控制台" src="docs/screenshots/console.png" />
 <img width="1280" alt="用户管理" src="docs/screenshots/user.png" />
 <img width="1280" alt="节点管理" src="docs/screenshots/node.png" />
