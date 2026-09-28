@@ -72,12 +72,14 @@ docker-compose up -d
 
 
 # 系统截图
-<img width="1280" alt="runyf_20250506230722" src="https://github.com/user-attachments/assets/d4c35e9e-d17a-46be-886d-50dd5a2425e9" />
-<img width="1280" alt="runyf_20250506230832" src="https://github.com/user-attachments/assets/f30d6a9f-6042-46c0-825a-d4bffdb02b68" />
-<img width="1280" alt="runyf_20250506230908" src="https://github.com/user-attachments/assets/78699c3d-6e54-4fcd-a6f4-889e77f17819" />
-<img width="1280" alt="runyf_20250506231108" src="https://github.com/user-attachments/assets/41dde683-b95b-4fda-8396-a684f8de6f10" />
-<img width="1280" alt="runyf_20250506230937" src="https://github.com/user-attachments/assets/bd234e91-a4fc-4299-b291-22235ba9bed9" />
-<img width="1280" alt="runyf_20250506230957" src="https://github.com/user-attachments/assets/a1069cb4-e233-4220-aa54-6c0f2bab4e5e" />
+<img width="1280" alt="控制台" src="docs/screenshots/console.png" />
+<img width="1280" alt="用户管理" src="docs/screenshots/user.png" />
+<img width="1280" alt="节点管理" src="docs/screenshots/node.png" />
+<img width="1280" alt="路由管理" src="docs/screenshots/route.png" />
+<img width="1280" alt="ACL 策略" src="docs/screenshots/acl.png" />
+<img width="1280" alt="预认证密钥" src="docs/screenshots/preauthkey.png" />
+<img width="1280" alt="指令" src="docs/screenshots/deploy.png" />
+<img width="1280" alt="日志" src="docs/screenshots/log.png" />
 
 
 
