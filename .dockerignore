@@ -22,7 +22,22 @@ __pycache__
 **/__pycache__
 *.pyc
 
-# 仓库根可能留着的旧二进制。Dockerfile 在这之前已经 wget 了一份，
-# 不排除的话本地构建会用这份旧文件盖掉刚下载的新版本
-# （CI 里因为 .gitignore 恰好没有它，所以一直没暴露）
-headscale
+# headscale 源码子树。镜像里的二进制就是从这里构建出来的，所以它必须留在
+# 构建上下文里；但只有 Go 源码参与构建，其余都不必传。
+#
+# 光 hscontrol/policy/v2/testdata 就有 360MB 的 hujson 夹具（纯测试数据，
+# 没有任何 go:embed 引用），不排除的话每次构建都要把这三百多 MB 传一遍。
+headscale/**/testdata
+headscale/integration
+headscale/docs
+headscale/.github
+headscale/nix
+headscale/packaging
+headscale/**/*.md
+headscale/flake.nix
+headscale/flake.lock
+headscale/flakehashes.json
+headscale/mkdocs.yml
+headscale/.goreleaser.yml
+headscale/.dockerignore
+headscale/Makefile
