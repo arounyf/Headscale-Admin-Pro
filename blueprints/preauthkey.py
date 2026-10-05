@@ -111,17 +111,27 @@ def addKey():
 @bp.route('/delKey', methods=['GET','POST'])
 @login_required
 def delKey():
+    """删除预授权密钥，由 headscale 执行。
+
+    以前是这里直接 DELETE FROM pre_auth_keys。表和 headscale 共用，删掉
+    它确实也能看到，但绕过 API 意味着 headscale 自己的校验和后续清理都
+    不会发生 —— delUser 当初也是这么改成走 API 的。
+    """
     key_id = request.form.get('keyId')
-    try:
-        with SqliteDB() as cursor:
-            user_id = cursor.execute("SELECT user_id FROM pre_auth_keys WHERE id =? ", (key_id,)).fetchone()[0]
-            print(user_id)
-            if user_id == current_user.id or current_user.role == 'manager':
-                cursor.execute("DELETE FROM pre_auth_keys WHERE id =?", (key_id,))
-                return res('0', '删除成功')
-            else:
-                return res('1', '非法请求')
-    except Exception as e:
-        print(f"发生未知错误: {e}")
-        return res('1', '删除失败')
+
+    with SqliteDB() as cursor:
+        row = cursor.execute("SELECT user_id FROM pre_auth_keys WHERE id =?", (key_id,)).fetchone()
+
+    if not row:
+        return res('1', '密钥不存在')
+
+    if row[0] != current_user.id and current_user.role != 'manager':
+        return res('1', '非法请求')
+
+    # DeletePreAuthKey 是无 body 的 DELETE，grpc-gateway 把 id 映射成 query 参数
+    response = to_request('DELETE', f'/api/v1/preauthkey?id={key_id}')
+    if response['code'] == '0':
+        return res('0', '删除成功')
+
+    return res('1', f"删除失败：{response['msg']}")
 
