@@ -65,9 +65,11 @@ jobs:
         with:
           context: .
           push: ${{ github.ref_type == 'tag' }}
-          no-cache: true
-          build-args: |
-            CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
+          # 这里原来是 no-cache + 每次变化的 CACHE_BUST，用来逼 wget 那层
+          # 重新下载二进制。二进制现在由 headscale/ 源码构建，no-cache 只会让
+          # 每次构建都重下一遍三 GB 的 Go 依赖，所以换成 GHA 层缓存。
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
