@@ -282,6 +282,12 @@ def node_info():
 @login_required
 def node_route_info():
     node_id = request.form.get('NodeId')
+
+    with SqliteDB() as cursor:
+        node = cursor.execute("SELECT user_id FROM nodes WHERE id =?", (node_id,)).fetchone()
+    if not node or (node[0] != current_user.id and current_user.role != 'manager'):
+        return res("1", "非法请求", [])
+
     url = f'/api/v1/node/{node_id}'
 
     response = to_request('GET', url)
@@ -326,18 +332,27 @@ def approve_routes():
 
 
     with SqliteDB() as cursor:
-        route = cursor.execute("SELECT route FROM users WHERE id =? ",(current_user.id,)).fetchone()[0]
-    
+        node = cursor.execute("SELECT user_id FROM nodes WHERE id =?", (node_id,)).fetchone()
+        route = cursor.execute("SELECT route FROM users WHERE id =?", (current_user.id,)).fetchone()
 
-    if route == "0":
+    # 只能审批自己租户的节点。delete / rename 判的是同一件事，之前这里漏了，
+    # 只查了自己的 route 开关，于是开了 route 的普通用户能审批别人租户的路由。
+    if not node or (node[0] != current_user.id and current_user.role != 'manager'):
+        return res('1', '非法请求')
+
+    # route 开关对所有人一视同仁 —— 它管的是「谁能审批路由」，不是「谁是管理员」，
+    # 所以管理员这里也不放行，只是把提示说清楚该去哪儿开。
+    if not route or route[0] == "0":
+        if current_user.role == 'manager':
+            return res('1', '你当前无此权限，请在「用户管理」里为自己打开「路由」开关')
         return res('1', '你当前无此权限！请联系管理员')
-    else:
-        response = to_request('POST',url,data)
 
-        if response['code'] == '0':
-            return res('0', '提交成功', response['data'])
-        else:
-            return res(response['code'], response['msg'])
+    response = to_request('POST',url,data)
+
+    if response['code'] == '0':
+        return res('0', '提交成功', response['data'])
+    else:
+        return res(response['code'], response['msg'])
 
 
 
