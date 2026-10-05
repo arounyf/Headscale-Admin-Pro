@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/juanfont/headscale/hscontrol/policy/matcher"
 	"github.com/juanfont/headscale/hscontrol/servertest"
+	"github.com/juanfont/headscale/hscontrol/types"
 	"github.com/stretchr/testify/require"
 	"tailscale.com/tailcfg"
 )
@@ -245,6 +247,197 @@ func TestSameRouteCrossUser(t *testing.T) {
 		bPrimaries := srv.State().GetNodePrimaryRoutes(bR1ID)
 		require.True(t, slices.Contains(bPrimaries, sameRoute),
 			"b-r1 should be primary for %s in tenant-b, got %v", sameRoute, bPrimaries)
+	})
+}
+
+// routeOwners returns the netmap peers that the client is told are the
+// primary owner of prefix p. A peer shows up here only when
+// [State.RoutesForPeer] returned p for this exact (viewer, peer) pair, so
+// the result is what the client would actually install as a route.
+func routeOwners(c *servertest.TestClient, p netip.Prefix) []string {
+	nm := c.Netmap()
+	if nm == nil {
+		return nil
+	}
+
+	var owners []string
+
+	for _, peer := range nm.Peers {
+		routes := peer.PrimaryRoutes()
+
+		for i := range routes.Len() {
+			if routes.At(i) == p {
+				if hi := peer.Hostinfo(); hi.Valid() {
+					owners = append(owners, hi.Hostname())
+				}
+
+				break
+			}
+		}
+	}
+
+	slices.Sort(owners)
+
+	return owners
+}
+
+// TestThreeUsersSameRoute is the three-tenant case: users a, b and c each
+// advertise the SAME prefix, and every tenant must keep routing through
+// its own router. This is the scenario an operator hits when several
+// customers happen to use 192.168.1.0/24 behind their own router.
+//
+// It asserts on the server-side route table and on the netmap each client
+// actually received — [tailcfg.Node.PrimaryRoutes] is built per viewer
+// from [State.RoutesForPeer], so a leak appears as a foreign router being
+// presented to a tenant as an owner of that prefix.
+func TestThreeUsersSameRoute(t *testing.T) {
+	srv := servertest.NewServer(t)
+
+	userA := srv.CreateUser(t, "tenant-a")
+	userB := srv.CreateUser(t, "tenant-b")
+	userC := srv.CreateUser(t, "tenant-c")
+
+	route := netip.MustParsePrefix("192.168.1.0/24")
+
+	aRouter := servertest.NewClient(t, srv, "a-router", servertest.WithUser(userA))
+	aNode := servertest.NewClient(t, srv, "a-node", servertest.WithUser(userA))
+	bRouter := servertest.NewClient(t, srv, "b-router", servertest.WithUser(userB))
+	bNode := servertest.NewClient(t, srv, "b-node", servertest.WithUser(userB))
+	cRouter := servertest.NewClient(t, srv, "c-router", servertest.WithUser(userC))
+	cNode := servertest.NewClient(t, srv, "c-node", servertest.WithUser(userC))
+
+	clients := []*servertest.TestClient{aRouter, aNode, bRouter, bNode, cRouter, cNode}
+	for _, c := range clients {
+		c.WaitForPeers(t, len(clients)-1, routeIsoTimeout)
+	}
+
+	advertiseAndApproveRoute(t, srv, aRouter, route)
+	advertiseAndApproveRoute(t, srv, bRouter, route)
+	advertiseAndApproveRoute(t, srv, cRouter, route)
+
+	aRouterID := findNodeID(t, srv, "a-router")
+	aNodeID := findNodeID(t, srv, "a-node")
+	bRouterID := findNodeID(t, srv, "b-router")
+	bNodeID := findNodeID(t, srv, "b-node")
+	cRouterID := findNodeID(t, srv, "c-router")
+	cNodeID := findNodeID(t, srv, "c-node")
+
+	aRouterView, _ := srv.State().GetNodeByID(aRouterID)
+	aNodeView, _ := srv.State().GetNodeByID(aNodeID)
+	bRouterView, _ := srv.State().GetNodeByID(bRouterID)
+	bNodeView, _ := srv.State().GetNodeByID(bNodeID)
+	cRouterView, _ := srv.State().GetNodeByID(cRouterID)
+	cNodeView, _ := srv.State().GetNodeByID(cNodeID)
+
+	aNodeMatchers, _ := srv.State().MatchersForNode(aNodeView)
+	bNodeMatchers, _ := srv.State().MatchersForNode(bNodeView)
+	cNodeMatchers, _ := srv.State().MatchersForNode(cNodeView)
+	aRouterMatchers, _ := srv.State().MatchersForNode(aRouterView)
+	bRouterMatchers, _ := srv.State().MatchersForNode(bRouterView)
+	cRouterMatchers, _ := srv.State().MatchersForNode(cRouterView)
+
+	t.Run("每个租户各自选出 primary", func(t *testing.T) {
+		// All three are primary — in their own scope. The election is
+		// keyed by types.UserID, so one prefix has three winners.
+		require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(aRouterID), route),
+			"a-router 应在 tenant-a 内成为 %s 的 primary", route)
+		require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(bRouterID), route),
+			"b-router 应在 tenant-b 内成为 %s 的 primary", route)
+		require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(cRouterID), route),
+			"c-router 应在 tenant-c 内成为 %s 的 primary", route)
+	})
+
+	t.Run("普通节点只看见自己租户的路由", func(t *testing.T) {
+		own := map[string]struct {
+			view     types.NodeView
+			router   types.NodeView
+			matchers []matcher.Match
+		}{
+			"a-node": {aNodeView, aRouterView, aNodeMatchers},
+			"b-node": {bNodeView, bRouterView, bNodeMatchers},
+			"c-node": {cNodeView, cRouterView, cNodeMatchers},
+		}
+
+		for name, tc := range own {
+			routes := srv.State().RoutesForPeer(tc.view, tc.router, tc.matchers)
+			require.True(t, slices.Contains(routes, route),
+				"%s 应看见自己租户 router 的 %s，实际 %v", name, route, routes)
+		}
+	})
+
+	t.Run("跨租户不可见", func(t *testing.T) {
+		// Every (viewer, foreign router) pair. Each viewer advertises
+		// nothing, so this exercises the plain route table path.
+		type pair struct {
+			viewer, peer types.NodeView
+			matchers     []matcher.Match
+		}
+
+		pairs := []pair{
+			{aNodeView, bRouterView, aNodeMatchers},
+			{aNodeView, cRouterView, aNodeMatchers},
+			{bNodeView, aRouterView, bNodeMatchers},
+			{bNodeView, cRouterView, bNodeMatchers},
+			{cNodeView, aRouterView, cNodeMatchers},
+			{cNodeView, bRouterView, cNodeMatchers},
+		}
+
+		for _, p := range pairs {
+			routes := srv.State().RoutesForPeer(p.viewer, p.peer, p.matchers)
+			require.False(t, slices.Contains(routes, route),
+				"跨租户泄漏：%s 看见了 %s 的 %s，实际 %v",
+				p.viewer.Hostname(), p.peer.Hostname(), route, routes)
+		}
+	})
+
+	t.Run("router 视角也不可跨租户", func(t *testing.T) {
+		// A viewer that advertises the prefix itself takes the co-router
+		// visibility branch — the path that exists so HA secondaries can
+		// learn the primary, and the easiest place to lose isolation.
+		type pair struct {
+			viewer, peer types.NodeView
+			matchers     []matcher.Match
+		}
+
+		pairs := []pair{
+			{aRouterView, bRouterView, aRouterMatchers},
+			{aRouterView, cRouterView, aRouterMatchers},
+			{bRouterView, aRouterView, bRouterMatchers},
+			{bRouterView, cRouterView, bRouterMatchers},
+			{cRouterView, aRouterView, cRouterMatchers},
+			{cRouterView, bRouterView, cRouterMatchers},
+		}
+
+		for _, p := range pairs {
+			routes := srv.State().RoutesForPeer(p.viewer, p.peer, p.matchers)
+			require.False(t, slices.Contains(routes, route),
+				"router 视角跨租户泄漏：%s 看见了 %s 的 %s，实际 %v",
+				p.viewer.Hostname(), p.peer.Hostname(), route, routes)
+		}
+	})
+
+	t.Run("netmap 端到端：各走各的", func(t *testing.T) {
+		// The server-side table can be right while the wire is wrong, so
+		// assert on what each client was actually handed. A router's own
+		// netmap must list NO peer as owner of the prefix — it holds that
+		// route locally — and each plain node must list exactly its own
+		// tenant's router.
+		want := map[*servertest.TestClient][]string{
+			aRouter: nil,
+			bRouter: nil,
+			cRouter: nil,
+			aNode:   {"a-router"},
+			bNode:   {"b-router"},
+			cNode:   {"c-router"},
+		}
+
+		for client, owners := range want {
+			require.Eventually(t, func() bool {
+				return slices.Equal(routeOwners(client, route), owners)
+			}, routeIsoTimeout, 200*time.Millisecond,
+				"%s 的 netmap 中 %s 的 owner 应是 %v，实际 %v（peers: %v）",
+				client.Name, route, owners, routeOwners(client, route), client.PeerNames())
+		}
 	})
 }
 
