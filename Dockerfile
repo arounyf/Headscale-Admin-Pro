@@ -17,10 +17,26 @@ RUN go mod download
 
 COPY headscale/ ./
 
-# 参数与 headscale/.github/workflows/build-runyf.yml 里原来的发布构建一致。
+# 参数 -s -w 与 headscale/.github/workflows/build-runyf.yml 里原来的发布构建一致。
 # 那个 workflow 在面板仓库里是失效的（GitHub 只读仓库根目录的
 # .github/workflows/），留着只是为了以后 subtree pull 上游时不冲突。
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /headscale ./cmd/headscale
+#
+# 版本号继承上游：CHANGELOG.md 顶部那个 `## x.y.z` 就是上游最新一次发布，
+# `git subtree pull` 之后它自动就是对的，没有需要手工维护的版本号。
+#
+# 非用 -ldflags 打进去不可：构建上下文里没有 .git（.dockerignore 排掉了），
+# Go 的 VCS stamping 什么都拿不到，ReadBuildInfo 只报 (devel)，二进制于是
+# 自称 dev，而 headscale 对 dev 是跳过数据库版本校验的 —— 那道校验会一直睡着。
+#
+# 最后一行是自检。链接器对打不中的 -X 是静默忽略的（headscale 的 Makefile:45
+# 就有一个这样的死参数），不验一下就会悄悄退回「镜像里的二进制自称 dev」。
+RUN VERSION=$(sed -nE 's/^## ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CHANGELOG.md | head -1) \
+    && test -n "$VERSION" \
+    && echo "headscale upstream version: v$VERSION" \
+    && CGO_ENABLED=0 go build \
+        -ldflags="-s -w -X github.com/juanfont/headscale/hscontrol/types.Version=v$VERSION" \
+        -o /headscale ./cmd/headscale \
+    && test "$(/headscale version | head -1)" = "headscale version v$VERSION"
 
 # 第二阶段：构建阶段
 FROM ubuntu:24.04 AS builder

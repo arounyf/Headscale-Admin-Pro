@@ -40,6 +40,18 @@ func (v *VersionInfo) String() string {
 
 var buildInfo = sync.OnceValues(debug.ReadBuildInfo)
 
+// Version is the upstream headscale release this source tree corresponds to.
+// The panel's Dockerfile injects it at build time (-ldflags -X) from the top
+// entry of CHANGELOG.md. It is empty in every other build, where the version
+// keeps coming from [debug.ReadBuildInfo].
+//
+// PATCH: added by Headscale-Admin-Pro. The panel builds this tree in a Docker
+// context with no .git, so the toolchain stamps no vcs.* settings and reports
+// Main.Version as "(devel)" — without an injection the binary answers "dev",
+// and headscale skips its database version gate for dev builds. A conflict
+// here on `git subtree pull` is expected; see headscale/MERGING-UPSTREAM.md.
+var Version = ""
+
 var GetVersionInfo = sync.OnceValue(func() *VersionInfo {
 	info := &VersionInfo{
 		Version:   "dev",
@@ -53,13 +65,20 @@ var GetVersionInfo = sync.OnceValue(func() *VersionInfo {
 		Dirty: false,
 	}
 
+	// A version injected at build time wins over anything the toolchain
+	// stamped: a Docker build has no .git, so it is the only source there.
+	if Version != "" {
+		info.Version = Version
+	}
+
 	buildInfo, ok := buildInfo()
 	if !ok {
 		return info
 	}
 
 	// Extract version from module path or main version
-	if buildInfo.Main.Version != "" && buildInfo.Main.Version != "(devel)" {
+	if Version == "" && buildInfo.Main.Version != "" &&
+		buildInfo.Main.Version != "(devel)" {
 		info.Version = buildInfo.Main.Version
 	}
 

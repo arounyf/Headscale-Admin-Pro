@@ -87,15 +87,62 @@ git merge-base hs-admin upstream/main     # 在本地那份 headscale 检出里�
 
 - `headscale/` 自带 `.gitignore`，在里面 `make build` 产生的二进制不会被本仓库
   跟踪，不需要额外加规则。
+- `hscontrol/types/version.go` 是唯一一处**故意**和上游不一样的地方（多了一个
+  `Version` 变量，外加读它的四行）。`git subtree pull` 时它大概率会冲突，解决方式
+  是两边的都要：上游的 `debug.ReadBuildInfo` 逻辑留着，`Version` 那几行也留着，
+  别为了消冲突把注入去掉 —— 去掉之后二进制又变回 `dev`，上面那节说的校验也就
+  跟着失效了，而且不会有任何报错。
 - `headscale/.github/workflows/` 是**失效的** —— GitHub 只读仓库根目录下的
   `.github/workflows/`。那些工作流（包括原来负责发版的 `build-runyf.yml`）作为
   历史保留，删掉会让以后每次 subtree pull 都冲突，但它们不会运行。本仓库的
   `.github/workflows/main.yml` 才是实际生效的那一个。
 
+## 版本号
+
+镜像里 headscale 的版本号**继承上游**，没有需要手工维护的数字：
+
+`Dockerfile` 的 `hs-builder` 阶段从 `headscale/CHANGELOG.md` 顶部取那个 `## x.y.z`，
+用 `-ldflags -X` 填进 `hscontrol/types/version.go` 的 `Version`。`git subtree pull`
+把上游的 CHANGELOG 带进来之后，版本号自动就是对的（上游每次发版都改它，正常合并
+总会带上）。`headscale/CHANGELOG.md` 被 `.dockerignore` 的 `headscale/**/*.md`
+挡在构建上下文之外，所以那里专门给它开了一条 `!` 例外。
+
+之所以非注入不可：构建上下文里没有 `.git`（`.dockerignore:8` 排掉了），Go 的 VCS
+stamping 什么都拿不到，`debug.ReadBuildInfo()` 只报 `(devel)`，二进制于是自称 `dev`。
+`CHANGELOG.md` 里那个数字如果没取到，`test -n` 会让构建直接失败；`-X` 打不中的话
+链接器是**静默忽略**的（`Makefile:45` 就有一个这样的死参数），所以构建的最后一步是
+`test "$(/headscale version | head -1)" = "headscale version v$VERSION"` —— 自检不过
+镜像就出不来，不会悄悄退回 `dev`。
+
+### 这个数字会打开 headscale 的数据库版本校验
+
+以前报 `dev` 时，`hscontrol/db/versioncheck.go` 的校验是**整段跳过**的。有真版本号
+之后它会真的拦人。实测（`v0.29.4` 的二进制，逐条改库里的值重跑）：
+
+| `database_versions` 里存的 | 结果 |
+| --- | --- |
+| 空 —— 这个特性之前的老库 | 放行，之后写入 `v0.29.4` |
+| `dev` / Go 伪版本 —— 本地构建留下的 | 放行，之后写入 `v0.29.4` |
+| 同一个 minor（`v0.29.0-hs`、`v0.29.4-hs`） | 放行，**并改写为 `v0.29.4`** |
+| 低一个 minor（`v0.28.0`） | 放行，之后写入 `v0.29.4` |
+| 低两个及以上 minor（`v0.27.0-hs`） | **拒绝启动** |
+| 存的比当前高（`v0.30.0`） | **拒绝启动** |
+
+注意放行那一列：**跑过一次之后，库里的基线就被改写成当前版本了**，此后的可升级
+窗口由那个新值决定。
+
+**所以每次 subtree pull 都要看一眼跨了几个 minor。** 从 `0.29.4` 直接并到 `0.31.0`
+（跳过 `0.30`）会让镜像里的 headscale 起不来 —— 面板上表现为 headscale「已停止」，
+而且**换回旧镜像也救不了**（旧镜像版本更低，同样被拒）。真跨了两个 minor，得先发一个
+中间版本，让用户先升到 `0.30.x` 再升下一个。
+
+对现存用户是安全的：这个 fork 发过的二进制带过的版本号最早是 `v0.28.0`，离 `0.29.4`
+只差一个 minor；更早的版本根本没有这个特性，库里是空的。
+
 ## 发布
 
-本仓库只有一条版本线：面板的 `v5.x`。镜像里内置的 headscale 版本就是那个 tag
-对应的源码版本，不再单独给 headscale 打 tag。
+本仓库只有一条版本线：面板的 `v5.x`。镜像里内置的 headscale 版本号继承上游
+（见上一节），不再单独给 headscale 打 tag。
 
 `arounyf/headscale` 已归档（GitHub 的 archive，只读），`hs-admin` 停在 `ec80ab63`
 —— 与这棵子树加入时的内容一致。它的 `v0.29.4-hs` release 资产原地不动，还在引用

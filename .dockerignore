@@ -34,6 +34,9 @@ headscale/.github
 headscale/nix
 headscale/packaging
 headscale/**/*.md
+# 唯一的例外：headscale 的版本号就是从它顶部那一行来的（Dockerfile 的 hs-builder
+# 阶段读它去填 -ldflags -X），没有它二进制就会自称 dev。
+!headscale/CHANGELOG.md
 headscale/flake.nix
 headscale/flake.lock
 headscale/flakehashes.json
