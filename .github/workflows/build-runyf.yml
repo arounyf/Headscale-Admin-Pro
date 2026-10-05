@@ -41,7 +41,11 @@ jobs:
         # without it this tests only the root package, which has none.
         run: nix develop --command -- gotestsum -- -timeout=30m ./...
 
+  # Tags only, like test. The artifact this uploads exists solely to feed
+  # the release job's "Download binary" step, and that job is tag-gated, so
+  # a branch push built the whole binary and threw it away.
   binary:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
