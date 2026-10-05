@@ -276,6 +276,8 @@ def get_headscale_version():
     缓存唯一的失效点是二进制被换掉：12 和生产的升级方式都是热替换
     /app/headscale 后重启 headscale 进程，面板本身不重启。所以 start/stop
     两个入口各清一次，否则关于页会一直报换之前那个版本。
+
+    返回的是命令的完整输出，四行。
     """
     global _headscale_version
     if _headscale_version is None:
@@ -286,6 +288,20 @@ def get_headscale_version():
         except subprocess.CalledProcessError as e:
             print({e.stderr})
     return _headscale_version
+
+
+def get_headscale_version_line():
+    """面板上显示的那一行，形如 `headscale v0.29.4-hs`。
+
+    `headscale version` 的四行里只有第一行是版本号（另外三行是 commit、
+    build time、built with），关于弹窗、导航条的「运行中」tooltip、设置页都
+    只显示这一行。commit 和 build time 在命令行里仍然看得到。
+    """
+    raw = get_headscale_version()
+    if not raw:
+        return ''
+    # 第一行形如 "headscale version v0.29.4-hs"，去掉中间的 version。
+    return raw.splitlines()[0].strip().replace('headscale version ', 'headscale ', 1)
 
 def save_config_yaml(config_dict):
     # 创建 YAML 对象，设置保留注释

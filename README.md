@@ -64,18 +64,18 @@ docker-compose up -d
 | v3.x | v0.27.x-hs |
 | v4.x | v0.28.x-hs |
 | v5.0 – v5.4 | v0.29.x-hs |
-| v5.5 起 | 与面板同一个 commit，版本号继承上游 CHANGELOG |
+| v5.4.1 起 | 与面板同一个 commit，版本号继承上游 CHANGELOG |
 
 v5.4 及以前，headscale 二进制是从 `arounyf/headscale` 的一个 release 里下载的，上表
 右边就是那个被固定在 `Dockerfile` 里的版本。这条链路有个隐患：**面板代码和二进制之间
 没有任何机制保证对齐** —— 改了 proto 却忘了改那个下载 URL，用户点注册时就会撞上
 `unknown field`，而报错来自 protojson 的解析，完全看不出是版本没对上。
 
-v5.5 起 headscale 源码以 `git subtree` 并入本仓库的 [`headscale/`](headscale/) 目录，
+v5.4.1 起 headscale 源码以 `git subtree` 并入本仓库的 [`headscale/`](headscale/) 目录，
 二进制由 `Dockerfile` 从这棵树直接构建，两者永远出自同一个 commit。**版本号继承上游**：
-构建时从 `headscale/CHANGELOG.md` 顶部取上游最新一次发布的 `x.y.z` 打进二进制，
-`git subtree pull` 之后自动就是对的，没有需要手工维护的数字，面板「关于」里那一行
-`headscale version` 显示的就是它。上游怎么同步、改 headscale 代码时要注意什么，见
+构建时从 `headscale/CHANGELOG.md` 顶部取上游最新一次发布的 `x.y.z`，缀上 `-hs`
+打进二进制，`git subtree pull` 之后自动就是对的，没有需要手工维护的数字，面板「关于」
+里那一行显示的就是它（例如 `headscale v0.29.4-hs`）。上游怎么同步、改 headscale 代码时要注意什么，见
 [`headscale/MERGING-UPSTREAM.md`](headscale/MERGING-UPSTREAM.md)。
 
 # 如何升级

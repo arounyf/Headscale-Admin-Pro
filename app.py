@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from login_setup import init_login_manager
-from utils import get_data_record, start_headscale, to_init_db, get_headscale_version
+from utils import get_data_record, start_headscale, to_init_db, get_headscale_version, get_headscale_version_line
 import config_loader,os
 
 
@@ -80,7 +80,7 @@ scheduler.start()
 # 覆盖掉那个静态文件 —— 静态文件本身已删除，避免出现第二份版本号。
 @app.route('/static/views/system/about.html')
 def about_view():
-    return render_template('admin/about.html', hs_version=get_headscale_version() or '')
+    return render_template('admin/about.html', hs_version=get_headscale_version_line())
 
 
 # 自定义404错误处理器

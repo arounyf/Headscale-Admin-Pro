@@ -28,8 +28,10 @@ ARG HS_BUILD_TIME=unknown
 # .github/workflows/），留着只是为了以后 subtree pull 上游时不冲突。
 #
 # 版本号继承上游：CHANGELOG.md 顶部那个 `## x.y.z` 就是上游最新一次发布，
-# `git subtree pull` 之后它自动就是对的，没有需要手工维护的版本号。
-#
+# `git subtree pull` 之后它自动就是对的，没有需要手工维护的版本号。后面缀
+# `-hs`：这棵树里的 headscale 是改过的（多用户路由隔离、users 表扩展列等），
+# 面板一直用 `vX.Y.Z-hs` 把这个先后关系标出来。
+
 # 这三个值非用 -ldflags 打进去不可：构建上下文里没有 .git（.dockerignore 排掉了），
 # Go 的 VCS stamping 什么都拿不到，ReadBuildInfo 只报 (devel)，二进制于是
 # 自称 dev、commit 和 build time 都是 unknown，而 headscale 对 dev 是跳过数据库
@@ -43,12 +45,13 @@ RUN VERSION=$(sed -nE 's/^## ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CHANGELOG.md | hea
     && test -n "$HS_COMMIT" \
     && test -n "$HS_BUILD_TIME" \
     && PKG=github.com/juanfont/headscale/hscontrol/types \
-    && echo "headscale v$VERSION, commit $HS_COMMIT, built $HS_BUILD_TIME" \
+    && HS_VERSION="v$VERSION-hs" \
+    && echo "headscale $HS_VERSION, commit $HS_COMMIT, built $HS_BUILD_TIME" \
     && CGO_ENABLED=0 go build \
-        -ldflags="-s -w -X $PKG.Version=v$VERSION -X $PKG.Commit=$HS_COMMIT -X $PKG.BuildTime=$HS_BUILD_TIME" \
+        -ldflags="-s -w -X $PKG.Version=$HS_VERSION -X $PKG.Commit=$HS_COMMIT -X $PKG.BuildTime=$HS_BUILD_TIME" \
         -o /headscale ./cmd/headscale \
     && /headscale version > /tmp/stamp \
-    && grep -qx "headscale version v$VERSION" /tmp/stamp \
+    && grep -qx "headscale version $HS_VERSION" /tmp/stamp \
     && grep -qx "commit: $HS_COMMIT" /tmp/stamp \
     && grep -qx "build time: $HS_BUILD_TIME" /tmp/stamp
 

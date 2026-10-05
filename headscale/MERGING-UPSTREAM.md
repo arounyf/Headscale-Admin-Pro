@@ -107,6 +107,10 @@ git merge-base hs-admin upstream/main     # 在本地那份 headscale 检出里�
 总会带上）。`headscale/CHANGELOG.md` 被 `.dockerignore` 的 `headscale/**/*.md`
 挡在构建上下文之外，所以那里专门给它开了一条 `!` 例外。
 
+打进去的是 `vX.Y.Z-hs`。`-hs` 是面板一直用的标记，说明这棵树里的 headscale 是
+改过的；`parseVersion` 在第一个 `-` 处截断，所以下一节那道校验读到的仍然是
+`0.29.4`，后缀不影响版本门的判断。
+
 同一处还打了 `Commit` 和 `BuildTime`，值由 `.github/workflows/main.yml` 的
 build-args 传进来（`github.sha` 和构建那一刻的 UTC 时间）—— 上下文里没有 `.git`，
 这两个值 Dockerfile 自己查不出来。直接 `docker build` 不传就是 `unknown`，那是诚实
