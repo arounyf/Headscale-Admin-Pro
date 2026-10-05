@@ -755,7 +755,7 @@ func snapshotFromNodes(
 }
 
 // electPrimaryRoutes picks the primary advertiser for each non-exit
-// prefix, scoped by user (multi-tenant isolation). Tagged nodes
+// prefix, scoped by user. Tagged nodes
 // (IsTagged()) are grouped into scope 0 (global); user-owned nodes
 // are grouped by [Node.TypedUserID]. Each scope runs an independent
 // election so one user's subnet routers never become primaries for
@@ -799,7 +799,7 @@ func electPrimaryRoutes(
 }
 
 // electOneScope runs the primary election for a single user scope
-// (either one user or the tagged/global scope). It is the single-tenant
+// (either one user or the tagged/global scope). It is the single-scope
 // election algorithm previously inlined in electPrimaryRoutes.
 func electOneScope(
 	nodes map[types.NodeID]types.Node,

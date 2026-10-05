@@ -1308,7 +1308,7 @@ func (s *State) RoutesForPeer(
 	allPrimaries := s.nodeStore.PrimaryRoutesForNode(peer.ID())
 
 	// Viewable primaries: only prefixes from scopes the viewer can see
-	// (own user + tagged/global). This is the multi-tenant boundary.
+	// (own user + tagged/global). This is the per-user isolation boundary.
 	viewerScope := types.UserID(0)
 	if !viewer.IsTagged() {
 		viewerScope = viewer.TypedUserID()
@@ -1376,7 +1376,7 @@ func (s *State) RoutesForPeer(
 				// viewer can see (own user or tagged) -- the same rule
 				// applied to the primaries above. Testing only that p is
 				// visible is not enough: it holds whenever the viewer's
-				// own scope has a primary for p, so a foreign tenant's
+				// own scope has a primary for p, so another user's
 				// primary for the same prefix would be let through.
 				if primaryNode, ok := visibleRoutes[p]; ok && primaryNode == peer.ID() {
 					reduced = append(reduced, p)

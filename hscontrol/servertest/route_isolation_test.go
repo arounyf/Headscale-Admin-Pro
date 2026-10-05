@@ -16,15 +16,15 @@ import (
 
 const routeIsoTimeout = 15 * time.Second
 
-// TestMultiTenantRouteIsolation verifies the core multi-tenant guarantee:
+// TestMultiUserRouteIsolation verifies the core multi-user guarantee:
 // user A's nodes cannot see subnet routes from user B's routers, and
 // vice versa. Routes are scoped per-user via per-user primary routes.
-func TestMultiTenantRouteIsolation(t *testing.T) {
+func TestMultiUserRouteIsolation(t *testing.T) {
 	srv := servertest.NewServer(t)
 
 	// ── Users ──
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
 
 	// ── User A: one router + one regular node ──
 	aRouter := servertest.NewClient(t, srv, "a-router", servertest.WithUser(userA))
@@ -79,17 +79,17 @@ func TestMultiTenantRouteIsolation(t *testing.T) {
 		// a-node looking at b-router: should NOT see 10.43.0.0/24
 		routes := srv.State().RoutesForPeer(aNodeView, bRouterView, aNodeMatchers)
 		require.False(t, slices.Contains(routes, routeB),
-			"a-node should NOT see b-router's route %s (cross-tenant leak!), got %v", routeB, routes)
+			"a-node should NOT see b-router's route %s (cross-user leak!), got %v", routeB, routes)
 
 		// b-node looking at a-router: should NOT see 10.42.0.0/24
 		routes = srv.State().RoutesForPeer(bNodeView, aRouterView, bNodeMatchers)
 		require.False(t, slices.Contains(routes, routeA),
-			"b-node should NOT see a-router's route %s (cross-tenant leak!), got %v", routeA, routes)
+			"b-node should NOT see a-router's route %s (cross-user leak!), got %v", routeA, routes)
 	})
 
 	// Note: client-side netmap verification is covered by existing
 	// integration tests. Server-side RoutesForPeer checks above
-	// directly validate the multi-tenant route isolation boundary.
+	// directly validate the multi-user route isolation boundary.
 }
 
 // TestPerUserPrimaryRoutes_HAFailover verifies that HA failover operates
@@ -97,7 +97,7 @@ func TestMultiTenantRouteIsolation(t *testing.T) {
 // second router from the SAME user takes over.
 func TestPerUserPrimaryRoutes_HAFailover(t *testing.T) {
 	srv := servertest.NewServer(t)
-	user := srv.CreateUser(t, "tenant")
+	user := srv.CreateUser(t, "user")
 
 	r1 := servertest.NewClient(t, srv, "r1", servertest.WithUser(user))
 	r2 := servertest.NewClient(t, srv, "r2", servertest.WithUser(user))
@@ -139,8 +139,8 @@ func TestPerUserPrimaryRoutes_HAFailover(t *testing.T) {
 func TestSameRouteCrossUser(t *testing.T) {
 	srv := servertest.NewServer(t)
 
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
 
 	// User A: two routers advertising same prefix (HA pair)
 	aR1 := servertest.NewClient(t, srv, "a-r1", servertest.WithUser(userA))
@@ -191,7 +191,7 @@ func TestSameRouteCrossUser(t *testing.T) {
 		require.False(t, slices.Contains(routes, sameRoute),
 			"a-node should NOT see a-r2's route (a-r1 is primary), got %v", routes)
 
-		// b-node sees 10.42.0.0/24 from b-r1 (b-r1 is primary in tenant-b)
+		// b-node sees 10.42.0.0/24 from b-r1 (b-r1 is primary in user-b)
 		routes = srv.State().RoutesForPeer(bNodeView, bR1View, bMatchers)
 		require.True(t, slices.Contains(routes, sameRoute),
 			"b-node should see b-r1's route %s, got %v", sameRoute, routes)
@@ -201,43 +201,43 @@ func TestSameRouteCrossUser(t *testing.T) {
 		// a-node looking at b-r1: should NOT see b-r1's 10.42.0.0/24
 		routes := srv.State().RoutesForPeer(aNodeView, bR1View, aMatchers)
 		require.False(t, slices.Contains(routes, sameRoute),
-			"a-node should NOT see b-r1's route (cross-tenant leak!), got %v", routes)
+			"a-node should NOT see b-r1's route (cross-user leak!), got %v", routes)
 
 		// b-node looking at a-r1: should NOT see a-r1's 10.42.0.0/24
 		routes = srv.State().RoutesForPeer(bNodeView, aR1View, bMatchers)
 		require.False(t, slices.Contains(routes, sameRoute),
-			"b-node should NOT see a-r1's route (cross-tenant leak!), got %v", routes)
+			"b-node should NOT see a-r1's route (cross-user leak!), got %v", routes)
 
 		// b-node looking at a-r2: should NOT see a-r2's 10.42.0.0/24
 		routes = srv.State().RoutesForPeer(bNodeView, aR2View, bMatchers)
 		require.False(t, slices.Contains(routes, sameRoute),
-			"b-node should NOT see a-r2's route (cross-tenant leak!), got %v", routes)
+			"b-node should NOT see a-r2's route (cross-user leak!), got %v", routes)
 
 		// The checks above all use viewers that advertise nothing. A viewer
 		// that advertises the same prefix takes the co-router visibility
-		// branch, which is where multi-tenant isolation is easiest to lose:
+		// branch, which is where multi-user isolation is easiest to lose:
 		// that branch exists so HA secondaries can learn which peer is
 		// primary for a prefix they share, and it must still refuse a peer
 		// from another scope.
 		aR1Matchers, _ := srv.State().MatchersForNode(aR1View)
 		aR2Matchers, _ := srv.State().MatchersForNode(aR2View)
 
-		// a-r1 is tenant-a's primary and advertises the prefix itself.
+		// a-r1 is user-a's primary and advertises the prefix itself.
 		routes = srv.State().RoutesForPeer(aR1View, bR1View, aR1Matchers)
 		require.False(t, slices.Contains(routes, sameRoute),
-			"a-r1 (a router) should NOT see b-r1's route (cross-tenant leak!), got %v", routes)
+			"a-r1 (a router) should NOT see b-r1's route (cross-user leak!), got %v", routes)
 
-		// a-r2 is tenant-a's secondary and also advertises the prefix.
+		// a-r2 is user-a's secondary and also advertises the prefix.
 		routes = srv.State().RoutesForPeer(aR2View, bR1View, aR2Matchers)
 		require.False(t, slices.Contains(routes, sameRoute),
-			"a-r2 (a router) should NOT see b-r1's route (cross-tenant leak!), got %v", routes)
+			"a-r2 (a router) should NOT see b-r1's route (cross-user leak!), got %v", routes)
 	})
 
 	t.Run("per-user primary election independent", func(t *testing.T) {
 		// Within user A, the lower-ID router should be primary
 		aPrimaries := srv.State().GetNodePrimaryRoutes(aR1ID)
 		require.True(t, slices.Contains(aPrimaries, sameRoute),
-			"a-r1 (lower ID) should be primary for %s in tenant-a, got %v", sameRoute, aPrimaries)
+			"a-r1 (lower ID) should be primary for %s in user-a, got %v", sameRoute, aPrimaries)
 
 		aR2Primaries := srv.State().GetNodePrimaryRoutes(aR2ID)
 		require.False(t, slices.Contains(aR2Primaries, sameRoute),
@@ -246,7 +246,7 @@ func TestSameRouteCrossUser(t *testing.T) {
 		// Within user B, b-r1 is the only router so it should be primary
 		bPrimaries := srv.State().GetNodePrimaryRoutes(bR1ID)
 		require.True(t, slices.Contains(bPrimaries, sameRoute),
-			"b-r1 should be primary for %s in tenant-b, got %v", sameRoute, bPrimaries)
+			"b-r1 should be primary for %s in user-b, got %v", sameRoute, bPrimaries)
 	})
 }
 
@@ -281,21 +281,21 @@ func routeOwners(c *servertest.TestClient, p netip.Prefix) []string {
 	return owners
 }
 
-// TestThreeUsersSameRoute is the three-tenant case: users a, b and c each
-// advertise the SAME prefix, and every tenant must keep routing through
+// TestThreeUsersSameRoute is the three-user case: users a, b and c each
+// advertise the SAME prefix, and every user must keep routing through
 // its own router. This is the scenario an operator hits when several
-// customers happen to use 192.168.1.0/24 behind their own router.
+// users happen to use 192.168.1.0/24 behind their own router.
 //
 // It asserts on the server-side route table and on the netmap each client
 // actually received — [tailcfg.Node.PrimaryRoutes] is built per viewer
 // from [State.RoutesForPeer], so a leak appears as a foreign router being
-// presented to a tenant as an owner of that prefix.
+// presented to a user as an owner of that prefix.
 func TestThreeUsersSameRoute(t *testing.T) {
 	srv := servertest.NewServer(t)
 
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
-	userC := srv.CreateUser(t, "tenant-c")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
+	userC := srv.CreateUser(t, "user-c")
 
 	route := netip.MustParsePrefix("192.168.1.0/24")
 
@@ -336,18 +336,18 @@ func TestThreeUsersSameRoute(t *testing.T) {
 	bRouterMatchers, _ := srv.State().MatchersForNode(bRouterView)
 	cRouterMatchers, _ := srv.State().MatchersForNode(cRouterView)
 
-	t.Run("每个租户各自选出 primary", func(t *testing.T) {
+	t.Run("每个用户各自选出 primary", func(t *testing.T) {
 		// All three are primary — in their own scope. The election is
 		// keyed by types.UserID, so one prefix has three winners.
 		require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(aRouterID), route),
-			"a-router 应在 tenant-a 内成为 %s 的 primary", route)
+			"a-router 应在 user-a 内成为 %s 的 primary", route)
 		require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(bRouterID), route),
-			"b-router 应在 tenant-b 内成为 %s 的 primary", route)
+			"b-router 应在 user-b 内成为 %s 的 primary", route)
 		require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(cRouterID), route),
-			"c-router 应在 tenant-c 内成为 %s 的 primary", route)
+			"c-router 应在 user-c 内成为 %s 的 primary", route)
 	})
 
-	t.Run("普通节点只看见自己租户的路由", func(t *testing.T) {
+	t.Run("普通节点只看见自己用户的路由", func(t *testing.T) {
 		own := map[string]struct {
 			view     types.NodeView
 			router   types.NodeView
@@ -361,11 +361,11 @@ func TestThreeUsersSameRoute(t *testing.T) {
 		for name, tc := range own {
 			routes := srv.State().RoutesForPeer(tc.view, tc.router, tc.matchers)
 			require.True(t, slices.Contains(routes, route),
-				"%s 应看见自己租户 router 的 %s，实际 %v", name, route, routes)
+				"%s 应看见自己用户 router 的 %s，实际 %v", name, route, routes)
 		}
 	})
 
-	t.Run("跨租户不可见", func(t *testing.T) {
+	t.Run("跨用户不可见", func(t *testing.T) {
 		// Every (viewer, foreign router) pair. Each viewer advertises
 		// nothing, so this exercises the plain route table path.
 		type pair struct {
@@ -385,12 +385,12 @@ func TestThreeUsersSameRoute(t *testing.T) {
 		for _, p := range pairs {
 			routes := srv.State().RoutesForPeer(p.viewer, p.peer, p.matchers)
 			require.False(t, slices.Contains(routes, route),
-				"跨租户泄漏：%s 看见了 %s 的 %s，实际 %v",
+				"跨用户泄漏：%s 看见了 %s 的 %s，实际 %v",
 				p.viewer.Hostname(), p.peer.Hostname(), route, routes)
 		}
 	})
 
-	t.Run("router 视角也不可跨租户", func(t *testing.T) {
+	t.Run("router 视角也不可跨用户", func(t *testing.T) {
 		// A viewer that advertises the prefix itself takes the co-router
 		// visibility branch — the path that exists so HA secondaries can
 		// learn the primary, and the easiest place to lose isolation.
@@ -411,7 +411,7 @@ func TestThreeUsersSameRoute(t *testing.T) {
 		for _, p := range pairs {
 			routes := srv.State().RoutesForPeer(p.viewer, p.peer, p.matchers)
 			require.False(t, slices.Contains(routes, route),
-				"router 视角跨租户泄漏：%s 看见了 %s 的 %s，实际 %v",
+				"router 视角跨用户泄漏：%s 看见了 %s 的 %s，实际 %v",
 				p.viewer.Hostname(), p.peer.Hostname(), route, routes)
 		}
 	})
@@ -421,7 +421,7 @@ func TestThreeUsersSameRoute(t *testing.T) {
 		// assert on what each client was actually handed. A router's own
 		// netmap must list NO peer as owner of the prefix — it holds that
 		// route locally — and each plain node must list exactly its own
-		// tenant's router.
+		// user's router.
 		want := map[*servertest.TestClient][]string{
 			aRouter: nil,
 			bRouter: nil,
@@ -446,7 +446,7 @@ func TestThreeUsersSameRoute(t *testing.T) {
 // per-user scoping — they are not subject to HA failover.
 func TestPerUserPrimaryRoutes_ExitRouteUnaffected(t *testing.T) {
 	srv := servertest.NewServer(t)
-	user := srv.CreateUser(t, "tenant")
+	user := srv.CreateUser(t, "user")
 
 	c := servertest.NewClient(t, srv, "exit-router", servertest.WithUser(user))
 	c.WaitForPeers(t, 0, routeIsoTimeout)
@@ -484,7 +484,7 @@ func TestPerUserPrimaryRoutes_ExitRouteUnaffected(t *testing.T) {
 // anyone until it has been approved via SetApprovedRoutes.
 func TestUnapprovedRouteNotVisible(t *testing.T) {
 	srv := servertest.NewServer(t)
-	user := srv.CreateUser(t, "tenant")
+	user := srv.CreateUser(t, "user")
 
 	router := servertest.NewClient(t, srv, "router", servertest.WithUser(user))
 	viewer := servertest.NewClient(t, srv, "viewer", servertest.WithUser(user))
@@ -525,8 +525,8 @@ func TestUnapprovedRouteNotVisible(t *testing.T) {
 func TestMultipleRoutesPerUser(t *testing.T) {
 	srv := servertest.NewServer(t)
 
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
 
 	aRouter := servertest.NewClient(t, srv, "a-router", servertest.WithUser(userA))
 	aNode := servertest.NewClient(t, srv, "a-node", servertest.WithUser(userA))
@@ -563,7 +563,7 @@ func TestMultipleRoutesPerUser(t *testing.T) {
 	// A's node does NOT see B's route
 	routes = srv.State().RoutesForPeer(aNodeView, bRouterView, aMatchers)
 	require.False(t, slices.Contains(routes, r3),
-		"a-node should NOT see b-router's r3 (cross-tenant), got %v", routes)
+		"a-node should NOT see b-router's r3 (cross-user), got %v", routes)
 
 	// All three are primary for their respective owners
 	primaries := srv.State().GetNodePrimaryRoutes(aRouterID)
@@ -579,8 +579,8 @@ func TestMultipleRoutesPerUser(t *testing.T) {
 func TestIPv6Routes(t *testing.T) {
 	srv := servertest.NewServer(t)
 
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
 
 	aRouter := servertest.NewClient(t, srv, "a-r6", servertest.WithUser(userA))
 	aNode := servertest.NewClient(t, srv, "a-node6", servertest.WithUser(userA))
@@ -613,7 +613,7 @@ func TestIPv6Routes(t *testing.T) {
 	// Cross-user IPv6 isolated
 	routes = srv.State().RoutesForPeer(aNodeView, bRouterView, aMatchers)
 	require.False(t, slices.Contains(routes, v6B),
-		"a-node should NOT see b-router's IPv6 route (cross-tenant), got %v", routes)
+		"a-node should NOT see b-router's IPv6 route (cross-user), got %v", routes)
 
 	// Primary election works for IPv6
 	primaries := srv.State().GetNodePrimaryRoutes(aRouterID)
@@ -626,8 +626,8 @@ func TestIPv6Routes(t *testing.T) {
 func TestRouteOverlap(t *testing.T) {
 	srv := servertest.NewServer(t)
 
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
 
 	aRouter := servertest.NewClient(t, srv, "a-super", servertest.WithUser(userA))
 	aNode := servertest.NewClient(t, srv, "a-n", servertest.WithUser(userA))
@@ -660,7 +660,7 @@ func TestRouteOverlap(t *testing.T) {
 	// A does NOT see B's subnet (different user, even though it's inside the supernet)
 	routes = srv.State().RoutesForPeer(aNodeView, bRouterView, aMatchers)
 	require.False(t, slices.Contains(routes, subnet),
-		"A should NOT see B's subnet route (cross-tenant), got %v", routes)
+		"A should NOT see B's subnet route (cross-user), got %v", routes)
 
 	// Primary election is per-user, per-prefix — independent
 	aPrimaries := srv.State().GetNodePrimaryRoutes(aRouterID)
@@ -673,7 +673,7 @@ func TestRouteOverlap(t *testing.T) {
 // is removed from the primary set and a healthy node (if any) takes over.
 func TestOfflineNodeLosesPrimary(t *testing.T) {
 	srv := servertest.NewServer(t)
-	user := srv.CreateUser(t, "tenant")
+	user := srv.CreateUser(t, "user")
 
 	r1 := servertest.NewClient(t, srv, "r1", servertest.WithUser(user))
 	r2 := servertest.NewClient(t, srv, "r2", servertest.WithUser(user))
@@ -707,8 +707,8 @@ func TestOfflineNodeLosesPrimary(t *testing.T) {
 func TestCrossUserHAPairs(t *testing.T) {
 	srv := servertest.NewServer(t)
 
-	userA := srv.CreateUser(t, "tenant-a")
-	userB := srv.CreateUser(t, "tenant-b")
+	userA := srv.CreateUser(t, "user-a")
+	userB := srv.CreateUser(t, "user-b")
 
 	aR1 := servertest.NewClient(t, srv, "a-r1", servertest.WithUser(userA))
 	aR2 := servertest.NewClient(t, srv, "a-r2", servertest.WithUser(userA))
@@ -728,11 +728,11 @@ func TestCrossUserHAPairs(t *testing.T) {
 
 	// Each user: lower-ID is primary
 	require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(aR1ID), sameRoute),
-		"a-r1 should be primary in tenant-a")
+		"a-r1 should be primary in user-a")
 	require.False(t, slices.Contains(srv.State().GetNodePrimaryRoutes(aR2ID), sameRoute),
 		"a-r2 should NOT be primary while a-r1 is healthy")
 	require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(bR1ID), sameRoute),
-		"b-r1 should be primary in tenant-b")
+		"b-r1 should be primary in user-b")
 	require.False(t, slices.Contains(srv.State().GetNodePrimaryRoutes(bR2ID), sameRoute),
 		"b-r2 should NOT be primary while b-r1 is healthy")
 
@@ -742,11 +742,11 @@ func TestCrossUserHAPairs(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return slices.Contains(srv.State().GetNodePrimaryRoutes(aR2ID), sameRoute)
 	}, routeIsoTimeout, 200*time.Millisecond,
-		"a-r2 should take over in tenant-a")
+		"a-r2 should take over in user-a")
 
 	// B's primary should be UNCHANGED — b-r1 still primary
 	require.True(t, slices.Contains(srv.State().GetNodePrimaryRoutes(bR1ID), sameRoute),
-		"b-r1 should STILL be primary in tenant-b after A's failover")
+		"b-r1 should STILL be primary in user-b after A's failover")
 	require.False(t, slices.Contains(srv.State().GetNodePrimaryRoutes(bR2ID), sameRoute),
 		"b-r2 should STILL not be primary")
 }

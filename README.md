@@ -81,7 +81,7 @@ documentation for details.
 ## 与上游的差异 (v0.29.0-runyf)
 
 本分支基于 [headscale v0.29.0](https://github.com/juanfont/headscale/releases/tag/v0.29.0)，
-新增 **hs-admin Web 管理后台**所需的数据库扩展和**多租户路由隔离**功能。
+新增 **hs-admin Web 管理后台**所需的数据库扩展和**多用户路由隔离**功能。
 
 ### 数据库变更
 
@@ -104,7 +104,7 @@ documentation for details.
 | `acl` | 存储 ACL 策略（`acl TEXT`, `user_id INTEGER` 外键到 `users`） |
 | `log` | 操作日志（`user_id`, `content`, `created_at`） |
 
-### 多租户路由隔离
+### 多用户路由隔离
 
 相比上游的全局 primary routes，本分支实现了 **Per-User Primary Routes**：
 
