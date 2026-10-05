@@ -40,17 +40,23 @@ func (v *VersionInfo) String() string {
 
 var buildInfo = sync.OnceValues(debug.ReadBuildInfo)
 
-// Version is the upstream headscale release this source tree corresponds to.
-// The panel's Dockerfile injects it at build time (-ldflags -X) from the top
-// entry of CHANGELOG.md. It is empty in every other build, where the version
-// keeps coming from [debug.ReadBuildInfo].
+// Version, Commit and BuildTime are filled in at build time by the panel's
+// Dockerfile (-ldflags -X). Version is the upstream headscale release this
+// source tree corresponds to, taken from the top entry of CHANGELOG.md; the
+// other two identify the panel repository commit the image was built from.
+// They are empty in every other build, where these fields keep coming from
+// [debug.ReadBuildInfo].
 //
 // PATCH: added by Headscale-Admin-Pro. The panel builds this tree in a Docker
 // context with no .git, so the toolchain stamps no vcs.* settings and reports
 // Main.Version as "(devel)" — without an injection the binary answers "dev",
 // and headscale skips its database version gate for dev builds. A conflict
 // here on `git subtree pull` is expected; see headscale/MERGING-UPSTREAM.md.
-var Version = ""
+var (
+	Version   = ""
+	Commit    = ""
+	BuildTime = ""
+)
 
 var GetVersionInfo = sync.OnceValue(func() *VersionInfo {
 	info := &VersionInfo{
@@ -65,20 +71,13 @@ var GetVersionInfo = sync.OnceValue(func() *VersionInfo {
 		Dirty: false,
 	}
 
-	// A version injected at build time wins over anything the toolchain
-	// stamped: a Docker build has no .git, so it is the only source there.
-	if Version != "" {
-		info.Version = Version
-	}
-
 	buildInfo, ok := buildInfo()
 	if !ok {
 		return info
 	}
 
 	// Extract version from module path or main version
-	if Version == "" && buildInfo.Main.Version != "" &&
-		buildInfo.Main.Version != "(devel)" {
+	if buildInfo.Main.Version != "" && buildInfo.Main.Version != "(devel)" {
 		info.Version = buildInfo.Main.Version
 	}
 
@@ -92,6 +91,22 @@ var GetVersionInfo = sync.OnceValue(func() *VersionInfo {
 		case "vcs.time":
 			info.BuildTime = setting.Value
 		}
+	}
+
+	// Values injected at build time win over everything the toolchain
+	// stamped, so this has to come last: a Docker build has no .git and is
+	// therefore the one case where the injections are the only source, but
+	// they must not be overwritten by a vcs.* setting either.
+	if Version != "" {
+		info.Version = Version
+	}
+
+	if Commit != "" {
+		info.Commit = Commit
+	}
+
+	if BuildTime != "" {
+		info.BuildTime = BuildTime
 	}
 
 	return info

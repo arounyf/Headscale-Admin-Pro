@@ -87,11 +87,11 @@ git merge-base hs-admin upstream/main     # 在本地那份 headscale 检出里�
 
 - `headscale/` 自带 `.gitignore`，在里面 `make build` 产生的二进制不会被本仓库
   跟踪，不需要额外加规则。
-- `hscontrol/types/version.go` 是唯一一处**故意**和上游不一样的地方（多了一个
-  `Version` 变量，外加读它的四行）。`git subtree pull` 时它大概率会冲突，解决方式
-  是两边的都要：上游的 `debug.ReadBuildInfo` 逻辑留着，`Version` 那几行也留着，
-  别为了消冲突把注入去掉 —— 去掉之后二进制又变回 `dev`，上面那节说的校验也就
-  跟着失效了，而且不会有任何报错。
+- `hscontrol/types/version.go` 是唯一一处**故意**和上游不一样的地方（多了
+  `Version`/`Commit`/`BuildTime` 三个变量，外加末尾读它们的十来行）。`git subtree pull`
+  时它大概率会冲突，解决方式是两边的都要：上游的 `debug.ReadBuildInfo` 逻辑留着，
+  注入那一段也留着，别为了消冲突把注入去掉 —— 去掉之后二进制又变回 `dev`，上面那节
+  说的校验也就跟着失效了，而且不会有任何报错。
 - `headscale/.github/workflows/` 是**失效的** —— GitHub 只读仓库根目录下的
   `.github/workflows/`。那些工作流（包括原来负责发版的 `build-runyf.yml`）作为
   历史保留，删掉会让以后每次 subtree pull 都冲突，但它们不会运行。本仓库的
@@ -107,12 +107,31 @@ git merge-base hs-admin upstream/main     # 在本地那份 headscale 检出里�
 总会带上）。`headscale/CHANGELOG.md` 被 `.dockerignore` 的 `headscale/**/*.md`
 挡在构建上下文之外，所以那里专门给它开了一条 `!` 例外。
 
+同一处还打了 `Commit` 和 `BuildTime`，值由 `.github/workflows/main.yml` 的
+build-args 传进来（`github.sha` 和构建那一刻的 UTC 时间）—— 上下文里没有 `.git`，
+这两个值 Dockerfile 自己查不出来。直接 `docker build` 不传就是 `unknown`，那是诚实
+的：本地裸构建确实没有一个 commit 可以标定它。所以同一个 commit 在本地构建和在镜像
+里，`headscale version` 的输出会不一样，不是坏了。
+
 之所以非注入不可：构建上下文里没有 `.git`（`.dockerignore:8` 排掉了），Go 的 VCS
-stamping 什么都拿不到，`debug.ReadBuildInfo()` 只报 `(devel)`，二进制于是自称 `dev`。
-`CHANGELOG.md` 里那个数字如果没取到，`test -n` 会让构建直接失败；`-X` 打不中的话
-链接器是**静默忽略**的（`Makefile:45` 就有一个这样的死参数），所以构建的最后一步是
-`test "$(/headscale version | head -1)" = "headscale version v$VERSION"` —— 自检不过
-镜像就出不来，不会悄悄退回 `dev`。
+stamping 什么都拿不到，`debug.ReadBuildInfo()` 只报 `(devel)`，二进制于是自称 `dev`、
+commit 和 build time 都是 `unknown`。
+
+三个值任一没取到（`CHANGELOG.md` 里那个数字缺失、build-arg 是空的），`test -n` 会让
+构建直接失败。剩下的风险是 `-X` **打不中符号**：链接器对此是静默忽略的，`Makefile:45`
+就有一个这样的死参数，实测把包路径打错一位，构建照样成功、二进制照样自称 `dev`。
+所以构建末尾拿产物对了三行：
+
+```sh
+/headscale version > /tmp/stamp
+grep -qx "headscale version v$VERSION" /tmp/stamp
+grep -qx "commit: $HS_COMMIT"          /tmp/stamp
+grep -qx "build time: $HS_BUILD_TIME"  /tmp/stamp
+```
+
+对不上镜像就出不来。**改 `version.go` 里那几个变量名或包路径时，这三行是唯一会
+告诉你打歪了的东西** —— 去掉它们，失败会退回成「镜像里的二进制自称 dev」这个本来
+要修的状态，而且没有任何报错。
 
 ### 这个数字会打开 headscale 的数据库版本校验
 

@@ -17,6 +17,12 @@ RUN go mod download
 
 COPY headscale/ ./
 
+# 二进制要报的 commit 和 build time。CI（.github/workflows/main.yml）从
+# github.sha 和构建那一刻取；直接 docker build 不传就是 unknown —— 构建上下文
+# 里没有 .git，没得可查，unknown 是诚实的答案。
+ARG HS_COMMIT=unknown
+ARG HS_BUILD_TIME=unknown
+
 # 参数 -s -w 与 headscale/.github/workflows/build-runyf.yml 里原来的发布构建一致。
 # 那个 workflow 在面板仓库里是失效的（GitHub 只读仓库根目录的
 # .github/workflows/），留着只是为了以后 subtree pull 上游时不冲突。
@@ -24,19 +30,27 @@ COPY headscale/ ./
 # 版本号继承上游：CHANGELOG.md 顶部那个 `## x.y.z` 就是上游最新一次发布，
 # `git subtree pull` 之后它自动就是对的，没有需要手工维护的版本号。
 #
-# 非用 -ldflags 打进去不可：构建上下文里没有 .git（.dockerignore 排掉了），
+# 这三个值非用 -ldflags 打进去不可：构建上下文里没有 .git（.dockerignore 排掉了），
 # Go 的 VCS stamping 什么都拿不到，ReadBuildInfo 只报 (devel)，二进制于是
-# 自称 dev，而 headscale 对 dev 是跳过数据库版本校验的 —— 那道校验会一直睡着。
+# 自称 dev、commit 和 build time 都是 unknown，而 headscale 对 dev 是跳过数据库
+# 版本校验的 —— 那道校验会一直睡着。
 #
-# 最后一行是自检。链接器对打不中的 -X 是静默忽略的（headscale 的 Makefile:45
-# 就有一个这样的死参数），不验一下就会悄悄退回「镜像里的二进制自称 dev」。
+# 末尾三行 grep 是自检。链接器对打不中的 -X 是静默忽略的（headscale 的
+# Makefile:45 就有一个这样的死参数），不验一下就会悄悄退回「镜像里的二进制
+# 自称 dev」。用 -x 而不是 -q，免得 commit 那种短值匹配到别的行上去。
 RUN VERSION=$(sed -nE 's/^## ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CHANGELOG.md | head -1) \
     && test -n "$VERSION" \
-    && echo "headscale upstream version: v$VERSION" \
+    && test -n "$HS_COMMIT" \
+    && test -n "$HS_BUILD_TIME" \
+    && PKG=github.com/juanfont/headscale/hscontrol/types \
+    && echo "headscale v$VERSION, commit $HS_COMMIT, built $HS_BUILD_TIME" \
     && CGO_ENABLED=0 go build \
-        -ldflags="-s -w -X github.com/juanfont/headscale/hscontrol/types.Version=v$VERSION" \
+        -ldflags="-s -w -X $PKG.Version=v$VERSION -X $PKG.Commit=$HS_COMMIT -X $PKG.BuildTime=$HS_BUILD_TIME" \
         -o /headscale ./cmd/headscale \
-    && test "$(/headscale version | head -1)" = "headscale version v$VERSION"
+    && /headscale version > /tmp/stamp \
+    && grep -qx "headscale version v$VERSION" /tmp/stamp \
+    && grep -qx "commit: $HS_COMMIT" /tmp/stamp \
+    && grep -qx "build time: $HS_BUILD_TIME" /tmp/stamp
 
 # 第二阶段：构建阶段
 FROM ubuntu:24.04 AS builder

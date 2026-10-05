@@ -60,10 +60,20 @@ jobs:
             echo "stable=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Record build timestamp
+        id: stamp
+        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
+          # 构建上下文里没有 .git（.dockerignore 排掉了），Dockerfile 查不到
+          # 这两个值，只能从这里传。不传的话镜像里的 headscale 会报
+          # commit/build time 为 unknown。
+          build-args: |
+            HS_COMMIT=${{ github.sha }}
+            HS_BUILD_TIME=${{ steps.stamp.outputs.time }}
           push: ${{ github.ref_type == 'tag' }}
           # 这里原来是 no-cache + 每次变化的 CACHE_BUST，用来逼 wget 那层
           # 重新下载二进制。二进制现在由 headscale/ 源码构建，no-cache 只会让
