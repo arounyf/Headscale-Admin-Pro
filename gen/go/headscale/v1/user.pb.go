@@ -123,11 +123,30 @@ func (x *User) GetProfilePicUrl() string {
 }
 
 type CreateUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	PictureUrl    string                 `protobuf:"bytes,4,opt,name=picture_url,json=pictureUrl,proto3" json:"picture_url,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	DisplayName string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Email       string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	PictureUrl  string                 `protobuf:"bytes,4,opt,name=picture_url,json=pictureUrl,proto3" json:"picture_url,omitempty"`
+	// hs-admin panel columns on the users table. headscale does not interpret
+	// any of these values; they are written to the matching columns verbatim
+	// in the same transaction as the user row (see hscontrol/state). Leave them
+	// unset and nothing is written, which is what CLI and OIDC callers do.
+	//
+	// They are all strings on purpose: the columns are TEXT/DATETIME declared
+	// outside the GORM model and the panel owns their encoding.
+	Password  string `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
+	Expire    string `protobuf:"bytes,6,opt,name=expire,proto3" json:"expire,omitempty"`
+	Cellphone string `protobuf:"bytes,7,opt,name=cellphone,proto3" json:"cellphone,omitempty"`
+	Role      string `protobuf:"bytes,8,opt,name=role,proto3" json:"role,omitempty"`
+	Enable    string `protobuf:"bytes,9,opt,name=enable,proto3" json:"enable,omitempty"`
+	Route     string `protobuf:"bytes,10,opt,name=route,proto3" json:"route,omitempty"`
+	Node      string `protobuf:"bytes,11,opt,name=node,proto3" json:"node,omitempty"`
+	// created_at/updated_at override the timestamps GORM would write. The panel
+	// stores them in its own local-time format and renders them verbatim, so it
+	// has to keep supplying them or the dates it shows would shift.
+	CreatedAt     string `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -186,6 +205,69 @@ func (x *CreateUserRequest) GetEmail() string {
 func (x *CreateUserRequest) GetPictureUrl() string {
 	if x != nil {
 		return x.PictureUrl
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetExpire() string {
+	if x != nil {
+		return x.Expire
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetCellphone() string {
+	if x != nil {
+		return x.Cellphone
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetEnable() string {
+	if x != nil {
+		return x.Enable
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetRoute() string {
+	if x != nil {
+		return x.Route
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetNode() string {
+	if x != nil {
+		return x.Node
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
 	}
 	return ""
 }
@@ -529,13 +611,25 @@ const file_headscale_v1_user_proto_rawDesc = "" +
 	"\vprovider_id\x18\x06 \x01(\tR\n" +
 	"providerId\x12\x1a\n" +
 	"\bprovider\x18\a \x01(\tR\bprovider\x12&\n" +
-	"\x0fprofile_pic_url\x18\b \x01(\tR\rprofilePicUrl\"\x81\x01\n" +
+	"\x0fprofile_pic_url\x18\b \x01(\tR\rprofilePicUrl\"\xe7\x02\n" +
 	"\x11CreateUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1f\n" +
 	"\vpicture_url\x18\x04 \x01(\tR\n" +
-	"pictureUrl\"<\n" +
+	"pictureUrl\x12\x1a\n" +
+	"\bpassword\x18\x05 \x01(\tR\bpassword\x12\x16\n" +
+	"\x06expire\x18\x06 \x01(\tR\x06expire\x12\x1c\n" +
+	"\tcellphone\x18\a \x01(\tR\tcellphone\x12\x12\n" +
+	"\x04role\x18\b \x01(\tR\x04role\x12\x16\n" +
+	"\x06enable\x18\t \x01(\tR\x06enable\x12\x14\n" +
+	"\x05route\x18\n" +
+	" \x01(\tR\x05route\x12\x12\n" +
+	"\x04node\x18\v \x01(\tR\x04node\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\f \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\tR\tupdatedAt\"<\n" +
 	"\x12CreateUserResponse\x12&\n" +
 	"\x04user\x18\x01 \x01(\v2\x12.headscale.v1.UserR\x04user\"E\n" +
 	"\x11RenameUserRequest\x12\x15\n" +

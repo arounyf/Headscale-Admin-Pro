@@ -20,6 +20,27 @@ message CreateUserRequest {
   string display_name = 2;
   string email = 3;
   string picture_url = 4;
+
+  // hs-admin panel columns on the users table. headscale does not interpret
+  // any of these values; they are written to the matching columns verbatim
+  // in the same transaction as the user row (see hscontrol/state). Leave them
+  // unset and nothing is written, which is what CLI and OIDC callers do.
+  //
+  // They are all strings on purpose: the columns are TEXT/DATETIME declared
+  // outside the GORM model and the panel owns their encoding.
+  string password = 5;
+  string expire = 6;
+  string cellphone = 7;
+  string role = 8;
+  string enable = 9;
+  string route = 10;
+  string node = 11;
+
+  // created_at/updated_at override the timestamps GORM would write. The panel
+  // stores them in its own local-time format and renders them verbatim, so it
+  // has to keep supplying them or the dates it shows would shift.
+  string created_at = 12;
+  string updated_at = 13;
 }
 
 message CreateUserResponse { User user = 1; }

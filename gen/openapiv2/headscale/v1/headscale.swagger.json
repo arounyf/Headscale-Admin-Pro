@@ -1151,6 +1151,35 @@
         },
         "pictureUrl": {
           "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "description": "hs-admin panel columns on the users table. headscale does not interpret\nany of these values; they are written to the matching columns verbatim\nin the same transaction as the user row (see hscontrol/state). Leave them\nunset and nothing is written, which is what CLI and OIDC callers do.\n\nThey are all strings on purpose: the columns are TEXT/DATETIME declared\noutside the GORM model and the panel owns their encoding."
+        },
+        "expire": {
+          "type": "string"
+        },
+        "cellphone": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "enable": {
+          "type": "string"
+        },
+        "route": {
+          "type": "string"
+        },
+        "node": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "created_at/updated_at override the timestamps GORM would write. The panel\nstores them in its own local-time format and renders them verbatim, so it\nhas to keep supplying them or the dates it shows would shift."
+        },
+        "updatedAt": {
+          "type": "string"
         }
       }
     },
