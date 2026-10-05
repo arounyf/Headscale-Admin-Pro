@@ -36,8 +36,10 @@ jobs:
           LC_ALL: "en_US.UTF-8"
           LC_CTYPE: "en_US.UTF-8"
         # See .github/workflows/test.yml: hscontrol/servertest needs more than
-        # go test's 10m per-package default on a 4 vCPU runner.
-        run: nix develop --command -- gotestsum -- -timeout=30m
+        # go test's 10m per-package default on a 4 vCPU runner. The ./... is
+        # required — arguments after -- replace the default package list, and
+        # without it this tests only the root package, which has none.
+        run: nix develop --command -- gotestsum -- -timeout=30m ./...
 
   binary:
     runs-on: ubuntu-latest

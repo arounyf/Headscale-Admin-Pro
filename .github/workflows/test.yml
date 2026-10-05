@@ -63,4 +63,9 @@ jobs:
         # 508s for the same package upstream, whose CI passes with only 92s to
         # spare. The extra time is this fork's own isolation tests. Raising the
         # ceiling keeps the suite running rather than losing the coverage.
-        run: nix develop --command -- gotestsum -- -timeout=30m
+        #
+        # The ./... is load-bearing. Anything after gotestsum's -- replaces the
+        # default package list rather than adding to it, so dropping ./... makes
+        # this run `go test .` — the root package, which holds no tests. The
+        # step then reports success having run nothing.
+        run: nix develop --command -- gotestsum -- -timeout=30m ./...
