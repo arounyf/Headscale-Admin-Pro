@@ -668,3 +668,91 @@ func TestUpdatePolicyManagerUsersUnchangedKeepsSnapshot(t *testing.T) {
 	require.NotSame(t, before, s.nodeStore.data.Load(),
 		"a user change must rebuild the peer map")
 }
+
+// TestCreateUserWithAdminFields covers the hs-admin panel columns: they are
+// written in the same transaction as the user row, and they stay NULL when the
+// caller (CLI, OIDC) does not supply them.
+//
+// The columns are read back with an explicit CAST because they are declared
+// outside the GORM model and the panel owns their encoding; the test asserts
+// the exact bytes stored, not a Go type mapping.
+func TestCreateUserWithAdminFields(t *testing.T) {
+	_, s, _ := persistTestSetup(t)
+	t.Cleanup(func() { _ = s.Close() })
+
+	admin := types.UserAdminFields{
+		Password:  "scrypt:32768:8:1$salt$hash",
+		Expire:    "2026-10-05 12:34:56.789012",
+		Cellphone: "13800000000",
+		Role:      "user",
+		Enable:    "1",
+		Route:     "0",
+		Node:      "5",
+		CreatedAt: "2026-10-05 12:34:56.789012",
+		UpdatedAt: "2026-10-05 12:34:56.789012",
+	}
+
+	_, _, err := s.CreateUser(types.User{Name: "panel-user"}, admin)
+	require.NoError(t, err)
+
+	readAdminFields := func(name string) types.UserAdminFields {
+		t.Helper()
+
+		var got types.UserAdminFields
+
+		require.NoError(t, s.db.DB.Raw(
+			`SELECT CAST(password AS TEXT) AS password, CAST(expire AS TEXT) AS expire,
+			        CAST(cellphone AS TEXT) AS cellphone, CAST(role AS TEXT) AS role,
+			        CAST(enable AS TEXT) AS enable, CAST(route AS TEXT) AS route,
+			        CAST(node AS TEXT) AS node, CAST(created_at AS TEXT) AS created_at,
+			        CAST(updated_at AS TEXT) AS updated_at
+			 FROM users WHERE name = ?`, name,
+		).Scan(&got).Error)
+
+		return got
+	}
+
+	require.Equal(t, admin, readAdminFields("panel-user"))
+
+	// A caller that supplies the panel columns but no timestamps must keep the
+	// ones GORM wrote rather than blanking the columns.
+	_, _, err = s.CreateUser(
+		types.User{Name: "no-timestamps"},
+		types.UserAdminFields{Password: "x"},
+	)
+	require.NoError(t, err)
+	require.NotEmpty(t, readAdminFields("no-timestamps").CreatedAt,
+		"an unset CreatedAt must not blank the column")
+
+	_, _, err = s.CreateUser(types.User{Name: "plain-user"})
+	require.NoError(t, err)
+
+	plain := readAdminFields("plain-user")
+	require.Equal(t,
+		types.UserAdminFields{CreatedAt: plain.CreatedAt, UpdatedAt: plain.UpdatedAt},
+		plain,
+		"omitting the admin fields must leave the panel columns NULL")
+	require.NotEmpty(t, plain.CreatedAt, "GORM still owns the timestamps")
+}
+
+// TestCreateUserAdminFieldsRollBack covers the failure that used to leave a
+// user behind with a NULL password: if writing the panel columns fails, the
+// user row must not survive.
+func TestCreateUserAdminFieldsRollBack(t *testing.T) {
+	_, s, _ := persistTestSetup(t)
+	t.Cleanup(func() { _ = s.Close() })
+
+	require.NoError(t, s.db.DB.Exec("ALTER TABLE users DROP COLUMN password").Error)
+
+	_, _, err := s.CreateUser(
+		types.User{Name: "doomed-user"},
+		types.UserAdminFields{Password: "x"},
+	)
+	require.Error(t, err, "the panel-column write must fail once the column is gone")
+
+	var count int64
+	require.NoError(t, s.db.DB.Raw(
+		"SELECT COUNT(*) FROM users WHERE name = ?", "doomed-user",
+	).Scan(&count).Error)
+	require.Zero(t, count, "a failed panel-column write must roll the user row back")
+}

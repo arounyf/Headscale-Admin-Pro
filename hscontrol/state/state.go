@@ -398,9 +398,27 @@ func (s *State) ReloadPolicy() ([]change.Change, error) {
 
 // CreateUser creates a new user and updates the policy manager.
 // Returns the created user, change set, and any error.
-func (s *State) CreateUser(user types.User) (*types.User, change.Change, error) {
-	if err := s.db.DB.Save(&user).Error; err != nil { //nolint:noinlineerr
-		return nil, change.Change{}, fmt.Errorf("creating user: %w", err)
+//
+// admin optionally carries the hs-admin panel's extra users-table columns. It
+// is written in the same transaction as the user row, so a caller that needs
+// both can never leave a user behind without them. Callers that have no such
+// fields (CLI, OIDC) simply omit the argument.
+func (s *State) CreateUser(user types.User, admin ...types.UserAdminFields) (*types.User, change.Change, error) {
+	user, err := hsdb.Write(s.db.DB, func(tx *gorm.DB) (types.User, error) {
+		if err := tx.Save(&user).Error; err != nil { //nolint:noinlineerr
+			return types.User{}, fmt.Errorf("creating user: %w", err)
+		}
+
+		if len(admin) > 0 && admin[0] != (types.UserAdminFields{}) {
+			if err := setUserAdminFields(tx, user.ID, admin[0]); err != nil {
+				return types.User{}, err
+			}
+		}
+
+		return user, nil
+	})
+	if err != nil {
+		return nil, change.Change{}, err
 	}
 
 	// Check if policy manager needs updating
@@ -422,6 +440,40 @@ func (s *State) CreateUser(user types.User) (*types.User, change.Change, error) 
 	log.Info().Str(zf.UserName, user.Name).Msg("user created")
 
 	return &user, c, nil
+}
+
+// setUserAdminFields writes the hs-admin panel columns of a users row. It has
+// to be raw SQL: those columns are intentionally absent from types.User, so
+// GORM's Save cannot reach them (see usersCustomColumns in hscontrol/db).
+//
+// The two timestamps are only written when set, so a caller that supplies the
+// panel columns but no timestamps keeps the ones GORM just wrote instead of
+// blanking them.
+func setUserAdminFields(tx *gorm.DB, id uint, f types.UserAdminFields) error {
+	assignments := []string{
+		"password = ?", "expire = ?", "cellphone = ?", "role = ?",
+		"enable = ?", "route = ?", "node = ?",
+	}
+	args := []any{f.Password, f.Expire, f.Cellphone, f.Role, f.Enable, f.Route, f.Node}
+
+	if f.CreatedAt != "" {
+		assignments = append(assignments, "created_at = ?")
+		args = append(args, f.CreatedAt)
+	}
+
+	if f.UpdatedAt != "" {
+		assignments = append(assignments, "updated_at = ?")
+		args = append(args, f.UpdatedAt)
+	}
+
+	query := "UPDATE users SET " + strings.Join(assignments, ", ") + " WHERE id = ?"
+	args = append(args, id)
+
+	if err := tx.Exec(query, args...).Error; err != nil {
+		return fmt.Errorf("setting user admin fields: %w", err)
+	}
+
+	return nil
 }
 
 // UpdateUser modifies an existing user using the provided update function within a transaction.

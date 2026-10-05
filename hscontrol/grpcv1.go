@@ -54,7 +54,23 @@ func (api headscaleV1APIServer) CreateUser(
 		Email:         request.GetEmail(),
 		ProfilePicURL: request.GetPictureUrl(),
 	}
-	user, policyChanged, err := api.h.state.CreateUser(newUser)
+
+	// The hs-admin panel passes its extra users-table columns through here so
+	// that creating a user and giving it a password happen in one transaction.
+	// Other callers leave them all unset and nothing extra is written.
+	admin := types.UserAdminFields{
+		Password:  request.GetPassword(),
+		Expire:    request.GetExpire(),
+		Cellphone: request.GetCellphone(),
+		Role:      request.GetRole(),
+		Enable:    request.GetEnable(),
+		Route:     request.GetRoute(),
+		Node:      request.GetNode(),
+		CreatedAt: request.GetCreatedAt(),
+		UpdatedAt: request.GetUpdatedAt(),
+	}
+
+	user, policyChanged, err := api.h.state.CreateUser(newUser, admin)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "creating user: %s", err)
 	}

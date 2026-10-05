@@ -97,6 +97,29 @@ type User struct {
 	ProfilePicURL string
 }
 
+// UserAdminFields carries the hs-admin panel's extra columns on the users
+// table. They are deliberately not fields on [User]: the columns are declared
+// outside the GORM model (see usersCustomColumns in hscontrol/db), so
+// AutoMigrate must never learn about them.
+//
+// headscale does not interpret any of these values; they are written verbatim
+// to the matching column. All of them are strings because the panel owns the
+// encoding. The zero value means "unset" and causes no write.
+type UserAdminFields struct {
+	Password  string
+	Expire    string
+	Cellphone string
+	Role      string
+	Enable    string
+	Route     string
+	Node      string
+
+	// CreatedAt/UpdatedAt override what GORM would write. The panel renders
+	// these columns verbatim, so it keeps supplying them in its own format.
+	CreatedAt string
+	UpdatedAt string
+}
+
 func (u *User) StringID() string {
 	if u == nil {
 		return ""
