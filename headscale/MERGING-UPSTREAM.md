@@ -167,6 +167,26 @@ grep -qx "build time: $HS_BUILD_TIME"  /tmp/stamp
 本仓库只有一条版本线：面板的 `v5.x`。镜像里内置的 headscale 版本号继承上游
 （见上一节），不再单独给 headscale 打 tag。
 
+面板的每个 Release 会附上镜像里那个 headscale 二进制，名字就叫 `headscale`，
+下载路径 `releases/download/<tag>/headscale`。这是 `arounyf/headscale` 归档之后
+补上的：以前那个路径是 `releases/download/v0.29.4-hs/headscale`，文档里引它的地方
+现在会走到一个不再更新的仓库。
+
+这份资产不是 workflow 里另写一段 `go build` 编出来的，而是从 `Dockerfile` 的
+`hs-builder` 阶段直接导出（`--target hs-binary --output type=local`）——
+
+```sh
+docker buildx build --target hs-binary --output type=local,dest=dist .
+```
+
+——所以版本号取自 CHANGELOG、三个 `-ldflags -X`、末尾三行自检仍然只有一处定义，
+发出去的二进制和镜像里跑的必然是同一个构建。改 `hs-builder` 那一段时，Release
+资产会跟着一起变，不会有第二处需要同步的地方。
+
+两个约束：`hs-binary` 那个 `FROM scratch` 阶段**必须留在面板镜像阶段之前**，
+Dockerfile 的最后一个 `FROM` 才是默认构建目标；导出的是 runner 架构
+（CI 上是 linux/amd64），镜像本身也没做多架构。
+
 `arounyf/headscale` 已归档（GitHub 的 archive，只读），`hs-admin` 停在 `ec80ab63`
 —— 与这棵子树加入时的内容一致。它的 `v0.29.4-hs` release 资产原地不动，还在引用
 那个下载 URL 的旧文档不会 404（归档后实测该 URL 仍 302 到 CDN 并返回 200）；但新的

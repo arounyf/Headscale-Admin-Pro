@@ -325,10 +325,11 @@ Key reminders:
 - **Release tags**: retired. The `v{upstream}-hs` scheme and the
   `build-runyf.yml` workflow that produced
   `/releases/download/v0.29.4-hs/headscale` belonged to the standalone
-  `arounyf/headscale` repo. This tree no longer publishes binaries —
-  the panel's `v5.x` line is the only version line, and the headscale
-  binary is built from this source by `Headscale-Admin-Pro`'s
-  `Dockerfile`. See [`MERGING-UPSTREAM.md`](MERGING-UPSTREAM.md).
+  `arounyf/headscale` repo. This tree publishes no releases of its own —
+  the panel's `v5.x` line is the only version line. The headscale binary
+  is built from this source by `Headscale-Admin-Pro`'s `Dockerfile`, and
+  attached as an asset to each panel release. See
+  [`MERGING-UPSTREAM.md`](MERGING-UPSTREAM.md).
   (`headscale/.github/workflows/` is inert here in any case: GitHub only
   reads the repository-root `.github/workflows/`.)
 

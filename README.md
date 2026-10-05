@@ -75,7 +75,9 @@ v5.4.1 起 headscale 源码以 `git subtree` 并入本仓库的 [`headscale/`](h
 二进制由 `Dockerfile` 从这棵树直接构建，两者永远出自同一个 commit。**版本号继承上游**：
 构建时从 `headscale/CHANGELOG.md` 顶部取上游最新一次发布的 `x.y.z`，缀上 `-hs`
 打进二进制，`git subtree pull` 之后自动就是对的，没有需要手工维护的数字，面板「关于」
-里那一行显示的就是它（例如 `headscale v0.29.4-hs`）。上游怎么同步、改 headscale 代码时要注意什么，见
+里那一行显示的就是它（例如 `headscale v0.29.4-hs`）。每个 Release 也会附上这个二进制
+本身（`releases/download/<tag>/headscale`，linux/amd64），和镜像里跑的是同一个构建。
+上游怎么同步、改 headscale 代码时要注意什么，见
 [`headscale/MERGING-UPSTREAM.md`](headscale/MERGING-UPSTREAM.md)。
 
 # 如何升级
