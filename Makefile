@@ -45,10 +45,13 @@ build: check-deps $(GO_SOURCES) go.mod go.sum
 	go build $(PIE_FLAGS) -ldflags "-X main.version=$(VERSION)" -o headscale ./cmd/headscale
 
 # Test targets
+# go test defaults to a 10m timeout per package, and hscontrol/servertest
+# already exceeds that here (639s on 4 cores without -race, more with it).
+# CI raises the ceiling the same way; see .github/workflows/test.yml.
 .PHONY: test
 test: check-deps $(GO_SOURCES) go.mod go.sum
 	@echo "Running Go tests..."
-	go test -race ./...
+	go test -timeout=30m -race ./...
 
 
 # Formatting targets

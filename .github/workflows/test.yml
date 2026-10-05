@@ -52,4 +52,9 @@ jobs:
           # some of the database migration tests.
           LC_ALL: "en_US.UTF-8"
           LC_CTYPE: "en_US.UTF-8"
-        run: nix develop --command -- gotestsum
+        # go test's default timeout is 10m per package, and hscontrol/servertest
+        # does not fit in it on a 4 vCPU runner: measured 639s here against
+        # 508s for the same package upstream, whose CI passes with only 92s to
+        # spare. The extra time is this fork's own isolation tests. Raising the
+        # ceiling keeps the suite running rather than losing the coverage.
+        run: nix develop --command -- gotestsum -- -timeout=30m
