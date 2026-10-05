@@ -17,8 +17,8 @@ class RegisterForm(wtforms.Form):
             DataRequired(message='用户名不能为空'),
             Length(min=3, max=20, message='用户名长度需在3 - 20位之间'),
             Regexp(
-                regex=r'^[a-zA-Z][a-zA-Z0-9]*$',
-                message='用户名必须以字母开头，且只能包含字母和数字'
+                regex=r'^[a-zA-Z][a-zA-Z0-9-]*$',
+                message='用户名必须以字母开头，且只能包含字母、数字和连字符'
             )
         ]
     )
