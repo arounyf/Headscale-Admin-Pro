@@ -79,7 +79,15 @@ type PolicyManager struct {
 	// (grant index, user ID). Same-user nodes share identical expansion
 	// — this avoids redundant nested-loop work. Cleared on policy reload;
 	// selectively invalidated on node changes for affected users.
-	autogroupSelfCache map[autogroupSelfCacheKey][]tailcfg.FilterRule
+	//
+	// An xsync.Map, like the per-node caches above, because it is read AND
+	// filled under pm.mu's read lock: a plain map here is a concurrent map
+	// write as soon as two nodes of the same user are built at once, which
+	// the Go runtime turns into an unrecoverable fatal error.
+	//
+	// Must be initialised by [NewPolicyManager] — the xsync.Map zero value
+	// dereferences a nil table and therefore panics.
+	autogroupSelfCache *xsync.Map[autogroupSelfCacheKey, []tailcfg.FilterRule]
 
 	// needsPerNodeFilter is true when any compiled grant requires
 	// per-node work (autogroup:self or via grants).
@@ -210,6 +218,7 @@ func NewPolicyManager(b []byte, users []types.User, nodes views.Slice[types.Node
 		sshPolicyMap:       xsync.NewMap[types.NodeID, *tailcfg.SSHPolicy](),
 		filterRulesMap:     xsync.NewMap[types.NodeID, []tailcfg.FilterRule](),
 		matchersForNodeMap: xsync.NewMap[types.NodeID, []matcher.Match](),
+		autogroupSelfCache: xsync.NewMap[autogroupSelfCacheKey, []tailcfg.FilterRule](),
 	}
 
 	_, err = pm.updateLocked()
@@ -240,7 +249,7 @@ func (pm *PolicyManager) updateLocked() (bool, error) {
 	// Compile all grants once. Both global and per-node filter
 	// rules are derived from these compiled grants.
 	pm.compiledGrants = pm.pol.compileGrants(pm.users, pm.nodes)
-	clear(pm.autogroupSelfCache)
+	pm.autogroupSelfCache.Clear()
 	pm.userNodeIdx = buildUserNodeIndex(pm.nodes)
 	pm.needsPerNodeFilter = hasPerNodeGrants(pm.compiledGrants)
 	pm.viaTargetTags = collectViaTargetTags(pm.compiledGrants)
@@ -368,7 +377,7 @@ func (pm *PolicyManager) updateLocked() (bool, error) {
 		pm.sshPolicyMap.Clear()
 		pm.filterRulesMap.Clear()
 		pm.matchersForNodeMap.Clear()
-		clear(pm.autogroupSelfCache)
+		pm.autogroupSelfCache.Clear()
 	}
 
 	// If nothing changed, no need to update nodes
@@ -758,10 +767,6 @@ func (pm *PolicyManager) BuildPeerMap(nodes views.Slice[types.NodeView]) map[typ
 func (pm *PolicyManager) filterRulesForNodeLocked(
 	node types.NodeView,
 ) []tailcfg.FilterRule {
-	if pm.autogroupSelfCache == nil {
-		pm.autogroupSelfCache = make(map[autogroupSelfCacheKey][]tailcfg.FilterRule)
-	}
-
 	// Tagged nodes don't participate in autogroup:self.
 	if node.IsTagged() {
 		var rules []tailcfg.FilterRule
@@ -790,13 +795,17 @@ func (pm *PolicyManager) filterRulesForNodeLocked(
 		case grantCategoryRegular:
 		case grantCategorySelf:
 			key := autogroupSelfCacheKey{grantIdx: i, userID: uid}
-			if cached, ok := pm.autogroupSelfCache[key]; ok {
-				rules = append(rules, cached...)
-			} else {
-				expanded := compileAutogroupSelf(cg, node, pm.userNodeIdx)
-				pm.autogroupSelfCache[key] = expanded
-				rules = append(rules, expanded...)
-			}
+			// LoadOrCompute keeps the check-then-write atomic: this runs
+			// under the read lock, so a plain load-then-store would be a
+			// concurrent map write once two nodes of the same user are
+			// built at the same time.
+			expanded, _ := pm.autogroupSelfCache.LoadOrCompute(
+				key,
+				func() ([]tailcfg.FilterRule, bool) {
+					return compileAutogroupSelf(cg, node, pm.userNodeIdx), false
+				},
+			)
+			rules = append(rules, expanded...)
 		case grantCategoryVia:
 			rules = append(rules, compileViaForNode(cg, node)...)
 		}
@@ -917,7 +926,7 @@ func (pm *PolicyManager) SetUsers(users []types.User) (bool, bool, error) {
 	// SSH policies resolve users by name, so they are recomputed on any
 	// user change.
 	pm.sshPolicyMap.Clear()
-	clear(pm.autogroupSelfCache)
+	pm.autogroupSelfCache.Clear()
 
 	policyChanged, err := pm.updateLocked()
 	if err != nil {
@@ -990,7 +999,7 @@ func (pm *PolicyManager) SetNodes(nodes views.Slice[types.NodeView]) (bool, erro
 			pm.sshPolicyMap.Clear()
 			pm.filterRulesMap.Clear()
 			pm.matchersForNodeMap.Clear()
-			clear(pm.autogroupSelfCache)
+			pm.autogroupSelfCache.Clear()
 		}
 		// Always return true when nodes changed, even if filter hash didn't change
 		// (can happen with autogroup:self or when nodes are added but don't affect rules)
@@ -1684,11 +1693,13 @@ func (pm *PolicyManager) invalidateAutogroupSelfCache(oldNodes, newNodes views.S
 	})
 
 	// Clear per-user autogroup:self expansion cache for affected users
-	for key := range pm.autogroupSelfCache {
-		if _, affected := affectedUsers[key.userID]; affected {
-			delete(pm.autogroupSelfCache, key)
-		}
-	}
+	pm.autogroupSelfCache.DeleteMatching(
+		func(key autogroupSelfCacheKey, _ []tailcfg.FilterRule) (bool, bool) {
+			_, affected := affectedUsers[key.userID]
+
+			return affected, false
+		},
+	)
 
 	if len(affectedUsers) > 0 {
 		log.Debug().

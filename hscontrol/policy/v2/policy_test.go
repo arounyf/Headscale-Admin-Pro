@@ -581,6 +581,7 @@ func TestInvalidateGlobalPolicyCache(t *testing.T) {
 				nodes:              tt.oldNodes.ViewSlice(),
 				filterRulesMap:     xsync.NewMap[types.NodeID, []tailcfg.FilterRule](),
 				matchersForNodeMap: xsync.NewMap[types.NodeID, []matcher.Match](),
+				autogroupSelfCache: xsync.NewMap[autogroupSelfCacheKey, []tailcfg.FilterRule](),
 			}
 			for id, rules := range tt.initialCache {
 				pm.filterRulesMap.Store(id, rules)

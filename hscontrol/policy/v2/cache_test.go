@@ -13,9 +13,9 @@ import (
 	"tailscale.com/types/views"
 )
 
-// newTestPolicyManager wires a PolicyManager for cache tests. The
-// lazily-allocated per-node maps must exist because updateLocked clears
-// them on its first run, and a nil xsync.Map panics on Clear.
+// newTestPolicyManager wires a PolicyManager for cache tests. The xsync
+// maps must exist because updateLocked clears them on its first run, and
+// the xsync.Map zero value panics on Clear.
 func newTestPolicyManager(
 	pol *Policy,
 	users []types.User,
@@ -28,6 +28,7 @@ func newTestPolicyManager(
 		sshPolicyMap:       xsync.NewMap[types.NodeID, *tailcfg.SSHPolicy](),
 		filterRulesMap:     xsync.NewMap[types.NodeID, []tailcfg.FilterRule](),
 		matchersForNodeMap: xsync.NewMap[types.NodeID, []matcher.Match](),
+		autogroupSelfCache: xsync.NewMap[autogroupSelfCacheKey, []tailcfg.FilterRule](),
 	}
 }
 
@@ -52,19 +53,19 @@ func TestAutogroupSelfCache_Hit(t *testing.T) {
 	_, _ = pm.updateLocked()
 
 	r0 := pm.filterRulesForNodeLocked(nodesSlice.At(0))
-	c0 := len(pm.autogroupSelfCache)
+	c0 := pm.autogroupSelfCache.Size()
 	if c0 == 0 {
 		t.Fatal("cache should have entries after first call")
 	}
 
 	pm.filterRulesForNodeLocked(nodesSlice.At(1))
-	c1 := len(pm.autogroupSelfCache)
+	c1 := pm.autogroupSelfCache.Size()
 	if c1 != c0 {
 		t.Errorf("same-user should hit cache: %d != %d", c0, c1)
 	}
 
 	r2 := pm.filterRulesForNodeLocked(nodesSlice.At(2))
-	c2 := len(pm.autogroupSelfCache)
+	c2 := pm.autogroupSelfCache.Size()
 	if c2 != c0 {
 		t.Errorf("same-user should hit cache: %d != %d", c0, c2)
 	}
@@ -97,9 +98,9 @@ func TestAutogroupSelfCache_UserIsolation(t *testing.T) {
 	_, _ = pm.updateLocked()
 
 	pm.filterRulesForNodeLocked(nodesSlice.At(0))
-	c1 := len(pm.autogroupSelfCache)
+	c1 := pm.autogroupSelfCache.Size()
 	pm.filterRulesForNodeLocked(nodesSlice.At(1))
-	c2 := len(pm.autogroupSelfCache)
+	c2 := pm.autogroupSelfCache.Size()
 
 	if c2 <= c1 {
 		t.Errorf("different users should add entries: %d <= %d", c2, c1)
@@ -124,7 +125,7 @@ func TestAutogroupSelfCache_ClearedOnPolicyChange(t *testing.T) {
 	_, _ = pm.updateLocked()
 
 	pm.filterRulesForNodeLocked(nodesSlice.At(0))
-	if len(pm.autogroupSelfCache) == 0 {
+	if pm.autogroupSelfCache.Size() == 0 {
 		t.Fatal("cache should have entries")
 	}
 
@@ -132,8 +133,8 @@ func TestAutogroupSelfCache_ClearedOnPolicyChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pm.autogroupSelfCache) != 0 {
-		t.Errorf("cache should be cleared on policy change, got %d", len(pm.autogroupSelfCache))
+	if pm.autogroupSelfCache.Size() != 0 {
+		t.Errorf("cache should be cleared on policy change, got %d", pm.autogroupSelfCache.Size())
 	}
 	t.Log("PASS: cache cleared on policy change")
 }
@@ -191,7 +192,7 @@ func TestAutogroupSelfCache_Scale(t *testing.T) {
 		_ = pm.filterRulesForNodeLocked(nodesSlice.At(i))
 	}
 
-	entries := len(pm.autogroupSelfCache)
+	entries := pm.autogroupSelfCache.Size()
 	maxExpected := nUsers // one cache entry per user per grant (1 grant here)
 	t.Logf("Cache entries: %d (expected ≤ %d users × 1 grant)", entries, maxExpected)
 

@@ -63,7 +63,8 @@ func TestPolicyManagerConcurrentReads(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Concurrent readers exercise every converted RLock read path, including
-	// the two lazily populated per-node caches. Assertions inside the
+	// the lazily populated per-node caches (filterRulesMap,
+	// matchersForNodeMap, autogroupSelfCache). Assertions inside the
 	// goroutines use assert (not require) so a failure does not call
 	// t.FailNow from a non-test goroutine.
 	for r := range readers {
