@@ -17,6 +17,20 @@ RUN go mod download
 
 COPY headscale/ ./
 
+# 这一层只为把 GOCACHE 填满，产出丢进 /dev/null。它**必须待在下面那两行 ARG 之前**，
+# 因为 BuildKit 会把 ARG 的值算进 RUN 那层的缓存键 —— HS_BUILD_TIME 每次 CI 都不一样，
+# 带 stamp 的那次编译因此永远命不中缓存。实测（2026-10-05）：源码一个字不动、只把
+# HS_BUILD_TIME 挪一秒，上面 `COPY headscale/` 是 CACHED，带 -ldflags 的那次照样
+# 重编 44.7s。
+#
+# 有了这一层，链接那次拿到的是内容寻址的编译缓存：-ldflags 只影响链接，包编译与它
+# 无关。实测 headscale 源码没改时，带 stamp 的那次从 44.7s 降到 2.4s，产物 sha256
+# 与不加这一步逐字节相同；源码改了也只是多这一次暖层（~45s），总代价 +3s 左右。
+#
+# CGO_ENABLED 必须和下面那次显式一致：编译缓存的键含编译环境，不一致就全落空，
+# 变成白编一遍。
+RUN CGO_ENABLED=0 go build -o /dev/null ./cmd/headscale
+
 # 二进制要报的 commit 和 build time。CI（.github/workflows/main.yml）从
 # github.sha 和构建那一刻取；直接 docker build 不传就是 unknown —— 构建上下文
 # 里没有 .git，没得可查，unknown 是诚实的答案。
