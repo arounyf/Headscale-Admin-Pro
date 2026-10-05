@@ -12,12 +12,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      # 下面挂 Release 资产那个 job 要用同一个时刻，否则两边的 build time
-      # 差出一两分钟，同一份代码出来两个不同的二进制。
-      time: ${{ steps.stamp.outputs.time }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,6 +75,10 @@ jobs:
           # 这里原来是 no-cache + 每次变化的 CACHE_BUST，用来逼 wget 那层
           # 重新下载二进制。二进制现在由 headscale/ 源码构建，no-cache 只会让
           # 每次构建都重下一遍三 GB 的 Go 依赖，所以换成 GHA 层缓存。
+          #
+          # mode=max 是必要的：builder 阶段那些 apt/pip 层、以及 hs-builder 的
+          # go mod download 都不是最终镜像的层，不带 max 导出的话每次跑都要重来。
+          # 代价是每次约 29s 的 cache export。
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
@@ -109,41 +107,33 @@ jobs:
           generate_release_notes: true
           prerelease: true
 
-  # 把镜像里那个 headscale 二进制挂到 Release 上（以前是从 arounyf/headscale
-  # 的 release 下载，那条线已经归档）。
-  #
-  # 这里不另写 go build，而是从 Dockerfile 的 hs-builder 阶段导出：版本号取自
-  # CHANGELOG、三个 -ldflags -X 怎么拼、末尾那三行自检，全都还只有一处定义。
-  # 代价是 Go 编译跑第二遍。挂在 build 后面而不是并行，有两个原因：一是
-  # softprops/action-gh-release 在两个 job 里同时创建同一个 Release 会打架；
-  # 二是 build time 必须两边一致，只能把 build 那一步的时间戳传过来。
-  headscale-binary:
-    needs: build
-    if: github.ref_type == 'tag'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build the binary out of the image's builder stage
+      # 把镜像里那个 headscale 二进制挂到 Release 上（以前是从 arounyf/headscale
+      # 的 release 下载，那条线已经归档）。
+      #
+      # 不另写 go build，而是从 Dockerfile 的 hs-builder 阶段导出：版本号取自
+      # CHANGELOG、三个 -ldflags -X 怎么拼、末尾三行自检，全都还只有一处定义，
+      # 发出去的资产不可能和镜像里的二进制走偏。
+      #
+      # 这一步**必须跟在上面的 Build and push 同一个 job 里**，不能拆成第二个
+      # job。拆开的话它是从 GHA 缓存里重新拉层、并且因为 HS_BUILD_TIME 每次都变
+      # 而重编一遍 —— 实测拆成两个 job 时那次多编了 90.5s（v5.4.2-beta 的运行：
+      # build 147.7s + headscale-binary 115.2s）。同一个 job 里 builder 的本地缓存
+      # 是热的，两个 build-arg 又和上面完全一致，所以这一步只是把已经编好的层
+      # 导出成文件。也不必带 cache-from：本地缓存比 GHA 缓存更近。
+      - name: Build the headscale binary out of the same builder stage
+        if: github.ref_type == 'tag'
         uses: docker/build-push-action@v5
         with:
           context: .
           target: hs-binary
           build-args: |
             HS_COMMIT=${{ github.sha }}
-            HS_BUILD_TIME=${{ needs.build.outputs.time }}
+            HS_BUILD_TIME=${{ steps.stamp.outputs.time }}
           outputs: type=local,dest=dist
-          # 只读不写：两个 ARG 都和 build 用的一致，源码也是同一份，所以理论上
-          # 那一步能整层命中上面已经导出的缓存，不用重编。写的话就是两个 job 往
-          # 同一个 scope 导出，白费功夫还可能打架。
-          cache-from: type=gha
 
+      # 放在上面两个 Create Release 之后：release 得先存在，资产才有地方挂。
       - name: Attach it to the release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
