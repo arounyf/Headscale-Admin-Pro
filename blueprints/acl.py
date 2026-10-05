@@ -46,11 +46,18 @@ def _headscale_error(text):
 
     return msg
 
+# ACL 文件读不到时的兜底内容，必须和 init.sh 写下的出厂 acl.hujson 一致。
+# 这里曾经是另一份（没有 group:admin，且把 autogroup:internet 开给
+# autogroup:member），管理员看到兜底内容后随手一存，出口就等于对所有用户
+# 开放了 —— 和出厂默认的「仅管理员」正好相反。
 DEFAULT_ACL = {
-    "randomizeClientPort": False,
+    "randomizeClientPort": True,
+    "groups": {
+        "group:admin": ["admin@"],
+    },
     "acls": [
         {"action": "accept", "src": ["autogroup:member"], "dst": ["autogroup:self:*"]},
-        {"action": "accept", "src": ["autogroup:member"], "dst": ["autogroup:internet:*"]},
+        {"action": "accept", "src": ["group:admin"], "dst": ["autogroup:internet:*"]},
     ],
 }
 
