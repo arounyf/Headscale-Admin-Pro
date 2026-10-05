@@ -180,11 +180,22 @@ def reg():
             enable_val = 0 if str(default_reg_days) == '0' else 1
 
             # headscale用户注册请求参数构建
+            # 面板自有的 users 列随请求一起交给 headscale，与用户行在同一事务里落库：
+            # 要么都写成功，要么都不写，不会再出现「用户建好了、密码没写上」的孤儿账号。
             json_data =  {
               "name": username,
               "displayName": username,
               "email": email,
-              "pictureUrl": "NULL"
+              "pictureUrl": "NULL",
+              "password": password,
+              "expire": expire.isoformat(sep=' '),
+              "cellphone": phone_number,
+              "role": role,
+              "enable": str(enable_val),
+              "route": "0",
+              "node": str(current_app.config['DEFAULT_NODE_COUNT']),
+              "createdAt": create_time.isoformat(sep=' '),
+              "updatedAt": create_time.isoformat(sep=' ')
             }
 
             result_reg = to_request('POST','/api/v1/user',data = json_data)
@@ -198,19 +209,6 @@ def reg():
             else:
                 return res('1', result_reg['msg'])
 
-
-            with SqliteDB() as cursor:
-                update_query = """
-                        UPDATE users
-                        SET password = ?,created_at = ?,updated_at = ?,expire = ?,role = ?,cellphone = ?,node = ?,route = ?,enable = ?
-                        WHERE name = ?
-                    """
-                values = (
-                    password, create_time, create_time, expire, role, phone_number, current_app.config['DEFAULT_NODE_COUNT'], '0',
-                    enable_val, username
-                )
-                cursor.execute(update_query, values)
-
             # 注册完成
 
             # 记录注册IP
@@ -219,11 +217,8 @@ def reg():
             app_ctx = current_app._get_current_object()
             def reg_log():
                 with app_ctx.app_context():
-                    with SqliteDB() as c:
-                        u = c.execute("SELECT id FROM users WHERE name =?", (username,)).fetchone()
-                        if u:
-                            loc = get_ip_location(ip_addr)
-                            record_log(u['id'], f"新用户注册。IP地址：{ip_addr}，位置：{loc}" if loc else f"新用户注册。IP地址：{ip_addr}")
+                    loc = get_ip_location(ip_addr)
+                    record_log(user_id, f"新用户注册。IP地址：{ip_addr}，位置：{loc}" if loc else f"新用户注册。IP地址：{ip_addr}")
             threading.Thread(target=reg_log).start()
 
             return res('0','注册成功','')
