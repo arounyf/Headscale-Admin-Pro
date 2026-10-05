@@ -14,6 +14,9 @@ jobs:
 
     outputs:
       version: ${{ steps.meta.outputs.version }}
+      # 下面挂 Release 资产那个 job 要用同一个时刻，否则两边的 build time
+      # 差出一两分钟，同一份代码出来两个不同的二进制。
+      time: ${{ steps.stamp.outputs.time }}
 
     steps:
       - name: Checkout code
@@ -105,3 +108,43 @@ jobs:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           prerelease: true
+
+  # 把镜像里那个 headscale 二进制挂到 Release 上（以前是从 arounyf/headscale
+  # 的 release 下载，那条线已经归档）。
+  #
+  # 这里不另写 go build，而是从 Dockerfile 的 hs-builder 阶段导出：版本号取自
+  # CHANGELOG、三个 -ldflags -X 怎么拼、末尾那三行自检，全都还只有一处定义。
+  # 代价是 Go 编译跑第二遍。挂在 build 后面而不是并行，有两个原因：一是
+  # softprops/action-gh-release 在两个 job 里同时创建同一个 Release 会打架；
+  # 二是 build time 必须两边一致，只能把 build 那一步的时间戳传过来。
+  headscale-binary:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the binary out of the image's builder stage
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: hs-binary
+          build-args: |
+            HS_COMMIT=${{ github.sha }}
+            HS_BUILD_TIME=${{ needs.build.outputs.time }}
+          outputs: type=local,dest=dist
+          # 只读不写：两个 ARG 都和 build 用的一致，源码也是同一份，所以理论上
+          # 那一步能整层命中上面已经导出的缓存，不用重编。写的话就是两个 job 往
+          # 同一个 scope 导出，白费功夫还可能打架。
+          cache-from: type=gha
+
+      - name: Attach it to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/headscale

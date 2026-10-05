@@ -55,6 +55,23 @@ RUN VERSION=$(sed -nE 's/^## ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CHANGELOG.md | hea
     && grep -qx "commit: $HS_COMMIT" /tmp/stamp \
     && grep -qx "build time: $HS_BUILD_TIME" /tmp/stamp
 
+# 只用来把上面那个二进制原样取出来的空壳阶段，CI 挂在 Release 上：
+#
+#   docker buildx build --target hs-binary --output type=local,dest=dist .
+#
+# 走这条路而不是在 workflow 里另写一段 go build，是为了让「版本号怎么取、
+# -ldflags 怎么拼」只有这一处定义 —— 发到 Release 上的 headscale 和镜像里跑的
+# 那个必然是同一次构建。scratch 阶段里只有这一个文件，所以 type=local 导出的
+# 就是它一个，不会把整个 golang 基础镜像的文件系统拖出来。
+#
+# **这一段必须留在最终的面板镜像阶段之前**：Dockerfile 的最后一个 FROM 就是
+# 默认构建目标，挪到文件末尾会让不带 --target 的 `docker build` 转去构建它。
+#
+# 导出的是 runner 的架构（CI 上是 linux/amd64），和镜像一致 —— 镜像本身也没做
+# 多架构。真要出多架构镜像时，这里得跟着改成每个平台各导一份。
+FROM scratch AS hs-binary
+COPY --from=hs-builder /headscale /headscale
+
 # 第二阶段：构建阶段
 FROM ubuntu:24.04 AS builder
 
