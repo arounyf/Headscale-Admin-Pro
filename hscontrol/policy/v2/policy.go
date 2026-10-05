@@ -602,6 +602,43 @@ func (pm *PolicyManager) Filter() ([]tailcfg.FilterRule, []matcher.Match) {
 	return pm.filter, pm.matchers
 }
 
+// routesInScope returns peer's advertised routes only when peer and owner
+// share a route scope, and nil otherwise.
+//
+// autogroup:self expands into the owner's own subnet routes
+// ([compileAutogroupSelf]), and canAccess compares prefixes by value — never
+// by who owns them. Without this gate, a router from another scope that
+// happens to advertise the same prefix collides with the owner's expansion
+// of that prefix and is reported as a peer of the owner's nodes, leaking the
+// foreign router's hostname, node IPs and endpoints into the netmap.
+func routesInScope(
+	owner, peer types.NodeView,
+	routes []netip.Prefix,
+) []netip.Prefix {
+	if !sameRouteScope(owner, peer) {
+		return nil
+	}
+
+	return routes
+}
+
+// sameRouteScope reports whether two nodes author routes into the same
+// scope. Untagged nodes share their user's scope, which is the only scope
+// autogroup:self expands routes from. Tagged nodes never share a self
+// scope: compileAutogroupSelf skips them, so a tagged peer's routes can
+// only ever collide with an unrelated rule by prefix value.
+func sameRouteScope(a, b types.NodeView) bool {
+	if a.IsTagged() || b.IsTagged() {
+		return false
+	}
+
+	if !a.User().Valid() || !b.User().Valid() {
+		return false
+	}
+
+	return a.User().ID() == b.User().ID()
+}
+
 // BuildPeerMap constructs peer relationship maps for the given nodes.
 // For global filters, it uses the global filter matchers for all nodes.
 // For autogroup:self policies (empty global filter), it builds per-node
@@ -694,10 +731,15 @@ func (pm *PolicyManager) BuildPeerMap(nodes views.Slice[types.NodeView]) map[typ
 			//      using nodeI's matchers? (reverse direction: the matchers
 			//      on the via node accept traffic FROM the source)
 			// Same for matchersJ in both directions.
-			canIAccessJ := hasFilterI && nodeI.CanAccessWithRoutes(matchersI, nodeJ, riI.subnet, riJ.subnet, riJ.isExit)
-			canJAccessI := hasFilterJ && nodeJ.CanAccessWithRoutes(matchersJ, nodeI, riJ.subnet, riI.subnet, riI.isExit)
-			canJReachI := hasFilterI && nodeJ.CanAccessWithRoutes(matchersI, nodeI, riJ.subnet, riI.subnet, riI.isExit)
-			canIReachJ := hasFilterJ && nodeI.CanAccessWithRoutes(matchersJ, nodeJ, riI.subnet, riJ.subnet, riJ.isExit)
+			//
+			// A node's own routes always feed its own matcher set. The
+			// *peer's* routes only feed a matcher set when both nodes share
+			// a route scope; see routesInScope for why a foreign router's
+			// prefixes must not be offered here.
+			canIAccessJ := hasFilterI && nodeI.CanAccessWithRoutes(matchersI, nodeJ, riI.subnet, routesInScope(nodeI, nodeJ, riJ.subnet), riJ.isExit)
+			canJAccessI := hasFilterJ && nodeJ.CanAccessWithRoutes(matchersJ, nodeI, riJ.subnet, routesInScope(nodeJ, nodeI, riI.subnet), riI.isExit)
+			canJReachI := hasFilterI && nodeJ.CanAccessWithRoutes(matchersI, nodeI, routesInScope(nodeI, nodeJ, riJ.subnet), riI.subnet, riI.isExit)
+			canIReachJ := hasFilterJ && nodeI.CanAccessWithRoutes(matchersJ, nodeJ, routesInScope(nodeJ, nodeI, riI.subnet), riJ.subnet, riJ.isExit)
 
 			if canIAccessJ || canJAccessI || canJReachI || canIReachJ {
 				ret[nodeI.ID()] = append(ret[nodeI.ID()], nodeJ.ID())
