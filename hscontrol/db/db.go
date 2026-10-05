@@ -961,52 +961,66 @@ WHERE tags IS NOT NULL AND tags != '[]' AND tags != '' AND tags != 'null'
 			return err
 		}
 
-		// ========== hs-admin: add custom fields to users table ==========
-		if err := ensureUsersCustomColumns(tx); err != nil {
-			return err
-		}
+		// ========== hs-admin ==========
+		// SQLite only. gormigrate runs this callback for every dialect, and
+		// everything below is SQLite syntax: PRAGMA table_info, sqlite_master
+		// lookups and AUTOINCREMENT. Unguarded, a fresh Postgres install fails
+		// at the first statement with `syntax error at or near "PRAGMA"`.
+		//
+		// Nothing here is wanted on Postgres either. The panel opens the
+		// SQLite file directly, and the 7 columns matter only because
+		// squibble validates the SQLite schema against schema.sql on startup
+		// -- it never runs on Postgres, so their absence cannot break a
+		// Postgres install. The migration of the same name carries the same
+		// guard for the same reason.
+		if cfg.Database.Type == types.DatabaseSqlite {
+			// add custom fields to users table
+			if err := ensureUsersCustomColumns(tx); err != nil {
+				return err
+			}
 
-		// ========== hs-admin: create acl table ==========
-		var aclCount int64
-		if err := tx.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='acl'").Scan(&aclCount).Error; err != nil {
-			return fmt.Errorf("checking acl table existence: %w", err)
-		}
-		if aclCount == 0 {
-			if err := tx.Exec(`CREATE TABLE acl (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				acl TEXT,
-				user_id INTEGER,
-				created_at DATETIME,
-				updated_at DATETIME,
-				CONSTRAINT fk_acl_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-			)`).Error; err != nil {
-				return fmt.Errorf("creating acl table: %w", err)
+			// create acl table
+			var aclCount int64
+			if err := tx.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='acl'").Scan(&aclCount).Error; err != nil {
+				return fmt.Errorf("checking acl table existence: %w", err)
 			}
-			if err := tx.Exec("CREATE INDEX idx_acl_user_id ON acl(user_id)").Error; err != nil {
-				return fmt.Errorf("creating acl index: %w", err)
+			if aclCount == 0 {
+				if err := tx.Exec(`CREATE TABLE acl (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					acl TEXT,
+					user_id INTEGER,
+					created_at DATETIME,
+					updated_at DATETIME,
+					CONSTRAINT fk_acl_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+				)`).Error; err != nil {
+					return fmt.Errorf("creating acl table: %w", err)
+				}
+				if err := tx.Exec("CREATE INDEX idx_acl_user_id ON acl(user_id)").Error; err != nil {
+					return fmt.Errorf("creating acl index: %w", err)
+				}
+				log.Info().Msg("Created acl table with index")
 			}
-			log.Info().Msg("Created acl table with index")
-		}
 
-		// ========== hs-admin: create log table ==========
-		var logCount int64
-		if err := tx.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='log'").Scan(&logCount).Error; err != nil {
-			return fmt.Errorf("checking log table existence: %w", err)
-		}
-		if logCount == 0 {
-			if err := tx.Exec(`CREATE TABLE log (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				user_id INTEGER,
-				content TEXT,
-				created_at DATETIME,
-				CONSTRAINT fk_log_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-			)`).Error; err != nil {
-				return fmt.Errorf("creating log table: %w", err)
+			// create log table
+			var logCount int64
+			if err := tx.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='log'").Scan(&logCount).Error; err != nil {
+				return fmt.Errorf("checking log table existence: %w", err)
 			}
-			if err := tx.Exec("CREATE INDEX idx_log_user_id ON log(user_id)").Error; err != nil {
-				return fmt.Errorf("creating log index: %w", err)
+			if logCount == 0 {
+				if err := tx.Exec(`CREATE TABLE log (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER,
+					content TEXT,
+					created_at DATETIME,
+					CONSTRAINT fk_log_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+				)`).Error; err != nil {
+					return fmt.Errorf("creating log table: %w", err)
+				}
+				if err := tx.Exec("CREATE INDEX idx_log_user_id ON log(user_id)").Error; err != nil {
+					return fmt.Errorf("creating log index: %w", err)
+				}
+				log.Info().Msg("Created log table with index")
 			}
-			log.Info().Msg("Created log table with index")
 		}
 
 		// Drop all indexes (both GORM-created and potentially pre-existing ones)
