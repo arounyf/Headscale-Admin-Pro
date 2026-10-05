@@ -10,6 +10,11 @@ Headscale is an open-source implementation of the Tailscale control server
 written in Go. It manages node registration, IP allocation, policy
 enforcement, and DERP routing for self-hosted tailnets.
 
+> **这棵树现在住在面板仓库里。** 它是 `Headscale-Admin-Pro/headscale/` 这个
+> `git subtree`，也是面板镜像里 headscale 二进制的唯一来源。上游同步的做法、
+> 以及误操作的后果见 [`MERGING-UPSTREAM.md`](MERGING-UPSTREAM.md)。下面这份约定
+> 是按独立 headscale 仓库写的，凡涉及本仓库之外的发布流程都已作废。
+
 ## Interaction Rules
 
 These rules govern how you work in this repo. They are listed first
@@ -317,19 +322,15 @@ Key reminders:
 - **Tests**: prefer `hscontrol/servertest/` for server-level tests that
   don't need Docker — faster than full integration tests.
 
-- **Release tags** follow the format `v{upstream}-hs`:
-  - `{upstream}` — the upstream headscale version (e.g. `0.29.4`)
-  - Example: `v0.29.4-hs`, `v0.29.3-hs`
-  - One tag per upstream version, with no build suffix. An hs build of
-    upstream `0.29.4` is `v0.29.4-hs`, which is already distinct from the
-    upstream tag `v0.29.4`.
-  - The tag name determines the GitHub Release asset download URL
-    (`/releases/download/v0.29.4-hs/headscale`), so downstream consumers
-    (Dockerfile, init scripts) must match exactly.
-  - Releasing again on the same upstream version means moving the tag to
-    the new commit and re-uploading the asset (`git push --force` the
-    tag); `.github/workflows/build-runyf.yml` rebuilds it on tag push.
-    Anything already downloaded from that release is not updated.
+- **Release tags**: retired. The `v{upstream}-hs` scheme and the
+  `build-runyf.yml` workflow that produced
+  `/releases/download/v0.29.4-hs/headscale` belonged to the standalone
+  `arounyf/headscale` repo. This tree no longer publishes binaries —
+  the panel's `v5.x` line is the only version line, and the headscale
+  binary is built from this source by `Headscale-Admin-Pro`'s
+  `Dockerfile`. See [`MERGING-UPSTREAM.md`](MERGING-UPSTREAM.md).
+  (`headscale/.github/workflows/` is inert here in any case: GitHub only
+  reads the repository-root `.github/workflows/`.)
 
 ## Gotchas
 
