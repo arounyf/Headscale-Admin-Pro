@@ -3,7 +3,7 @@
 [![GitHub repo size](https://img.shields.io/github/repo-size/arounyf/Headscale-Admin-Pro)](https://github.com/arounyf/headscale-Admin)
 [![Docker Image Size](https://img.shields.io/docker/image-size/runyf/hs-admin)](https://hub.docker.com/r/runyf/hs-admin)
 [![docker pulls](https://img.shields.io/docker/pulls/runyf/hs-admin.svg?color=brightgreen)](https://hub.docker.com/r/runyf/hs-admin)
-[![platfrom](https://img.shields.io/badge/platform-amd64%20%7C%20arm64-brightgreen)](https://hub.docker.com/r/runyf/hs-admin/tags)
+[![platform](https://img.shields.io/badge/platform-linux%2Famd64-brightgreen)](https://hub.docker.com/r/runyf/hs-admin/tags)
 
 重点升级：   
 1、基于本人发布的headscale-Admin使用python进行了后端重构   
