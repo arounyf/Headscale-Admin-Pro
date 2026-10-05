@@ -1,0 +1,28 @@
+# 只对 docker build 的构建上下文生效（.gitignore 对 docker build 无效，
+# 所以此前 .git / docs / CLAUDE.md / LICENSE 一路被 COPY . /init_data 带进镜像，
+# 再被 init.sh 的 cp -r 带进 /app）。
+#
+# 千万不要排除：init.sh（Dockerfile 要 chmod、容器要执行）、
+# *-example.json / *-example.yaml（Dockerfile 要 mv 成运行时配置）。
+
+.git
+.github
+.gitignore
+.claude
+
+# README 用的截图，只有 GitHub 上的 README 引用，运行时不需要
+docs
+
+# 面向 GitHub / AI 的文件
+CLAUDE.md
+LICENSE
+
+# Python 字节码缓存
+__pycache__
+**/__pycache__
+*.pyc
+
+# 仓库根可能留着的旧二进制。Dockerfile 在这之前已经 wget 了一份，
+# 不排除的话本地构建会用这份旧文件盖掉刚下载的新版本
+# （CI 里因为 .gitignore 恰好没有它，所以一直没暴露）
+headscale

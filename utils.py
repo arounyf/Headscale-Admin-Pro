@@ -266,7 +266,6 @@ def get_headscale_version():
         print({e.stderr})
 
 def save_config_yaml(config_dict):
-    print(config_dict)
     # 创建 YAML 对象，设置保留注释
     yaml = YAML()
     yaml.preserve_quotes = True
