@@ -1,0 +1,319 @@
+// This file implements a data-driven test runner for grant compatibility
+// tests. It loads HuJSON golden files from testdata/grant_results/grant-*.hujson
+// and via-grant-*.hujson, captured from a Tailscale-hosted control plane, and compares
+// headscale's grants engine output against the captured packet filter rules.
+//
+// Each file is a testcapture.Capture containing:
+//   - A full policy with grants (and optionally ACLs)
+//   - The expected packet_filter_rules for each of 8-15 test nodes
+//   - Or an error response for invalid policies
+//
+// Tests known to fail due to unimplemented features or known differences are
+// skipped with a TODO comment explaining the root cause. As headscale's grants
+// implementation improves, tests should be removed from the skip list.
+//
+// Test data source: testdata/grant_results/{grant,via-grant}-*.hujson
+// Source format:    github.com/juanfont/headscale/hscontrol/types/testcapture
+
+package v2
+
+import (
+	"net/netip"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/juanfont/headscale/hscontrol/policy/policyutil"
+	"github.com/juanfont/headscale/hscontrol/types"
+	"github.com/juanfont/headscale/hscontrol/types/testcapture"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+	"tailscale.com/tailcfg"
+)
+
+// setupGrantsCompatUsers returns the 3 test users for grants compatibility tests.
+// Users get norse-god names; nodes get original-151 pokémon names — matching
+// the anonymized identifiers the capture tool writes into the capture files
+// .
+func setupGrantsCompatUsers() types.Users {
+	return types.Users{
+		{Model: gorm.Model{ID: 1}, Name: "odin", Email: "odin@example.com"},
+		{Model: gorm.Model{ID: 2}, Name: "thor", Email: "thor@example.org"},
+		{Model: gorm.Model{ID: 3}, Name: "freya", Email: "freya@example.com"},
+	}
+}
+
+// findGrantsNode finds a node by its GivenName in the grants test environment.
+func findGrantsNode(nodes types.Nodes, name string) *types.Node {
+	for _, n := range nodes {
+		if n.GivenName == name {
+			return n
+		}
+	}
+
+	return nil
+}
+
+// buildGrantsNodesFromCapture constructs types.Nodes from a capture's
+// topology section. Each scenario in the capture tool uses clean-slate mode, so
+// node IPs differ between scenarios; this builds the node set with
+// the IPs that were actually present during that capture.
+func buildGrantsNodesFromCapture(
+	users types.Users,
+	tf *testcapture.Capture,
+) types.Nodes {
+	nodes := make(types.Nodes, 0, len(tf.Topology.Nodes))
+	autoID := 1
+
+	for _, nodeDef := range tf.Topology.Nodes {
+		node := &types.Node{
+			ID:        types.NodeID(autoID), //nolint:gosec
+			GivenName: nodeDef.Hostname,
+			IPv4:      ptrAddr(nodeDef.IPv4),
+			IPv6:      ptrAddr(nodeDef.IPv6),
+			Tags:      nodeDef.Tags,
+		}
+		autoID++
+
+		hostinfo := &tailcfg.Hostinfo{}
+
+		if len(nodeDef.RoutableIPs) > 0 {
+			routableIPs := make([]netip.Prefix, 0, len(nodeDef.RoutableIPs))
+			for _, r := range nodeDef.RoutableIPs {
+				routableIPs = append(routableIPs, netip.MustParsePrefix(r))
+			}
+
+			hostinfo.RoutableIPs = routableIPs
+		}
+
+		node.Hostinfo = hostinfo
+
+		if len(nodeDef.ApprovedRoutes) > 0 {
+			approved := make([]netip.Prefix, 0, len(nodeDef.ApprovedRoutes))
+			for _, r := range nodeDef.ApprovedRoutes {
+				approved = append(approved, netip.MustParsePrefix(r))
+			}
+
+			node.ApprovedRoutes = approved
+		} else {
+			node.ApprovedRoutes = []netip.Prefix{}
+		}
+
+		// Assign user — untagged nodes look up by User field.
+		if len(nodeDef.Tags) == 0 && nodeDef.User != "" {
+			for i := range users {
+				if users[i].Name == nodeDef.User {
+					node.User = &users[i]
+					node.UserID = &users[i].ID
+
+					break
+				}
+			}
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes
+}
+
+// convertPolicyUserEmails used to map SaaS-side emails to @example.com.
+// captures anonymize the policy JSON at write time (kratail2tid -> odin,
+// kristoffer -> thor, monitorpasskeykradalby -> freya), so the captured
+// FullPolicy is already in its final form and this is a passthrough that
+// just adapts the captured string value to the []byte that the policy
+// parser expects.
+func convertPolicyUserEmails(policyJSON string) []byte {
+	return []byte(policyJSON)
+}
+
+// loadGrantTestFile loads and parses a single grant capture HuJSON file.
+func loadGrantTestFile(t *testing.T, path string) *testcapture.Capture {
+	t.Helper()
+
+	c, err := testcapture.Read(path)
+	require.NoError(t, err, "failed to read test file %s", path)
+
+	return c
+}
+
+// Skip categories document WHY tests are expected to differ from Tailscale SaaS.
+// Tests are grouped by root cause.
+//
+//	USER_PASSKEY_WILDCARD - 2 tests: user:*@passkey wildcard pattern not supported
+//
+// Total: 2 tests skipped, ~246 tests expected to pass.
+var grantSkipReasons = map[string]string{
+	// USER_PASSKEY_WILDCARD (2 tests)
+	//
+	// Tailscale SaaS policies can use user:*@passkey as a wildcard matching
+	// all passkey-authenticated users. headscale does not support passkey
+	// authentication and has no equivalent for this wildcard pattern.
+	"grant-k20": "USER_PASSKEY_WILDCARD: src=user:*@passkey not supported in headscale",
+	"grant-k21": "USER_PASSKEY_WILDCARD: dst=user:*@passkey not supported in headscale",
+
+	// SaaS lists contiguous source addresses one by one and writes
+	// autogroup:internet as address ranges; headscale merges sources into
+	// ranges and writes the internet as prefixes. The address sets match;
+	// TestViaGrantMapCompat compares this capture's filters by address.
+	"via-grant-v52": "FILTER_ADDRESS_FORM: same addresses, different wire form",
+}
+
+// TestGrantsCompat is a data-driven test that loads all GRANT-*.json
+// test files captured from Tailscale SaaS and compares headscale's grants
+// engine output against the real Tailscale behavior.
+//
+// Each JSON file contains:
+//   - A full policy (groups, tagOwners, hosts, autoApprovers, grants, optionally acls)
+//   - For success cases: expected packet_filter_rules per node
+//   - For error cases: expected error message
+//
+// The test converts Tailscale user email formats to headscale format
+// (@example.com, @example.org) and runs the policy through unmarshalPolicy,
+// validate, compileFilterRulesForNode, and ReduceFilterRules.
+//
+// Scenarios in grantSkipReasons are skipped.
+func TestGrantsCompat(t *testing.T) {
+	t.Parallel()
+
+	files, err := filepath.Glob(filepath.Join("testdata", "grant_results", "*-*.hujson"))
+	require.NoError(t, err, "failed to glob test files")
+	require.NotEmpty(t, files, "no grant test files found in testdata/grant_results/")
+
+	t.Logf("Loaded %d grant test files", len(files))
+
+	users := setupGrantsCompatUsers()
+
+	for _, file := range files {
+		tf := loadGrantTestFile(t, file)
+
+		t.Run(tf.TestID, func(t *testing.T) {
+			t.Parallel()
+
+			// Check if this test is in the skip list
+			if reason, ok := grantSkipReasons[tf.TestID]; ok {
+				t.Skipf("TODO: %s — see grantSkipReasons comments for details", reason)
+				return
+			}
+
+			// Build nodes per-scenario from this file's topology.
+			// the capture tool uses clean-slate mode, so each scenario has
+			// different node IPs.
+			nodes := buildGrantsNodesFromCapture(users, tf)
+
+			// Use the captured full policy as is (anonymization
+			// the capture tool already rewrote SaaS emails).
+			policyJSON := convertPolicyUserEmails(tf.Input.FullPolicy)
+
+			if tf.Input.APIResponseCode == 400 || tf.Error {
+				testGrantError(t, policyJSON, tf)
+				return
+			}
+
+			testGrantSuccess(t, policyJSON, tf, users, nodes)
+		})
+	}
+}
+
+// testGrantError verifies that an invalid policy produces the expected error.
+func testGrantError(t *testing.T, policyJSON []byte, tf *testcapture.Capture) {
+	t.Helper()
+
+	wantMsg := ""
+	if tf.Input.APIResponseBody != nil {
+		wantMsg = tf.Input.APIResponseBody.Message
+	}
+
+	pol, err := unmarshalPolicy(policyJSON)
+	if err != nil {
+		// Parse-time error
+		if wantMsg != "" {
+			assertGrantErrorContains(t, err, wantMsg, tf.TestID)
+		}
+
+		return
+	}
+
+	err = pol.validate()
+	if err != nil {
+		// Validation error
+		if wantMsg != "" {
+			assertGrantErrorContains(t, err, wantMsg, tf.TestID)
+		}
+
+		return
+	}
+
+	t.Errorf("%s: expected error (api_response_code=400) but policy parsed and validated successfully; want message: %q",
+		tf.TestID, wantMsg)
+}
+
+// assertGrantErrorContains requires that headscale's error contains
+// the Tailscale SaaS error message exactly. Divergence means an
+// emitter needs to be aligned, not papered over with a translation
+// table.
+func assertGrantErrorContains(t *testing.T, err error, wantMsg string, testID string) {
+	t.Helper()
+
+	errStr := err.Error()
+	if strings.Contains(errStr, wantMsg) {
+		return
+	}
+
+	t.Errorf("%s: error message mismatch\n  tailscale wants: %q\n  headscale got:   %q",
+		testID, wantMsg, errStr)
+}
+
+// testGrantSuccess verifies that a valid policy produces the expected
+// packet filter rules for each node.
+func testGrantSuccess(
+	t *testing.T,
+	policyJSON []byte,
+	tf *testcapture.Capture,
+	users types.Users,
+	nodes types.Nodes,
+) {
+	t.Helper()
+
+	pol, err := unmarshalPolicy(policyJSON)
+	require.NoError(t, err, "%s: policy should parse successfully", tf.TestID)
+
+	err = pol.validate()
+	require.NoError(t, err, "%s: policy should validate successfully", tf.TestID)
+
+	for nodeName, capture := range tf.Captures {
+		t.Run(nodeName, func(t *testing.T) {
+			node := findGrantsNode(nodes, nodeName)
+			require.NotNilf(t, node,
+				"golden node %s not found in test setup", nodeName)
+
+			// Compile headscale filter rules for this node
+			gotRules := pol.compileFilterRulesForNode(
+				users,
+				node.View(),
+				nodes.ViewSlice(),
+			)
+
+			gotRules = policyutil.ReduceFilterRules(node.View(), gotRules)
+
+			wantRules := capture.PacketFilterRules
+
+			// Compare headscale output against Tailscale expected output.
+			// The diff labels show (-tailscale +headscale) to make clear
+			// which side produced which output.
+			// EquateEmpty treats nil and empty slices as equal since
+			// Tailscale's JSON null -> nil, headscale may return empty slice.
+			opts := append(cmpOptions(), cmpopts.EquateEmpty())
+			if diff := cmp.Diff(wantRules, gotRules, opts...); diff != "" {
+				t.Errorf(
+					"%s/%s: filter rules mismatch (-tailscale +headscale):\n%s",
+					tf.TestID,
+					nodeName,
+					diff,
+				)
+			}
+		})
+	}
+}

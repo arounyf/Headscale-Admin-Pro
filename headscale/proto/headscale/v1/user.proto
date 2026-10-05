@@ -1,0 +1,65 @@
+syntax = "proto3";
+package headscale.v1;
+option go_package = "github.com/juanfont/headscale/gen/go/v1";
+
+import "google/protobuf/timestamp.proto";
+
+message User {
+  uint64 id = 1;
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  string display_name = 4;
+  string email = 5;
+  string provider_id = 6;
+  string provider = 7;
+  string profile_pic_url = 8;
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string display_name = 2;
+  string email = 3;
+  string picture_url = 4;
+
+  // hs-admin panel columns on the users table. headscale does not interpret
+  // any of these values; they are written to the matching columns verbatim
+  // in the same transaction as the user row (see hscontrol/state). Leave them
+  // unset and nothing is written, which is what CLI and OIDC callers do.
+  //
+  // They are all strings on purpose: the columns are TEXT/DATETIME declared
+  // outside the GORM model and the panel owns their encoding.
+  string password = 5;
+  string expire = 6;
+  string cellphone = 7;
+  string role = 8;
+  string enable = 9;
+  string route = 10;
+  string node = 11;
+
+  // created_at/updated_at override the timestamps GORM would write. The panel
+  // stores them in its own local-time format and renders them verbatim, so it
+  // has to keep supplying them or the dates it shows would shift.
+  string created_at = 12;
+  string updated_at = 13;
+}
+
+message CreateUserResponse { User user = 1; }
+
+message RenameUserRequest {
+  uint64 old_id = 1;
+  string new_name = 2;
+}
+
+message RenameUserResponse { User user = 1; }
+
+message DeleteUserRequest { uint64 id = 1; }
+
+message DeleteUserResponse {}
+
+message ListUsersRequest {
+  uint64 id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+message ListUsersResponse { repeated User users = 1; }

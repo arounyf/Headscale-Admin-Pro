@@ -1,0 +1,120 @@
+---
+version: "2"
+linters:
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - dupl
+    - exhaustruct
+    - funcorder
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - godox
+    - gomodguard
+    - interfacebloat
+    - ireturn
+    - lll
+    - maintidx
+    - makezero
+    - mnd
+    - musttag
+    - nestif
+    - nolintlint
+    - paralleltest
+    - revive
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wrapcheck
+    - wsl
+  settings:
+    goconst:
+      # Test fixtures repeat strings (IPs, tags, hostnames) by their
+      # nature; extracting them obscures the test rather than helping.
+      # Production code stays strict.
+      ignore-tests: true
+      # Default is 3. Bump so "happens thrice" cases that are not part
+      # of a shared vocabulary do not get extracted.
+      min-occurrences: 5
+      # Default is 3. Short literals ("set", "get", "new") read better
+      # at call sites than behind a named constant.
+      min-len: 6
+    forbidigo:
+      forbid:
+        # Forbid time.Sleep everywhere with context-appropriate alternatives
+        - pattern: 'time\.Sleep'
+          msg: >-
+            time.Sleep is forbidden.
+            In tests: use assert.EventuallyWithT for polling/waiting patterns.
+            In production code: use a backoff strategy (e.g., cenkalti/backoff) or proper synchronization primitives.
+        # Forbid inline string literals in zerolog field methods - use zf.* constants
+        - pattern: '\.(Str|Int|Int8|Int16|Int32|Int64|Uint|Uint8|Uint16|Uint32|Uint64|Float32|Float64|Bool|Dur|Time|TimeDiff|Strs|Ints|Uints|Floats|Bools|Any|Interface)\("[^"]+"'
+          msg: >-
+            Use zf.* constants for zerolog field names instead of string literals.
+            Import "github.com/juanfont/headscale/hscontrol/util/zlog/zf" and use
+            constants like zf.NodeID, zf.UserName, etc. Add new constants to
+            hscontrol/util/zlog/zf/fields.go if needed.
+        # Forbid ptr.To - use Go 1.26 new(expr) instead
+        - pattern: 'ptr\.To\('
+          msg: >-
+            ptr.To is forbidden. Use Go 1.26's new(expr) syntax instead.
+            Example: ptr.To(value) → new(value)
+        # Forbid tsaddr.SortPrefixes - use slices.SortFunc with netip.Prefix.Compare
+        - pattern: 'tsaddr\.SortPrefixes'
+          msg: >-
+            tsaddr.SortPrefixes is forbidden. Use Go 1.26's netip.Prefix.Compare instead.
+            Example: slices.SortFunc(prefixes, netip.Prefix.Compare)
+      analyze-types: true
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - ifElseChain
+    nlreturn:
+      block-size: 4
+    varnamelen:
+      ignore-names:
+        - err
+        - db
+        - id
+        - ip
+        - ok
+        - c
+        - tt
+        - tx
+        - rx
+        - sb
+        - wg
+        - pr
+        - p
+        - p2
+      ignore-type-assert-ok: true
+      ignore-map-index-ok: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - gen
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - gen

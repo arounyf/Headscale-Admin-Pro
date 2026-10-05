@@ -1,0 +1,163 @@
+---
+version: 2
+before:
+  hooks:
+    - go mod tidy -compat=1.26
+    - go mod vendor
+
+release:
+  prerelease: auto
+  draft: true
+  header: |
+    ## Upgrade
+
+    Please follow the steps outlined in the [upgrade guide](https://headscale.net/stable/setup/upgrade/) to update your existing Headscale installation.
+
+builds:
+  - id: headscale
+    main: ./cmd/headscale
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    env:
+      - CGO_ENABLED=0
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - freebsd_amd64
+      - linux_amd64
+      - linux_arm64
+    flags:
+      - -mod=readonly
+
+archives:
+  - id: golang-cross
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    formats:
+      - binary
+
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}"
+  format: tar.gz
+  files:
+    - "vendor/"
+
+nfpms:
+  # Configure nFPM for .deb releases
+  #
+  # See https://goreleaser.com/customization/package/nfpm/
+  #
+  # Useful tools for debugging .debs:
+  # List file contents: dpkg -c dist/headscale...deb
+  # Package metadata: dpkg --info dist/headscale....deb
+  #
+  - ids:
+      - headscale
+    package_name: headscale
+    priority: optional
+    vendor: headscale
+    maintainer: Kristoffer Dalby <kristoffer@dalby.cc>
+    homepage: https://github.com/juanfont/headscale
+    description: |-
+      Open source implementation of the Tailscale control server.
+      Headscale aims to implement a self-hosted, open source alternative to the
+      Tailscale control server. Headscale's goal is to provide self-hosters and
+      hobbyists with an open-source server they can use for their projects and
+      labs. It implements a narrow scope, a single Tailscale network (tailnet),
+      suitable for a personal use, or a small open-source organisation.
+    bindir: /usr/bin
+    section: net
+    formats:
+      - deb
+    contents:
+      - src: ./config-example.yaml
+        dst: /etc/headscale/config.yaml
+        type: config|noreplace
+        file_info:
+          mode: 0644
+      - src: ./packaging/systemd/headscale.service
+        dst: /usr/lib/systemd/system/headscale.service
+      - dst: /var/lib/headscale
+        type: dir
+      - src: ./config-example.yaml
+        dst: /usr/share/doc/headscale/examples/config-example.yaml
+      - src: LICENSE
+        dst: /usr/share/doc/headscale/copyright
+    scripts:
+      postinstall: ./packaging/deb/postinst
+      postremove: ./packaging/deb/postrm
+      preremove: ./packaging/deb/prerm
+    deb:
+      lintian_overrides:
+        - no-changelog # Our CHANGELOG.md uses a different formatting
+        - no-manual-page
+        - statically-linked-binary
+
+kos:
+  - id: ghcr
+    repositories:
+      - ghcr.io/juanfont/headscale
+      - headscale/headscale
+
+    # bare tells KO to only use the repository
+    # for tagging and naming the container.
+    bare: true
+    base_image: gcr.io/distroless/base-debian13
+    build: headscale
+    main: ./cmd/headscale
+    env:
+      - CGO_ENABLED=0
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    tags:
+      - "{{ if not .Prerelease }}latest{{ end }}"
+      - "{{ if not .Prerelease }}{{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ end }}"
+      - "{{ if not .Prerelease }}{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{ if not .Prerelease }}{{ .Major }}{{ end }}"
+      - "{{ if not .Prerelease }}v{{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ end }}"
+      - "{{ if not .Prerelease }}v{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{ if not .Prerelease }}v{{ .Major }}{{ end }}"
+      - "{{ if not .Prerelease }}stable{{ else }}unstable{{ end }}"
+      - "{{ .Tag }}"
+      - '{{ trimprefix .Tag "v" }}'
+      - "sha-{{ .ShortCommit }}"
+    creation_time: "{{.CommitTimestamp}}"
+    ko_data_creation_time: "{{.CommitTimestamp}}"
+
+  - id: ghcr-debug
+    repositories:
+      - ghcr.io/juanfont/headscale
+      - headscale/headscale
+
+    bare: true
+    base_image: gcr.io/distroless/base-debian13:debug
+    build: headscale
+    main: ./cmd/headscale
+    env:
+      - CGO_ENABLED=0
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    tags:
+      - "{{ if not .Prerelease }}latest-debug{{ end }}"
+      - "{{ if not .Prerelease }}{{ .Major }}.{{ .Minor }}.{{ .Patch }}-debug{{ end }}"
+      - "{{ if not .Prerelease }}{{ .Major }}.{{ .Minor }}-debug{{ end }}"
+      - "{{ if not .Prerelease }}{{ .Major }}-debug{{ end }}"
+      - "{{ if not .Prerelease }}v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-debug{{ end }}"
+      - "{{ if not .Prerelease }}v{{ .Major }}.{{ .Minor }}-debug{{ end }}"
+      - "{{ if not .Prerelease }}v{{ .Major }}-debug{{ end }}"
+      - "{{ if not .Prerelease }}stable-debug{{ else }}unstable-debug{{ end }}"
+      - "{{ .Tag }}-debug"
+      - '{{ trimprefix .Tag "v" }}-debug'
+      - "sha-{{ .ShortCommit }}-debug"
+
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  version_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

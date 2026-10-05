@@ -1,0 +1,58 @@
+#!/bin/sh
+# postinst script for headscale.
+
+set -e
+
+# Summary of how this script can be called:
+#        * <postinst> 'configure' <most-recently-configured-version>
+#        * <old-postinst> 'abort-upgrade' <new version>
+#        * <conflictor's-postinst> 'abort-remove' 'in-favour' <package>
+#          <new-version>
+#        * <postinst> 'abort-remove'
+#        * <deconfigured's-postinst> 'abort-deconfigure' 'in-favour'
+#          <failed-install-package> <version> 'removing'
+#          <conflicting-package> <version>
+# for details, see https://www.debian.org/doc/debian-policy/ or
+# the debian-policy package.
+
+HEADSCALE_USER="headscale"
+HEADSCALE_GROUP="headscale"
+HEADSCALE_HOME_DIR="/var/lib/headscale"
+HEADSCALE_SHELL="/usr/sbin/nologin"
+HEADSCALE_SERVICE="headscale.service"
+
+case "$1" in
+    configure)
+      groupadd --force --system "$HEADSCALE_GROUP"
+      if ! id -u "$HEADSCALE_USER" >/dev/null 2>&1; then
+        useradd --system --shell "$HEADSCALE_SHELL" \
+          --gid "$HEADSCALE_GROUP" --home-dir "$HEADSCALE_HOME_DIR" \
+          --comment "headscale default user" "$HEADSCALE_USER"
+      fi
+
+      # Enable service and keep track of its state
+      if deb-systemd-helper --quiet was-enabled "$HEADSCALE_SERVICE"; then
+        deb-systemd-helper enable "$HEADSCALE_SERVICE" >/dev/null || true
+      else
+        deb-systemd-helper update-state "$HEADSCALE_SERVICE" >/dev/null || true
+      fi
+
+      # Bounce service
+      if [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null || true
+        if [ -n "$2" ]; then
+          deb-systemd-invoke restart "$HEADSCALE_SERVICE" >/dev/null || true
+        else
+          deb-systemd-invoke start "$HEADSCALE_SERVICE" >/dev/null || true
+        fi
+      fi
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+    ;;
+esac

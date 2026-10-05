@@ -1,0 +1,10 @@
+* @juanfont @kradalby
+
+*.md @ohdearaugustin @nblock
+*.yml @ohdearaugustin @nblock
+*.yaml @ohdearaugustin @nblock
+Dockerfile* @ohdearaugustin @nblock
+.goreleaser.yaml @ohdearaugustin @nblock
+/docs/ @ohdearaugustin @nblock
+/.github/workflows/ @ohdearaugustin @nblock
+/.github/renovate.json @ohdearaugustin @nblock

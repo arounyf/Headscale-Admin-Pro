@@ -1,0 +1,483 @@
+package types
+
+import (
+	"cmp"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/mail"
+	"net/url"
+	"strconv"
+	"strings"
+
+	v1 "github.com/juanfont/headscale/gen/go/headscale/v1"
+	"github.com/juanfont/headscale/hscontrol/util"
+	"github.com/juanfont/headscale/hscontrol/util/zlog/zf"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
+	"tailscale.com/tailcfg"
+)
+
+// ErrCannotParseBoolean is returned when a value cannot be parsed as boolean.
+var ErrCannotParseBoolean = errors.New("cannot parse value as boolean")
+
+// ErrCannotParseStringSlice is returned when a value cannot be parsed as string or []string.
+var ErrCannotParseStringSlice = errors.New("cannot parse value as string or []string")
+
+type UserID uint64
+
+type Users []User
+
+const (
+	// TaggedDevicesUserID is the special user ID for tagged devices.
+	// This ID is used when rendering tagged nodes in the Tailscale protocol.
+	TaggedDevicesUserID = 2147455555
+)
+
+// TaggedDevices is a special user used in [tailcfg.MapResponse] for tagged nodes.
+// Tagged nodes don't belong to a real user - the tag is their identity.
+// This special user ID is used when rendering tagged nodes in the Tailscale protocol.
+var TaggedDevices = User{
+	Model:       gorm.Model{ID: TaggedDevicesUserID},
+	Name:        "tagged-devices",
+	DisplayName: "Tagged Devices",
+}
+
+func (u Users) String() string {
+	var sb strings.Builder
+	sb.WriteString("[ ")
+
+	for _, user := range u {
+		fmt.Fprintf(&sb, "%d: %s, ", user.ID, user.Name)
+	}
+
+	sb.WriteString(" ]")
+
+	return sb.String()
+}
+
+// User is the way Headscale implements the concept of users in Tailscale
+//
+// At the end of the day, users in Tailscale are some kind of 'bubbles' or users
+// that contain our machines.
+type User struct {
+	gorm.Model //nolint:embeddedstructfieldcheck
+
+	// The index `idx_name_provider_identifier` is to enforce uniqueness
+	// between Name and ProviderIdentifier. This ensures that
+	// you can have multiple users with the same name in OIDC,
+	// but not if you only run with CLI users.
+
+	// Name (username) for the user, is used if email is empty
+	// Should not be used, please use [User.Username].
+	// It is unique if [User.ProviderIdentifier] is not set.
+	Name string
+
+	// Typically the full name of the user
+	DisplayName string
+
+	// Email of the user
+	// Should not be used, please use [User.Username].
+	Email string
+
+	// ProviderIdentifier is a unique or not set identifier of the
+	// user from OIDC. It is the combination of `iss`
+	// and `sub` claim in the OIDC token.
+	// It is unique if set.
+	// It is unique together with [User.Name].
+	ProviderIdentifier sql.NullString
+
+	// Provider is the origin of the user account,
+	// same as RegistrationMethod, without authkey.
+	Provider string
+
+	ProfilePicURL string
+}
+
+// UserAdminFields carries the hs-admin panel's extra columns on the users
+// table. They are deliberately not fields on [User]: the columns are declared
+// outside the GORM model (see usersCustomColumns in hscontrol/db), so
+// AutoMigrate must never learn about them.
+//
+// headscale does not interpret any of these values; they are written verbatim
+// to the matching column. All of them are strings because the panel owns the
+// encoding. The zero value means "unset" and causes no write.
+type UserAdminFields struct {
+	Password  string
+	Expire    string
+	Cellphone string
+	Role      string
+	Enable    string
+	Route     string
+	Node      string
+
+	// CreatedAt/UpdatedAt override what GORM would write. The panel renders
+	// these columns verbatim, so it keeps supplying them in its own format.
+	CreatedAt string
+	UpdatedAt string
+}
+
+func (u *User) StringID() string {
+	if u == nil {
+		return ""
+	}
+
+	return strconv.FormatUint(uint64(u.ID), 10)
+}
+
+// PolicyEqual reports whether the policy would resolve both users the same
+// way: the same row, and the same name, email, and provider identity that
+// user aliases match on.
+func (u *User) PolicyEqual(o *User) bool {
+	return u.ID == o.ID &&
+		u.Name == o.Name &&
+		u.Email == o.Email &&
+		u.ProviderIdentifier == o.ProviderIdentifier
+}
+
+// TypedID returns a pointer to the user's ID as a [UserID] type.
+// This is a convenience method to avoid ugly casting like ptr.To(types.UserID(user.ID)).
+func (u *User) TypedID() *UserID {
+	uid := UserID(u.ID)
+	return &uid
+}
+
+// Username is the main way to get the username of a user,
+// it will return the email if it exists, the name if it exists,
+// the OIDCIdentifier if it exists, and the ID if nothing else exists.
+// Email and OIDCIdentifier will be set when the user has headscale
+// enabled with OIDC, which means that there is a domain involved which
+// should be used throughout headscale, in information returned to the
+// user and the Policy engine.
+func (u *User) Username() string {
+	return cmp.Or(
+		u.Email,
+		u.Name,
+		u.ProviderIdentifier.String,
+		u.StringID(),
+	)
+}
+
+// Display returns the [User.DisplayName] if it exists, otherwise
+// it will return the [User.Username].
+func (u *User) Display() string {
+	return cmp.Or(u.DisplayName, u.Username())
+}
+
+// TODO(kradalby): See if we can fill in Gravatar here.
+func (u *User) profilePicURL() string {
+	return u.ProfilePicURL
+}
+
+func (u *User) TailscaleUser() tailcfg.User {
+	return tailcfg.User{
+		ID:            tailcfg.UserID(u.ID), //nolint:gosec // UserID is bounded
+		DisplayName:   u.Display(),
+		ProfilePicURL: u.profilePicURL(),
+		Created:       u.CreatedAt,
+	}
+}
+
+func (u UserView) TailscaleUser() tailcfg.User {
+	return u.ж.TailscaleUser()
+}
+
+// ID returns the user's ID.
+// This is a custom accessor because [gorm.Model].ID is embedded
+// and the viewer generator doesn't always produce it.
+func (u UserView) ID() uint {
+	return u.ж.ID
+}
+
+func (u *User) TailscaleLogin() tailcfg.Login {
+	return tailcfg.Login{
+		ID:            tailcfg.LoginID(u.ID), //nolint:gosec // safe conversion for user ID
+		Provider:      u.Provider,
+		LoginName:     u.Username(),
+		DisplayName:   u.Display(),
+		ProfilePicURL: u.profilePicURL(),
+	}
+}
+
+func (u UserView) TailscaleLogin() tailcfg.Login {
+	return u.ж.TailscaleLogin()
+}
+
+func (u *User) TailscaleUserProfile() tailcfg.UserProfile {
+	return tailcfg.UserProfile{
+		ID:            tailcfg.UserID(u.ID), //nolint:gosec // UserID is bounded
+		LoginName:     u.Username(),
+		DisplayName:   u.Display(),
+		ProfilePicURL: u.profilePicURL(),
+	}
+}
+
+func (u UserView) TailscaleUserProfile() tailcfg.UserProfile {
+	return u.ж.TailscaleUserProfile()
+}
+
+func (u *User) Proto() *v1.User {
+	// Use Name if set, otherwise fall back to Username() which provides
+	// a display-friendly identifier (Email > ProviderIdentifier > ID).
+	// This ensures OIDC users (who typically have empty Name) display
+	// their email, while CLI users retain their original Name.
+	name := u.Name
+	if name == "" {
+		name = u.Username()
+	}
+
+	return &v1.User{
+		Id:            uint64(u.ID),
+		Name:          name,
+		CreatedAt:     timestamppb.New(u.CreatedAt),
+		DisplayName:   u.DisplayName,
+		Email:         u.Email,
+		ProviderId:    u.ProviderIdentifier.String,
+		Provider:      u.Provider,
+		ProfilePicUrl: u.ProfilePicURL,
+	}
+}
+
+// MarshalZerologObject implements [zerolog.LogObjectMarshaler] for safe logging.
+func (u *User) MarshalZerologObject(e *zerolog.Event) {
+	if u == nil {
+		return
+	}
+
+	e.Uint(zf.UserID, u.ID)
+	e.Str(zf.UserName, u.Username())
+	e.Str(zf.UserDisplay, u.Display())
+
+	if u.Provider != "" {
+		e.Str(zf.UserProvider, u.Provider)
+	}
+}
+
+// MarshalZerologObject implements [zerolog.LogObjectMarshaler] for [UserView].
+func (u UserView) MarshalZerologObject(e *zerolog.Event) {
+	if !u.Valid() {
+		return
+	}
+
+	u.ж.MarshalZerologObject(e)
+}
+
+// FlexibleStringSlice handles OIDC providers (e.g. JumpCloud) that return the
+// groups claim as a plain string when the user belongs to a single group,
+// instead of a single-element array.
+type FlexibleStringSlice []string
+
+func (f *FlexibleStringSlice) UnmarshalJSON(data []byte) error {
+	var arr []string
+
+	err := json.Unmarshal(data, &arr)
+	if err == nil {
+		*f = arr
+		return nil
+	}
+
+	var single string
+
+	err = json.Unmarshal(data, &single)
+	if err == nil {
+		*f = []string{single}
+		return nil
+	}
+
+	return fmt.Errorf("%w: %s", ErrCannotParseStringSlice, string(data))
+}
+
+// FlexibleBoolean handles JumpCloud's JSON where email_verified is returned as a
+// string "true" or "false" instead of a boolean.
+// This maps bool to a specific type with a custom unmarshaler to
+// ensure we can decode it from a string.
+type FlexibleBoolean bool
+
+func (bit *FlexibleBoolean) UnmarshalJSON(data []byte) error {
+	var val any
+
+	err := json.Unmarshal(data, &val)
+	if err != nil {
+		return fmt.Errorf("unmarshalling data: %w", err)
+	}
+
+	switch v := val.(type) {
+	case bool:
+		*bit = FlexibleBoolean(v)
+	case string:
+		pv, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("parsing %s as boolean: %w", v, err)
+		}
+
+		*bit = FlexibleBoolean(pv)
+
+	default:
+		return fmt.Errorf("%w: %v", ErrCannotParseBoolean, v)
+	}
+
+	return nil
+}
+
+type OIDCClaims struct {
+	// Sub is the user's unique identifier at the provider.
+	Sub string `json:"sub"`
+	Iss string `json:"iss"`
+
+	// Name is the user's full name.
+	Name              string              `json:"name,omitempty"`
+	Groups            FlexibleStringSlice `json:"groups,omitempty"`
+	Email             string              `json:"email,omitempty"`
+	EmailVerified     FlexibleBoolean     `json:"email_verified,omitempty"`
+	ProfilePictureURL string              `json:"picture,omitempty"`
+	Username          string              `json:"preferred_username,omitempty"`
+}
+
+// Identifier returns a unique identifier string combining the [OIDCClaims.Iss] and [OIDCClaims.Sub] claims.
+// The format depends on whether [OIDCClaims.Iss] is a URL or not:
+// - For URLs: Joins the URL and sub path (e.g., "https://example.com/sub")
+// - For non-URLs: Joins with a slash (e.g., "oidc/sub")
+// - For empty [OIDCClaims.Iss]: Returns just "sub"
+// - For empty [OIDCClaims.Sub]: Returns just the Issuer
+// - For both empty: Returns empty string
+//
+// The result is cleaned using [CleanIdentifier] to ensure consistent formatting.
+func (c *OIDCClaims) Identifier() string {
+	// Handle empty components special cases
+	if c.Iss == "" && c.Sub == "" {
+		return ""
+	}
+
+	if c.Iss == "" {
+		return CleanIdentifier(c.Sub)
+	}
+
+	if c.Sub == "" {
+		return CleanIdentifier(c.Iss)
+	}
+
+	// We'll use the raw values and let CleanIdentifier handle all the whitespace
+	issuer := c.Iss
+	subject := c.Sub
+
+	var result string
+	// Always use simple string concatenation with a slash separator.
+	// url.JoinPath resolves path-traversal segments like ".." and ".",
+	// which can silently drop the subject and cause identifier collisions
+	// between distinct OIDC users (e.g., Sub=".." produces the same
+	// identifier as an empty Sub).
+	issuer = strings.TrimSuffix(issuer, "/")
+	subject = strings.TrimPrefix(subject, "/")
+	result = issuer + "/" + subject
+
+	// Clean the result and return it
+	return CleanIdentifier(result)
+}
+
+// CleanIdentifier cleans a potentially malformed identifier by removing double slashes
+// while preserving protocol specifications like http://. This function will:
+// - Trim all whitespace from the beginning and end of the identifier
+// - Remove whitespace within path segments
+// - Preserve the scheme (http://, https://, etc.) for URLs
+// - Remove any duplicate slashes in the path
+// - Remove empty path segments
+// - For non-URL identifiers, it joins non-empty segments with a single slash
+// - Returns empty string for identifiers with only slashes
+// - Normalize URL schemes to lowercase.
+func CleanIdentifier(identifier string) string {
+	if identifier == "" {
+		return identifier
+	}
+
+	// Trim leading/trailing whitespace
+	identifier = strings.TrimSpace(identifier)
+
+	// Handle URLs with schemes
+	u, err := url.Parse(identifier)
+	if err == nil && u.Scheme != "" {
+		// Clean path by removing empty segments and whitespace within segments
+		parts := strings.FieldsFunc(u.Path, func(c rune) bool { return c == '/' })
+		for i, part := range parts {
+			parts[i] = strings.TrimSpace(part)
+		}
+		// Remove empty parts after trimming
+		cleanParts := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if part != "" {
+				cleanParts = append(cleanParts, part)
+			}
+		}
+
+		if len(cleanParts) == 0 {
+			u.Path = ""
+		} else {
+			u.Path = "/" + strings.Join(cleanParts, "/")
+		}
+		// Ensure scheme is lowercase
+		u.Scheme = strings.ToLower(u.Scheme)
+
+		return u.String()
+	}
+
+	// Handle non-URL identifiers
+	parts := strings.FieldsFunc(identifier, func(c rune) bool { return c == '/' })
+	// Clean whitespace from each part
+	cleanParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			cleanParts = append(cleanParts, trimmed)
+		}
+	}
+
+	if len(cleanParts) == 0 {
+		return ""
+	}
+
+	return strings.Join(cleanParts, "/")
+}
+
+type OIDCUserInfo struct {
+	Sub               string              `json:"sub"`
+	Name              string              `json:"name"`
+	GivenName         string              `json:"given_name"`
+	FamilyName        string              `json:"family_name"`
+	PreferredUsername string              `json:"preferred_username"`
+	Email             string              `json:"email"`
+	EmailVerified     FlexibleBoolean     `json:"email_verified,omitempty"`
+	Groups            FlexibleStringSlice `json:"groups"`
+	Picture           string              `json:"picture"`
+}
+
+// FromClaim overrides a [User] from OIDC claims.
+// All fields will be updated, except for the ID.
+func (u *User) FromClaim(claims *OIDCClaims, emailVerifiedRequired bool) {
+	err := util.ValidateUsername(claims.Username)
+	if err == nil {
+		u.Name = claims.Username
+	} else {
+		log.Debug().Caller().Err(err).Msgf("username %s is not valid", claims.Username)
+	}
+
+	if claims.EmailVerified || !FlexibleBoolean(emailVerifiedRequired) {
+		_, err = mail.ParseAddress(claims.Email)
+		if err == nil {
+			u.Email = claims.Email
+		}
+	}
+
+	// Get provider identifier
+	identifier := claims.Identifier()
+	// Ensure provider identifier always has a leading slash for backward compatibility
+	if claims.Iss == "" && !strings.HasPrefix(identifier, "/") {
+		identifier = "/" + identifier
+	}
+
+	u.ProviderIdentifier = sql.NullString{String: identifier, Valid: true}
+	u.DisplayName = claims.Name
+	u.ProfilePicURL = claims.ProfilePictureURL
+	u.Provider = util.RegisterMethodOIDC
+}

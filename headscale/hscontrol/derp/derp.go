@@ -1,0 +1,217 @@
+package derp
+
+import (
+	"cmp"
+	"context"
+	"encoding/json"
+	"hash/crc64"
+	"io"
+	"math/rand"
+	"net/http"
+	"net/url"
+	"os"
+	"reflect"
+	"slices"
+	"sync"
+	"time"
+
+	"github.com/juanfont/headscale/hscontrol/types"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
+	"tailscale.com/tailcfg"
+)
+
+func loadDERPMapFromPath(path string) (*tailcfg.DERPMap, error) {
+	derpFile, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer derpFile.Close()
+
+	b, err := io.ReadAll(derpFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// First pass: parse as generic YAML to extract per-node insecure_for_tests,
+	// which the tailcfg struct doesn't have a yaml tag for (only json).
+	var raw struct {
+		Regions map[int]struct {
+			Nodes []struct {
+				Name             string `yaml:"name"`
+				InsecureForTests bool   `yaml:"insecure_for_tests"`
+			} `yaml:"nodes"`
+		} `yaml:"regions"`
+	}
+	_ = yaml.Unmarshal(b, &raw)
+
+	var derpMap tailcfg.DERPMap
+	err = yaml.Unmarshal(b, &derpMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply per-node insecure_for_tests from the raw parse
+	for regionID, region := range derpMap.Regions {
+		if rawRegion, ok := raw.Regions[regionID]; ok {
+			for i, node := range region.Nodes {
+				if i < len(rawRegion.Nodes) && rawRegion.Nodes[i].InsecureForTests {
+					node.InsecureForTests = true
+				}
+			}
+		}
+	}
+
+	return &derpMap, nil
+}
+
+func loadDERPMapFromURL(addr url.URL) (*tailcfg.DERPMap, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), types.HTTPTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	client := http.Client{
+		Timeout: types.HTTPTimeout,
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var derpMap tailcfg.DERPMap
+
+	err = json.Unmarshal(body, &derpMap)
+
+	return &derpMap, err
+}
+
+// mergeDERPMaps naively merges a list of [tailcfg.DERPMap] values into a single
+// [tailcfg.DERPMap], it will _only_ look at the Regions, an integer.
+// If a region exists in two of the given [tailcfg.DERPMap] values, the region
+// form the _last_ [tailcfg.DERPMap] will be preserved.
+// An empty [tailcfg.DERPMap] list will result in a [tailcfg.DERPMap] with no regions.
+func mergeDERPMaps(derpMaps []*tailcfg.DERPMap) *tailcfg.DERPMap {
+	result := tailcfg.DERPMap{
+		OmitDefaultRegions: false,
+		Regions:            map[int]*tailcfg.DERPRegion{},
+	}
+
+	for _, derpMap := range derpMaps {
+		// Clone each region: copying the pointer would let a later in-place
+		// shuffle (shuffleRegionNoClone) alias regions shared with the source
+		// map or a previously served map, racing concurrent readers.
+		for id, region := range derpMap.Regions {
+			result.Regions[id] = region.Clone()
+		}
+	}
+
+	for id, region := range result.Regions {
+		if region == nil {
+			delete(result.Regions, id)
+		}
+	}
+
+	return &result
+}
+
+func GetDERPMap(cfg types.DERPConfig) (*tailcfg.DERPMap, error) {
+	var derpMaps []*tailcfg.DERPMap
+	if cfg.DERPMap != nil {
+		derpMaps = append(derpMaps, cfg.DERPMap)
+	}
+
+	for _, addr := range cfg.URLs {
+		derpMap, err := loadDERPMapFromURL(addr)
+		if err != nil {
+			return nil, err
+		}
+
+		derpMaps = append(derpMaps, derpMap)
+	}
+
+	for _, path := range cfg.Paths {
+		derpMap, err := loadDERPMapFromPath(path)
+		if err != nil {
+			return nil, err
+		}
+
+		derpMaps = append(derpMaps, derpMap)
+	}
+
+	derpMap := mergeDERPMaps(derpMaps)
+	shuffleDERPMap(derpMap)
+
+	return derpMap, nil
+}
+
+func shuffleDERPMap(dm *tailcfg.DERPMap) {
+	if dm == nil || len(dm.Regions) == 0 {
+		return
+	}
+
+	// Collect region IDs and sort them to ensure deterministic iteration order.
+	// Map iteration order is non-deterministic in Go, which would cause the
+	// shuffle to be non-deterministic even with a fixed seed.
+	ids := make([]int, 0, len(dm.Regions))
+	for id := range dm.Regions {
+		ids = append(ids, id)
+	}
+
+	slices.Sort(ids)
+
+	for _, id := range ids {
+		region := dm.Regions[id]
+		if len(region.Nodes) == 0 {
+			continue
+		}
+
+		dm.Regions[id] = shuffleRegionNoClone(region)
+	}
+}
+
+var crc64Table = crc64.MakeTable(crc64.ISO)
+
+var (
+	derpRandomOnce sync.Once
+	derpRandomInst *rand.Rand
+	derpRandomMu   sync.Mutex
+)
+
+func derpRandom() *rand.Rand {
+	derpRandomMu.Lock()
+	defer derpRandomMu.Unlock()
+
+	derpRandomOnce.Do(func() {
+		seed := cmp.Or(viper.GetString("dns.base_domain"), time.Now().String())
+		rnd := rand.New(rand.NewSource(0))                        //nolint:gosec // weak random is fine for DERP scrambling
+		rnd.Seed(int64(crc64.Checksum([]byte(seed), crc64Table))) //nolint:gosec // safe conversion
+		derpRandomInst = rnd
+	})
+
+	return derpRandomInst
+}
+
+func resetDerpRandomForTesting() {
+	derpRandomMu.Lock()
+	defer derpRandomMu.Unlock()
+
+	derpRandomOnce = sync.Once{}
+	derpRandomInst = nil
+}
+
+func shuffleRegionNoClone(r *tailcfg.DERPRegion) *tailcfg.DERPRegion {
+	derpRandom().Shuffle(len(r.Nodes), reflect.Swapper(r.Nodes))
+	return r
+}

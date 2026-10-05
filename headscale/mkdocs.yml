@@ -1,0 +1,199 @@
+---
+site_name: Headscale
+site_url: https://juanfont.github.io/headscale/
+edit_uri: blob/main/docs/
+site_author: Headscale authors
+site_description: >-
+  An open source, self-hosted implementation of the Tailscale control server.
+
+# Repository
+repo_name: juanfont/headscale
+repo_url: https://github.com/juanfont/headscale
+
+# Copyright
+copyright: Copyright &copy; 2026 Headscale authors
+
+# Configuration
+theme:
+  name: materialx
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    # - content.tabs.link
+    - content.tooltips
+    # - header.autohide
+    # - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    # - navigation.instant
+    # - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    # - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    # - toc.integrate
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  font:
+    text: Roboto
+    code: Roboto Mono
+  favicon: assets/favicon.png
+  logo: assets/logo/headscale3-dots.svg
+
+# Excludes
+exclude_docs: |
+  /requirements.txt
+
+# Plugins
+plugins:
+  - search:
+      provider: lunr
+      lunr:
+        separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - macros:
+  - include-markdown:
+  - minify:
+      minify_html: true
+  - mike:
+  - social: {}
+  - redirects:
+      redirect_maps:
+        acls.md: ref/policy.md
+        ref/acls.md: ref/policy.md
+        android-client.md: usage/connect/android.md
+        apple-client.md: usage/connect/apple.md
+        dns-records.md: ref/dns.md
+        exit-node.md: ref/routes.md
+        faq.md: about/faq.md
+        iOS-client.md: usage/connect/apple.md#ios
+        oidc.md: ref/oidc.md
+        ref/exit-node.md: ref/routes.md
+        ref/remote-cli.md: ref/api.md#grpc
+        remote-cli.md: ref/api.md#grpc
+        reverse-proxy.md: ref/integration/reverse-proxy.md
+        tls.md: ref/tls.md
+        web-ui.md: ref/integration/web-ui.md
+        windows-client.md: usage/connect/windows.md
+
+# Customization
+extra:
+  version:
+    alias: true
+    provider: mike
+  annotate:
+    json: [.s2]
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/juanfont/headscale
+    - icon: material/coffee
+      link: https://ko-fi.com/headscale
+    - icon: fontawesome/brands/docker
+      link: https://github.com/juanfont/headscale/pkgs/container/headscale
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/c84AZQhmpx
+  headscale:
+    version: 0.29.3
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Page tree
+nav:
+  - Welcome: index.md
+  - About:
+      - FAQ: about/faq.md
+      - Features: about/features.md
+      - Clients: about/clients.md
+      - Getting help: about/help.md
+      - Releases: about/releases.md
+      - Contributing: about/contributing.md
+      - Sponsor: about/sponsor.md
+
+  - Setup:
+      - Requirements and Assumptions: setup/requirements.md
+      - Installation:
+          - Official releases: setup/install/official.md
+          - Community packages: setup/install/community.md
+          - Container: setup/install/container.md
+          - Build from source: setup/install/source.md
+          - Development builds: setup/install/main.md
+      - Upgrade: setup/upgrade.md
+  - Usage:
+      - Getting started: usage/getting-started.md
+      - Connect a node:
+          - Android: usage/connect/android.md
+          - Apple: usage/connect/apple.md
+          - Windows: usage/connect/windows.md
+  - Reference:
+      - Configuration: ref/configuration.md
+      - Registration methods: ref/registration.md
+      - OpenID Connect: ref/oidc.md
+      - Routes: ref/routes.md
+      - TLS: ref/tls.md
+      - Policy: ref/policy.md
+      - DNS: ref/dns.md
+      - DERP: ref/derp.md
+      - API: ref/api.md
+      - Tags: ref/tags.md
+      - Debug: ref/debug.md
+      - Integration:
+          - Reverse proxy: ref/integration/reverse-proxy.md
+          - Web UI: ref/integration/web-ui.md
+          - Tools: ref/integration/tools.md

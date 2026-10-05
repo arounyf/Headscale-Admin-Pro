@@ -1,0 +1,17 @@
+# If you plan to somehow use headscale, please deploy your own DERP infra.
+# See: https://tailscale.com/docs/reference/derp-servers/custom-derp-servers
+regions:
+  1: null # Disable DERP region with ID 1
+  900:
+    regionid: 900
+    regioncode: custom
+    regionname: My Region
+    nodes:
+      - name: 900a
+        regionid: 900
+        hostname: myderp.example.com
+        ipv4: 198.51.100.1
+        ipv6: 2001:db8::1
+        stunport: 0
+        stunonly: false
+        derpport: 0

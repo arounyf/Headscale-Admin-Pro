@@ -1,0 +1,11 @@
+# Issues must have some content
+blank_issues_enabled: false
+
+# Contact links
+contact_links:
+  - name: "headscale Discord community"
+    url: "https://discord.gg/c84AZQhmpx"
+    about: "Please ask and answer questions about usage of headscale here."
+  - name: "headscale usage documentation"
+    url: "https://headscale.net/"
+    about: "Find documentation about how to configure and run headscale."

@@ -1,0 +1,71 @@
+name: Tests
+
+# Tag pushes are deliberately not covered here. A new tag has no base
+# commit, so the path filter below answers "nothing changed", every step
+# is skipped, and the run reports success without testing anything — a
+# hollow green that let an untested commit reach a release. Releases are
+# gated by the test job in build-runyf.yml instead.
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-$${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: changed-files
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        # A workflow edit is a change to how this repository is built, so it
+        # has to be exercised by the build. Without this entry the filter
+        # answers "nothing changed", every step below is skipped, and the run
+        # reports success having tested nothing — which is how a bad gotestsum
+        # invocation could reach a tag unnoticed.
+        with:
+          filters: |
+            files:
+              - '*.nix'
+              - 'go.*'
+              - '**/*.go'
+              - 'integration_test/'
+              - 'config-example.yaml'
+              - '.github/workflows/**'
+
+      - uses: nixbuild/nix-quick-install-action@2c9db80fb984ceb1bcaa77cdda3fdf8cfba92035 # v34
+        if: steps.changed-files.outputs.files == 'true'
+      - uses: nix-community/cache-nix-action@135667ec418502fa5a3598af6fb9eb733888ce6a # v6.1.3
+        if: steps.changed-files.outputs.files == 'true'
+        with:
+          primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.nix',
+            '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Run tests
+        if: steps.changed-files.outputs.files == 'true'
+        env:
+          # As of 2025-01-06, these env vars was not automatically
+          # set anymore which breaks the initdb for postgres on
+          # some of the database migration tests.
+          LC_ALL: "en_US.UTF-8"
+          LC_CTYPE: "en_US.UTF-8"
+        # go test's default timeout is 10m per package, and hscontrol/servertest
+        # does not fit in it on a 4 vCPU runner: measured 639s here against
+        # 508s for the same package upstream, whose CI passes with only 92s to
+        # spare. The extra time is this fork's own isolation tests. Raising the
+        # ceiling keeps the suite running rather than losing the coverage.
+        #
+        # The ./... is load-bearing. Anything after gotestsum's -- replaces the
+        # default package list rather than adding to it, so dropping ./... makes
+        # this run `go test .` — the root package, which holds no tests. The
+        # step then reports success having run nothing.
+        run: nix develop --command -- gotestsum -- -timeout=30m ./...

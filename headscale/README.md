@@ -1,0 +1,242 @@
+![headscale logo](./docs/assets/logo/headscale3_header_stacked_left.png)
+
+![ci](https://github.com/juanfont/headscale/actions/workflows/test.yml/badge.svg)
+
+An open source, self-hosted implementation of the Tailscale control server.
+
+Join our [Discord server](https://discord.gg/c84AZQhmpx) for a chat.
+
+**Note:** Always select the same GitHub tag as the released version you use
+to ensure you have the correct example configuration. The `main` branch might
+contain unreleased changes. The documentation is available for stable and
+development versions:
+
+- [Documentation for the stable version](https://headscale.net/stable/)
+- [Documentation for the development version](https://headscale.net/development/)
+
+## What is Tailscale
+
+Tailscale is [a modern VPN](https://tailscale.com/) built on top of
+[Wireguard](https://www.wireguard.com/).
+It [works like an overlay network](https://tailscale.com/blog/how-tailscale-works/)
+between the computers of your networks - using
+[NAT traversal](https://tailscale.com/blog/how-nat-traversal-works/).
+
+Everything in Tailscale is Open Source, except the GUI clients for proprietary OS
+(Windows and macOS/iOS), and the control server.
+
+The control server works as an exchange point of Wireguard public keys for the
+nodes in the Tailscale network. It assigns the IP addresses of the clients,
+creates the boundaries between each user, enables sharing machines between users,
+and exposes the advertised routes of your nodes.
+
+A [Tailscale network (tailnet)](https://tailscale.com/docs/concepts/tailnet) is
+private network which Tailscale assigns to a user in terms of private users or an
+organisation.
+
+## Design goal
+
+Headscale aims to implement a self-hosted, open source alternative to the
+[Tailscale](https://tailscale.com/) control server. Headscale's goal is to
+provide self-hosters and hobbyists with an open-source server they can use for
+their projects and labs. It implements a narrow scope, a _single_ Tailscale
+network (tailnet), suitable for a personal use, or a small open-source
+organisation.
+
+## Supporting Headscale
+
+If you like `headscale` and find it useful, there is a sponsorship and donation
+buttons available in the repo.
+
+## Features
+
+Please see ["Features" in the documentation](https://headscale.net/stable/about/features/).
+
+## Client OS support
+
+Please see ["Client and operating system support" in the documentation](https://headscale.net/stable/about/clients/).
+
+## Running headscale
+
+**Please note that we do not support nor encourage the use of reverse proxies
+and container to run Headscale.**
+
+Please have a look at the [`documentation`](https://headscale.net/stable/).
+
+For NixOS users, a module is available in [`nix/`](./nix/).
+
+## Builds from `main`
+
+Development builds from the `main` branch are available as container images and
+binaries. See the [development builds](https://headscale.net/stable/setup/install/main/)
+documentation for details.
+
+## Talks
+
+- Fosdem 2026 (video): [Headscale & Tailscale: The complementary open source clone](https://fosdem.org/2026/schedule/event/KYQ3LL-headscale-the-complementary-open-source-clone/)
+  - presented by Kristoffer Dalby
+- Fosdem 2023 (video): [Headscale: How we are using integration testing to reimplement Tailscale](https://fosdem.org/2023/schedule/event/goheadscale/)
+  - presented by Juan Font Alonso and Kristoffer Dalby
+
+## 与上游的差异 (v0.29.0-runyf)
+
+本分支基于 [headscale v0.29.0](https://github.com/juanfont/headscale/releases/tag/v0.29.0)，
+新增 **hs-admin Web 管理后台**所需的数据库扩展和**多用户路由隔离**功能。
+
+### 数据库变更
+
+在官方 `users` 表上增加了以下列（与 v0.28.0-runyf 一致）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `password` | text | 用户密码（bcrypt 哈希） |
+| `expire` | datetime | 账号过期时间 |
+| `cellphone` | text | 手机号 |
+| `role` | text | 用户角色（用于权限控制） |
+| `enable` | text | 账号启用状态 |
+| `route` | text | 路由审批权限 |
+| `node` | text | 节点数量限制 |
+
+新增表（与 v0.28.0-runyf 一致）：
+
+| 表 | 说明 |
+|---|------|
+| `acl` | 存储 ACL 策略（`acl TEXT`, `user_id INTEGER` 外键到 `users`） |
+| `log` | 操作日志（`user_id`, `content`, `created_at`） |
+
+### 多用户路由隔离
+
+相比上游的全局 primary routes，本分支实现了 **Per-User Primary Routes**：
+
+- 每个用户的子网路由独立选举 primary，互不干扰
+- `autogroup:self` 自动限定为同用户节点 + 该用户的子网路由
+- tagged 节点路由保持全局可见（scope 0）
+- 受影响文件：`hscontrol/state/node_store.go`、`hscontrol/state/state.go`
+
+### Autogroup:self 性能缓存
+
+- 新增 per-user 粒度的 `autogroup:self` 编译结果缓存
+- 500 节点 / 10 用户规模下减少 **50 倍**重复计算
+- 受影响文件：`hscontrol/policy/v2/policy.go`、`hscontrol/policy/v2/compiled.go`
+
+### 节点注册简化
+
+相比 v0.28.0-runyf，节点注册不再依赖反向代理的注册链接。
+管理员直接在后台创建 preauth key，用户在设备上执行：
+
+```bash
+tailscale up --auth-key=<key>
+```
+
+### 编译
+
+```bash
+make build
+```
+
+与上游完全一致，无额外依赖。
+
+## Disclaimer
+
+This project is not associated with Tailscale Inc.
+
+However, one of the active maintainers for Headscale [is employed by Tailscale](https://tailscale.com/blog/opensource) and he is allowed to spend work hours contributing to the project. Contributions from this maintainer are reviewed by other maintainers.
+
+The maintainers work together on setting the direction for the project. The underlying principle is to serve the community of self-hosters, enthusiasts and hobbyists - while having a sustainable project.
+
+## Contributing
+
+Please read the [CONTRIBUTING.md](./CONTRIBUTING.md) file.
+
+### Requirements
+
+To contribute to headscale you would need the latest version of [Go](https://golang.org)
+and [Buf](https://buf.build) (Protobuf generator).
+
+We recommend using [Nix](https://nixos.org/) to setup a development environment. This can
+be done with `nix develop`, which will install the tools and give you a shell.
+This guarantees that you will have the same dev env as `headscale` maintainers.
+
+### Code style
+
+To ensure we have some consistency with a growing number of contributions,
+this project has adopted linting and style/formatting rules:
+
+The **Go** code is linted with [`golangci-lint`](https://golangci-lint.run) and
+formatted with [`golines`](https://github.com/segmentio/golines) (width 88) and
+[`gofumpt`](https://github.com/mvdan/gofumpt).
+Please configure your editor to run the tools while developing and make sure to
+run `make lint` and `make fmt` before committing any code.
+
+The **Proto** code is linted with [`buf`](https://docs.buf.build/lint/overview) and
+formatted with [`clang-format`](https://clang.llvm.org/docs/ClangFormat.html).
+
+The **docs** are formatted with [`mdformat`](https://mdformat.readthedocs.io).
+
+The **rest** (Markdown, YAML, etc) is formatted with [`prettier`](https://prettier.io).
+
+Check out the `.golangci.yaml` and `Makefile` to see the specific configuration.
+
+### Install development tools
+
+- Go
+- Buf
+- Protobuf tools
+
+Install and activate:
+
+```shell
+nix develop
+```
+
+### Testing and building
+
+Some parts of the project require the generation of Go code from Protobuf
+(if changes are made in `proto/`) and it must be (re-)generated with:
+
+```shell
+make generate
+```
+
+**Note**: Please check in changes from `gen/` in a separate commit to make it easier to review.
+
+To run the tests:
+
+```shell
+make test
+```
+
+To build the program:
+
+```shell
+make build
+```
+
+### Development workflow
+
+We recommend using Nix for dependency management to ensure you have all required tools. If you prefer to manage dependencies yourself, you can use Make directly:
+
+**With Nix (recommended):**
+
+```shell
+nix develop
+make test
+make build
+```
+
+**With your own dependencies:**
+
+```shell
+make test
+make build
+```
+
+The Makefile will warn you if any required tools are missing and suggest running `nix develop`. Run `make help` to see all available targets.
+
+## Contributors
+
+<a href="https://github.com/juanfont/headscale/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=juanfont/headscale" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
