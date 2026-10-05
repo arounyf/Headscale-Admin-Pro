@@ -230,6 +230,7 @@ def get_server_net():
 
 
 def start_headscale():
+    _forget_headscale_version()
     log_file_path = os.path.join('/var/lib/headscale', 'headscale.log')
 
     if get_headscale_pid():
@@ -245,6 +246,7 @@ def start_headscale():
 
 
 def stop_headscale():
+    _forget_headscale_version()
     return _signal_headscale(signal.SIGTERM, '停止成功')
 
 
@@ -256,14 +258,34 @@ def get_headscale_pid():
     print(f"headscale pid is {pids[0]}")
     return pids[0]
 
+_headscale_version = None
+
+
+def _forget_headscale_version():
+    """丢掉版本号缓存。headscale 二进制被换掉之后必须重新查。"""
+    global _headscale_version
+    _headscale_version = None
+
+
 def get_headscale_version():
-    try:
-        # 执行获取 headscale 进程 PID 的命令
-        command = "headscale version"
-        result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print({e.stderr})
+    """headscale 版本号，查一次就缓存。
+
+    `headscale version` 不依赖 serve 进程，启动时就能拿到，没必要每个请求都
+    fork 一次 —— 首页、设置页、关于弹窗都要显示它。
+
+    缓存唯一的失效点是二进制被换掉：12 和生产的升级方式都是热替换
+    /app/headscale 后重启 headscale 进程，面板本身不重启。所以 start/stop
+    两个入口各清一次，否则关于页会一直报换之前那个版本。
+    """
+    global _headscale_version
+    if _headscale_version is None:
+        try:
+            command = "headscale version"
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+            _headscale_version = result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            print({e.stderr})
+    return _headscale_version
 
 def save_config_yaml(config_dict):
     # 创建 YAML 对象，设置保留注释

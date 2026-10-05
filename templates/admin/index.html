@@ -107,7 +107,7 @@
 
 
           <li class="layui-nav-item layui-hide-xs" lay-unselect>
-            <span style="font-size:12px;color:{{ state_color }};cursor:help" title="Headscale {{ hs_version }}">
+            <span style="font-size:12px;color:{{ state_color }};cursor:help" title="{{ hs_version }}">
               <i class="layui-icon layui-icon-{{ 'component' if hs_running == 'running' else 'pause' }} hs-ico-font"></i>
               {{ '运行中' if hs_running == 'running' else '已停止' }}
             </span>
