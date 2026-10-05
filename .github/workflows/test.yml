@@ -26,6 +26,11 @@ jobs:
       - name: Get changed files
         id: changed-files
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        # A workflow edit is a change to how this repository is built, so it
+        # has to be exercised by the build. Without this entry the filter
+        # answers "nothing changed", every step below is skipped, and the run
+        # reports success having tested nothing — which is how a bad gotestsum
+        # invocation could reach a tag unnoticed.
         with:
           filters: |
             files:
@@ -34,6 +39,7 @@ jobs:
               - '**/*.go'
               - 'integration_test/'
               - 'config-example.yaml'
+              - '.github/workflows/**'
 
       - uses: nixbuild/nix-quick-install-action@2c9db80fb984ceb1bcaa77cdda3fdf8cfba92035 # v34
         if: steps.changed-files.outputs.files == 'true'
