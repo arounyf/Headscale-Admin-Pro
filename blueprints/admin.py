@@ -1,7 +1,7 @@
 from flask_login import login_required, current_user
 from login_setup import role_required
 from flask import Blueprint, render_template, current_app, request, json, session
-from utils import get_server_net, get_headscale_pid, get_headscale_version_line
+from utils import get_server_net, get_headscale_pid, get_headscale_version
 
 
 
@@ -36,7 +36,7 @@ def admin():
         default_page = "node"
     menu_html = "".join(item['html'] for item in menu_items.values() if role in item['roles'])
     hs_running = 'running' if get_headscale_pid() else 'stopped'
-    hs_version = get_headscale_version_line()
+    hs_version = get_headscale_version() or ''
     user_mode = session.get('user_mode', 'admin')
     return render_template('admin/index.html', menu_html=menu_html, default_page=default_page, hs_running=hs_running, user_mode=user_mode, hs_version=hs_version)
 
@@ -169,7 +169,7 @@ def set():
                                default_reg_days = default_reg_days,
                                default_node_count = default_node_count,
                                open_user_reg = open_reg_checked,
-                               version = get_headscale_version_line(),
+                               version = get_headscale_version(),
                                smtp_host = current_app.config.get('SMTP_HOST', ''),
                                smtp_port = current_app.config.get('SMTP_PORT', '465'),
                                smtp_user = current_app.config.get('SMTP_USER', ''),

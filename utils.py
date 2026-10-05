@@ -291,11 +291,15 @@ def get_headscale_version():
 
 
 def get_headscale_version_line():
-    """面板上显示的那一行，形如 `headscale v0.29.4-hs`。
+    """只要版本号那一行，形如 `headscale v0.29.4-hs`。
 
-    `headscale version` 的四行里只有第一行是版本号（另外三行是 commit、
-    build time、built with），关于弹窗、导航条的「运行中」tooltip、设置页都
-    只显示这一行。commit 和 build time 在命令行里仍然看得到。
+    `headscale version` 的四行里只有第一行是版本号，另外三行是 commit、
+    build time、built with。**只给「关于」弹窗用** —— 那里是一段正文，
+    摆四行 detail 会把版面撑得很碎。
+
+    导航条的「运行中」tooltip 和设置页的 tips 用的是完整的
+    [get_headscale_version]：那两处是悬停才出现的浮层，commit 和 build
+    时间正好是排查「12 上跑的到底是哪个构建」时要看的东西，收短就没有了。
     """
     raw = get_headscale_version()
     if not raw:
