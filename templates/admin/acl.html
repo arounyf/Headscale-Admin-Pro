@@ -114,7 +114,6 @@ layui.config({ base: '/static/' }).use(['index', 'form', 'layer'], function(){
   // ---- CodeMirror 实例 ----
   // mode 用 javascript 而不是 application/json：headscale 的 ACL 文件是
   // .hujson，允许 // 注释和尾逗号，而 json 模式会把它们全标成错误。
-  // （注意后端保存时仍按严格 JSON 校验，注释会被拒绝 —— 见下面 doSave 的报错跳转。）
   var cm = CodeMirror.fromTextArea(document.getElementById('acl-editor'), {
     mode: 'javascript',
     lineNumbers: true,
