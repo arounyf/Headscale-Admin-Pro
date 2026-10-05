@@ -66,14 +66,16 @@ git reset --hard HEAD^       # 万一把它提交了
 
 ### 一个需要留意的风险
 
-`git subtree` 靠 DAG 找 merge base（当前是 `b0c221f3`）。如果 headscale 那一侧
-重写过历史（`arounyf/headscale` 上就有 `backup/pre-msg-rewrite`、
-`backup/pre-rebase-20260409` 这类标签），共同祖先可能悄悄移位。
+`git subtree` 靠 DAG 找 merge base（当前是 `b0c221f3`）。这个 fork 重写过几次历史，
+每一次重写都会让共同祖先悄悄移位。重写前的位置留在**本地那份 headscale 检出**的
+`backup/pre-msg-rewrite-3169`、`backup/pre-rebase-20260409-092352` 这类标签上
+—— 它们从来没推到 GitHub（`arounyf/headscale` 上只有 `v0.28.0` 和
+`v0.29.0-hs`…`v0.29.4-hs` 这几个 release tag），所以只有那个 clone 还在的时候才查得到。
 
 症状是：`git subtree pull` 产生大批牵涉到你根本没改过的文件的冲突。此时先核对
 
 ```sh
-git merge-base hs-admin upstream/main     # 在 arounyf/headscale 那份检出里跑
+git merge-base hs-admin upstream/main     # 在本地那份 headscale 检出里跑
 ```
 
 是不是还指向一个合理的提交，再决定是否用 `git subtree pull` 的 `<onto>` 参数
@@ -95,5 +97,7 @@ git merge-base hs-admin upstream/main     # 在 arounyf/headscale 那份检出�
 本仓库只有一条版本线：面板的 `v5.x`。镜像里内置的 headscale 版本就是那个 tag
 对应的源码版本，不再单独给 headscale 打 tag。
 
-`arounyf/headscale` 冻结：作为上游中转和历史归档保留。它的 `v0.29.4-hs` release
-资产原地不动，还在引用那个下载 URL 的旧文档不会 404；但新的二进制不再从那里发布。
+`arounyf/headscale` 已归档（GitHub 的 archive，只读），`hs-admin` 停在 `ec80ab63`
+—— 与这棵子树加入时的内容一致。它的 `v0.29.4-hs` release 资产原地不动，还在引用
+那个下载 URL 的旧文档不会 404（归档后实测该 URL 仍 302 到 CDN 并返回 200）；但新的
+二进制不再从那里发布，要再往里推任何东西都得先解除归档。
