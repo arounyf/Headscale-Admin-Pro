@@ -335,8 +335,8 @@ def approve_routes():
         node = cursor.execute("SELECT user_id FROM nodes WHERE id =?", (node_id,)).fetchone()
         route = cursor.execute("SELECT route FROM users WHERE id =?", (current_user.id,)).fetchone()
 
-    # 只能审批自己租户的节点。delete / rename 判的是同一件事，之前这里漏了，
-    # 只查了自己的 route 开关，于是开了 route 的普通用户能审批别人租户的路由。
+    # 只能审批自己的节点。delete / rename 判的是同一件事，之前这里漏了，
+    # 只查了自己的 route 开关，于是开了 route 的普通用户能审批别人的路由。
     if not node or (node[0] != current_user.id and current_user.role != 'manager'):
         return res('1', '非法请求')
 
