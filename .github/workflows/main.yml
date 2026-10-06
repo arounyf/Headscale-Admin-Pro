@@ -44,7 +44,12 @@ jobs:
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG="${{ github.ref_name }}"
-            if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+            # 两段和三段都算稳定版：v5.4 和 v5.4.1 是同一类东西，只是后者
+            # 补了 patch。原来的 `^v[0-9]+\.[0-9]+$` 只认两段，三段会掉进
+            # 下面的 else，被当成预发布 —— v5.4.1 那样的版本号会被悄悄标成
+            # Pre-release 且不更新 :latest。带 -beta/-rc 这些后缀的仍然不是
+            # 稳定版（正则里没有容纳后缀，所以自然落进 else）。
+            if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
               echo "stable=true" >> $GITHUB_OUTPUT
               echo "prerelease=false" >> $GITHUB_OUTPUT
               echo "Stable release: $TAG → will push as :latest"
