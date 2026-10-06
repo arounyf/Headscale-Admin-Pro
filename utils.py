@@ -267,6 +267,41 @@ def _forget_headscale_version():
     _headscale_version = None
 
 
+def _localize_build_time(raw):
+    """把 `headscale version` 里的 build time 从 UTC 换成本地时区。
+
+    这个戳是 CI 用 `date -u` 打的，二进制报出来的必然带 Z；而面板里其他所有
+    时间都是本地时区（SQLite 的 'localtime'）。只有这一处是 UTC，于是悬停框
+    里显示 03:39，看的人得自己知道那是 UTC 再减 8 小时才对得上墙上时钟。
+
+    输出改成 `2026-10-06 11:39:25 +0800` —— 把偏移显式写出来，而不是留一个
+    要靠读者知道含义的 Z。用哪个时区由容器的 TZ 决定（docker-compose 里是
+    Asia/Shanghai），和面板其余部分一致。
+
+    解析不了就原样返回：直接 `docker build` 出来的二进制这一行是 `unknown`，
+    一个显示问题不值得把那行吞掉。
+    """
+    if not raw:
+        return raw
+    lines = []
+    for line in raw.splitlines():
+        if line.startswith('build time:'):
+            value = line.split(':', 1)[1].strip()
+            try:
+                # 早于 3.11 的 fromisoformat 不认结尾那个 Z，先换掉，省得
+                # 为一行显示依赖解释器版本。
+                when = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except ValueError:
+                lines.append(line)
+                continue
+            if when.tzinfo is None:
+                lines.append(line)
+                continue
+            line = 'build time: ' + when.astimezone().strftime('%Y-%m-%d %H:%M:%S %z')
+        lines.append(line)
+    return '\n'.join(lines)
+
+
 def get_headscale_version():
     """headscale 版本号，查一次就缓存。
 
@@ -277,7 +312,9 @@ def get_headscale_version():
     /app/headscale 后重启 headscale 进程，面板本身不重启。所以 start/stop
     两个入口各清一次，否则关于页会一直报换之前那个版本。
 
-    返回的是命令的完整输出，四行。
+    返回的是命令的完整输出，四行；其中 build time 已经过
+    [_localize_build_time] 换成本地时区。缓存里存的仍是原样输出 —— 转换只
+    发生在显示这一层，`headscale version` 本身报什么不受影响。
     """
     global _headscale_version
     if _headscale_version is None:
@@ -287,7 +324,7 @@ def get_headscale_version():
             _headscale_version = result.stdout.strip()
         except subprocess.CalledProcessError as e:
             print({e.stderr})
-    return _headscale_version
+    return _localize_build_time(_headscale_version)
 
 
 def get_headscale_version_line():
