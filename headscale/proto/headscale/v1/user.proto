@@ -36,9 +36,12 @@ message CreateUserRequest {
   string route = 10;
   string node = 11;
 
-  // created_at/updated_at override the timestamps GORM would write. The panel
-  // stores them in its own local-time format and renders them verbatim, so it
-  // has to keep supplying them or the dates it shows would shift.
+  // Deprecated and ignored: the server never writes these to the users table,
+  // so a caller that still sends them creates a normal user. They used to be
+  // written, and an offset-less value landed in the column as a string the
+  // SQLite driver reads back as UTC — shifting the user by the writer's UTC
+  // offset and from there out to every node. GORM owns created_at/updated_at
+  // again. Kept only to avoid changing the wire format.
   string created_at = 12;
   string updated_at = 13;
 }

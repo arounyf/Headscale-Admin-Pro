@@ -1176,7 +1176,7 @@
         },
         "createdAt": {
           "type": "string",
-          "description": "created_at/updated_at override the timestamps GORM would write. The panel\nstores them in its own local-time format and renders them verbatim, so it\nhas to keep supplying them or the dates it shows would shift."
+          "description": "Deprecated and ignored: the server never writes these to the users table,\nso a caller that still sends them creates a normal user. They used to be\nwritten, and an offset-less value landed in the column as a string the\nSQLite driver reads back as UTC — shifting the user by the writer's UTC\noffset and from there out to every node. GORM owns created_at/updated_at\nagain. Kept only to avoid changing the wire format."
         },
         "updatedAt": {
           "type": "string"

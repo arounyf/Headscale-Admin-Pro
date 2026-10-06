@@ -142,9 +142,12 @@ type CreateUserRequest struct {
 	Enable    string `protobuf:"bytes,9,opt,name=enable,proto3" json:"enable,omitempty"`
 	Route     string `protobuf:"bytes,10,opt,name=route,proto3" json:"route,omitempty"`
 	Node      string `protobuf:"bytes,11,opt,name=node,proto3" json:"node,omitempty"`
-	// created_at/updated_at override the timestamps GORM would write. The panel
-	// stores them in its own local-time format and renders them verbatim, so it
-	// has to keep supplying them or the dates it shows would shift.
+	// Deprecated and ignored: the server never writes these to the users table,
+	// so a caller that still sends them creates a normal user. They used to be
+	// written, and an offset-less value landed in the column as a string the
+	// SQLite driver reads back as UTC — shifting the user by the writer's UTC
+	// offset and from there out to every node. GORM owns created_at/updated_at
+	// again. Kept only to avoid changing the wire format.
 	CreatedAt     string `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     string `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
