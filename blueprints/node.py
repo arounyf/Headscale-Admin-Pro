@@ -7,7 +7,7 @@ from blueprints.auth import register_node
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import res, table_res, to_request, is_user_mode
+from utils import res, table_res, to_request, is_user_mode, api_ts
 
 bp = Blueprint("node", __name__, url_prefix='/api/node')
 
@@ -72,8 +72,12 @@ def getNodes():
                 'userName': (node.get('user') or {}).get('name', '-'),
                 'name': node['givenName'],
                 'ip': ', '.join(node['ipAddresses']),
-                'lastTime': node['lastSeen'],
-                'createTime': node['createdAt'],
+                # 这两列走 API，不是走库，所以用 api_ts 而不是 display_ts。
+                # 以前是裸透传 API 的原始 ISO 串（'2026-10-06T06:10:08.123Z'）——
+                # 列表页目前没有时间列所以没露出来，但那是**另一套格式**，谁给列表
+                # 加个时间列就会看到 UTC 原始串，跟详情页的北京墙钟对不上。
+                'lastTime': api_ts(node['lastSeen']),
+                'createTime': api_ts(node['createdAt']),
                 'OS': hid.get('OS',''),
                 'Client': hid.get('IPNVersion',''),
                 'online': node['online'],
@@ -197,9 +201,16 @@ def rename():
 @bp.route('/node_info', methods=['GET', 'POST'])
 @login_required
 def node_info():
-    """
-    通过节点ID从本地SQLite数据库获取节点详细信息
-    (使用封装的 SqliteDB，并严格参考 getNodes 函数中的字段)
+    """通过节点 ID 取详情，数据全部来自 headscale 的 API。
+
+    以前这一页 SELECT 面板库里的 nodes 表，拿的是 headscale **周期性落盘的快照**：
+    同一个 lastSeen，走库比走 API 旧 23 分钟（实测）。一个事实两个来源、两个值，
+    而且库那个是旧的。
+
+    顺带修掉的是格式：那一版用 display_ts 格式化 headscale 的列。display_ts 里
+    那个「裸值就当北京墙钟」的兜底分支是给**面板自有列**做历史迁移用的，用在
+    headscale 的列上只会掩盖问题（它永远写带偏移的值，出现裸值就是代码坏了）。
+    现在时间走 api_ts，与列表页同一个函数。
     """
     # 1. 获取请求中的 NodeId
     node_id = request.args.get('NodeId') or request.form.get('NodeId')
@@ -212,64 +223,53 @@ def node_info():
     except ValueError:
         return res("1", "NodeId 必须是整数", [])
 
-    # 2. 构建查询SQL
-    base_query = """
-        SELECT
-            nodes.id, nodes.hostname, nodes.given_name,
-            nodes.ipv4, nodes.ipv6, nodes.last_seen, nodes.created_at,
-            nodes.host_info, nodes.approved_routes,
-            users.name as user_name, users.email as user_email
-        FROM nodes
-        JOIN users ON nodes.user_id = users.id
-    """
+    # 2. 取节点
+    response = to_request('GET', f'/api/v1/node/{node_id}')
+    if response['code'] != '0':
+        return res("1", f"未找到ID为 {node_id} 的节点", [])
 
-    conditions = []
-    params = []
-
-    if current_user.role != 'manager' or is_user_mode():
-        conditions.append("nodes.user_id = ?")
-        params.append(current_user.id)
-
-    conditions.append("nodes.id = ?")
-    params.append(node_id)
-
-    if conditions:
-        base_query += " WHERE " + " AND ".join(conditions)
-
-    with SqliteDB() as cursor:
-        cursor.execute(base_query, params)
-        node = cursor.fetchone()
-
+    node = json.loads(response['data']).get('node') or {}
     if not node:
         return res("1", f"未找到ID为 {node_id} 的节点", [])
 
-    host_info = json.loads(node['host_info']) if node['host_info'] else {}
-    try:
-        routes = json.loads(node['approved_routes']) if node['approved_routes'] else []
-    except (json.JSONDecodeError, TypeError):
-        routes = []
+    user_info = node.get('user') or {}
+
+    # 3. 权限：非管理员（或用户模式）只能看自己的节点。
+    # 以前这条判断是加在 SQL 的 WHERE 里的，改走 API 之后得自己判。
+    # 注意本函数没有 @role_required，普通用户也要能看自己的节点。
+    if current_user.role != 'manager' or is_user_mode():
+        if str(user_info.get('id', '')) != str(current_user.id):
+            return res("1", f"未找到ID为 {node_id} 的节点", [])
+
+    host = node.get('hostInfo') or {}
+
+    # headscale 把两个地址混在一个列表里，按冒号分（IPv6 一定含冒号，IPv4 一定不含）
+    addresses = node.get('ipAddresses') or []
+    ipv4 = next((a for a in addresses if ':' not in a), '')
+    ipv6 = next((a for a in addresses if ':' in a), '')
 
     formatted_item = {
-        "name": node['given_name'] or node['hostname'],
-        "hostname": node['hostname'],
-        "userName": node['user_name'],
-        "userEmail": node['user_email'] or '',
-        "ipv4": node['ipv4'] or '',
-        "ipv6": node['ipv6'] or '',
-        "lastSeen": str(node['last_seen']) if node['last_seen'] else '',
-        "createdAt": str(node['created_at']) if node['created_at'] else '',
-        "OS": host_info.get('OS', ''),
-        "OSVersion": host_info.get('OSVersion', ''),
-        "Client": host_info.get('IPNVersion') or '',
-        "Machine": host_info.get('Machine', ''),
-        "DeviceModel": host_info.get('DeviceModel', ''),
-        "Distro": host_info.get('Distro', ''),
-        "DistroVersion": host_info.get('DistroVersion', ''),
-        "GoVersion": host_info.get('GoVersion', ''),
-        "Desktop": host_info.get('Desktop', False),
-        "Container": host_info.get('Container', False),
-        "Userspace": host_info.get('Userspace', False),
-        "Routes": ', '.join(routes),
+        "name": node.get('givenName') or node.get('name') or '',
+        "hostname": node.get('name') or '',
+        "userName": user_info.get('name', '-'),
+        "userEmail": user_info.get('email') or '',
+        "ipv4": ipv4,
+        "ipv6": ipv6,
+        # 时间走 api_ts，与列表页(getNodes)同一个函数、同一套格式。
+        "lastSeen": api_ts(node.get('lastSeen')),
+        "createdAt": api_ts(node.get('createdAt')),
+        "OS": host.get('os', ''),
+        "OSVersion": host.get('osVersion', ''),
+        "Client": host.get('ipnVersion') or '',
+        "Machine": host.get('machine', ''),
+        "DeviceModel": host.get('deviceModel', ''),
+        "Distro": host.get('distro', ''),
+        "DistroVersion": host.get('distroVersion', ''),
+        "GoVersion": host.get('goVersion', ''),
+        "Desktop": host.get('desktop', False),
+        "Container": host.get('container', False),
+        "Userspace": host.get('userspace', False),
+        "Routes": ', '.join(node.get('approvedRoutes') or []),
     }
 
     return res("0", "获取成功", [formatted_item])

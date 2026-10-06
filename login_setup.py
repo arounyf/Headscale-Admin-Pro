@@ -4,6 +4,7 @@ from flask import redirect, url_for, render_template
 from flask_login import LoginManager, current_user
 from exts import SqliteDB
 from models import User
+from utils import display_ts
 
 
 login_manager = LoginManager()
@@ -27,17 +28,17 @@ def unauthorized():
 def user_loader(user_id):
     try:
         with SqliteDB() as cursor:
-            query = """
-                SELECT 
-                    id, name, 
-                    strftime('%Y-%m-%d %H:%M:%S', created_at, 'localtime') as created_at,
-                    strftime('%Y-%m-%d %H:%M:%S', updated_at, 'localtime') as updated_at,
+            query = f"""
+                SELECT
+                    id, name,
+                    {display_ts('created_at')} as created_at,
+                    {display_ts('updated_at')} as updated_at,
                     email, password,
-                    strftime('%Y-%m-%d %H:%M:%S', expire, 'localtime') as expire, 
-                    cellphone, role, node, route, enable 
-                FROM 
-                    users 
-                WHERE 
+                    {display_ts('expire')} as expire,
+                    cellphone, role, node, route, enable
+                FROM
+                    users
+                WHERE
                     id =?
             """
             cursor.execute(query, (user_id,))

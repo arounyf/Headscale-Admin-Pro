@@ -244,6 +244,7 @@
     </div>
   </div>
 
+  <script src="/panel-tz.js"></script>
   <script src="/static/layui/layui.js?t=1"></script>
   <script>
   layui.config({
@@ -269,25 +270,34 @@
         $('#nodeNum').html(res.data.node_count)
         $('#RoutesNum').html(res.data.route_count)
 
-        $('#reg').text(res.data.created_at.split('+')[0])
-        
+        // init_data 返回的已经是 display_ts 出来的北京墙钟串，没有偏移可切，
+        // 原来的 .split('+')[0] 是空操作，去掉。
+        $('#reg').text(res.data.created_at)
+
         {#$('#expire').text(res.data.expire)#}
 
-        var countdown = util.countdown({
-          date: res.data.expire, // 目标时间值
-          now: new Date(), // 当前时间，一般为服务器时间，此处以本地时间为例
-          ready: function(){ // 初始操作
-            clearTimeout(util.countdown.timer); // 清除旧定时器，防止多次渲染时重复执行。实际使用时不常用
-          },
-          clock: function(obj, inst){  // 计时中
-            var str = [obj.d,'天',obj.h,'时',obj.m,'分',obj.s,'秒'].join(' ');
-            lay('#expire').html(str);
-            util.countdown.timer = inst.timer; // 记录当前定时器，以便在重复渲染时清除。实际使用时不常用
-          },
-          done: function(obj, inst){ // 计时完成
-            {#layer.msg('你的账号已到期');#}
-          }
-        });
+        // 同 user.html 的 TPL-expire：裸墙钟串会被浏览器按浏览者本地时区解析，
+        // 必须补成带偏移的 ISO 串；偏移从 /panel-tz.js 取，别在这里写死。
+        // 未设置到期时直接显示「未设置」。
+        if (res.data.expire) {
+          var countdown = util.countdown({
+            date: res.data.expire.replace(' ', 'T') + window.PANEL_TZ_ISO, // 目标时间值
+            now: new Date(), // 当前时间，一般为服务器时间，此处以本地时间为例
+            ready: function(){ // 初始操作
+              clearTimeout(util.countdown.timer); // 清除旧定时器，防止多次渲染时重复执行。实际使用时不常用
+            },
+            clock: function(obj, inst){  // 计时中
+              var str = [obj.d,'天',obj.h,'时',obj.m,'分',obj.s,'秒'].join(' ');
+              lay('#expire').html(str);
+              util.countdown.timer = inst.timer; // 记录当前定时器，以便在重复渲染时清除。实际使用时不常用
+            },
+            done: function(obj, inst){ // 计时完成
+              {#layer.msg('你的账号已到期');#}
+            }
+          });
+        } else {
+          lay('#expire').html('未设置');
+        }
 
       }
     });

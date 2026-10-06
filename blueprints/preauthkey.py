@@ -1,11 +1,10 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask_login import current_user, login_required
 from flask import Blueprint, request,current_app
 from exts import SqliteDB
-from utils import table_res, res, to_request, is_user_mode
+from utils import table_res, res, to_request, is_user_mode, api_ts
 import json
-from datetime import datetime
 
 bp = Blueprint("preauthkey", __name__, url_prefix='/api/preauthkey')
 
@@ -47,17 +46,12 @@ def getPreAuthKey():
     # 数据格式化
     pre_auth_keys_list = []
     for key in paginated_keys:
-        # 处理创建时间
-        created_at_utc = datetime.fromisoformat(key['createdAt'].replace('Z', '+00:00'))
-        created_at_local = created_at_utc.astimezone()
-        create_time = created_at_local.strftime('%Y-%m-%d %H:%M:%S')
-
-        # 处理过期时间
-        expiration = ''
-        if key['expiration']:
-            expiration_utc = datetime.fromisoformat(key['expiration'].replace('Z', '+00:00'))
-            expiration_local = expiration_utc.astimezone()
-            expiration = expiration_local.strftime('%Y-%m-%d %H:%M:%S')
+        # createdAt / expiration 是 API 给的绝对时刻，走 api_ts 转成和 display_ts
+        # 同一套的北京墙钟。以前这里手写 fromisoformat + 不带参数的 .astimezone()
+        # （取容器时区）—— 显示时区就成了容器的隐式属性，换个 TZ 环境就跟别页对不上。
+        # expiration 为空时 api_ts 返回 ''。
+        create_time = api_ts(key['createdAt'])
+        expiration = api_ts(key['expiration'])
 
         user = key.get('user') or {}
         pre_auth_keys_list.append({
@@ -88,14 +82,17 @@ def addKey():
     except (ValueError, TypeError):
         expire_days = 7
 
-    expire_date = datetime.now() + timedelta(days=expire_days)
+    # 这是跨 API 边界发出去的值，必须是真 UTC。原来是 `datetime.now()`（容器本地）
+    # 直接拼一个 'Z' —— 等于把本地时间谎报成 UTC，操作者填 7 天，密钥实际活
+    # 7 天 8 小时，比设定期限长。
+    expire_date = datetime.now(timezone.utc) + timedelta(days=expire_days)
 
     url = '/api/v1/preauthkey'
     data = {
         'user': current_user.id,
         'reusable': reusable,
         'ephemeral': ephemeral,
-        'expiration': expire_date.isoformat() + 'Z'
+        'expiration': expire_date.isoformat().replace('+00:00', 'Z')
     }
 
     response = to_request('POST', url, data)

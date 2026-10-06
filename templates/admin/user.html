@@ -63,25 +63,32 @@
             <script type="text/html" id="TPL-expire">
               {{#
                 var util = layui.util;
-                var result;
-                var countdown = util.countdown({
-                  date: d.expire,
-                  now: new Date(),
-                  ready: function(){
-                    clearTimeout(util.countdown.timer);
-                  },
-                  clock: function(obj, inst){
-                    if (obj.d <=30){
-                      result = [obj.d,'天',obj.h,'时',obj.m,'分',obj.s,'秒'].join(' ');
-                    }else{
-                      result = d.expire
+                // display_ts 输出的是面板显示时区的墙钟裸串（YYYY-MM-DD HH:MM:SS）。
+                // 必须补成带偏移的 ISO 串再交给 countdown：裸串会被浏览器按**浏览者
+                // 本地时区**解析，不在该时区的浏览者算出来的倒计时就是错的。偏移从
+                // /panel-tz.js 取（源头是 utils.PANEL_TZ，别在这里写死）。
+                // 空值（未设置到期）不启动倒计时。
+                var result = '';
+                if (d.expire) {
+                  var countdown = util.countdown({
+                    date: d.expire.replace(' ', 'T') + window.PANEL_TZ_ISO,
+                    now: new Date(),
+                    ready: function(){
+                      clearTimeout(util.countdown.timer);
+                    },
+                    clock: function(obj, inst){
+                      if (obj.d <=30){
+                        result = [obj.d,'天',obj.h,'时',obj.m,'分',obj.s,'秒'].join(' ');
+                      }else{
+                        result = d.expire
+                      }
+                      util.countdown.timer = inst.timer;
+                    },
+                    done: function(obj, inst){
+                      result = "已到期";
                     }
-                    util.countdown.timer = inst.timer;
-                  },
-                  done: function(obj, inst){
-                    result = "已到期";
-                  }
-                });
+                  });
+                }
               }}
               {{= result }}
             </script>
@@ -93,6 +100,7 @@
     </div>
   </div>
   
+  <script src="/panel-tz.js"></script>
   <script src="/static/layui/layui.js"></script>
   <script src="/static/csrf.js"></script>
   <script>

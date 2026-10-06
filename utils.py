@@ -79,10 +79,242 @@ def to_request(method,url_path,data=None,flag = True):
 
 
 
+# ---- 面板的时间约定 ----
+#
+# **库里一律存绝对时刻**：任何写进 db.sqlite 的时间值都必须带时区偏移
+# （'2026-10-06 13:25:40+08:00'，或 UTC 的 '...Z'）。这不是风格偏好 —— 它让
+# 「这一列是谁写的」不再影响怎么读，调用点也就不需要各自判断形态了。
+#
+# 写入方：
+#   headscale(Go/GORM)  自己写带偏移的值。面板**不再插手** users.created_at /
+#                       users.updated_at —— 以前面板按自己的格式覆盖它们，而
+#                       headscale 读回那一行时按 time.Time 解析，裸值被当成 UTC，
+#                       于是面板建的用户 createdAt 晚 8 小时。详见 auth.py。
+#   面板                只剩两个自有列：users.expire、log.created_at，也必须带偏移
+#                       （见本文件 record_log、blueprints/user.py 的 re_expire）。
+#
+# 读取只有一个入口：display_ts()，绑定下面的 PANEL_TZ_OFFSET，输出北京墙钟。
+#
+# strftime 的陷阱（老代码两个方向都错一半的原因）：它见到带偏移的输入会**先折成
+# UTC** 再输出，于是
+#
+#   strftime('%Y-%m-%d %H:%M:%S', created_at)              对带偏移的行少 8 小时
+#   strftime('%Y-%m-%d %H:%M:%S', created_at, 'localtime') 对裸值的行多 8 小时
+#
+# 所以 display_ts 得自己判断该不该加偏移，见下面那个 CASE。
+#
+# SQL 之外的显示格式化另有两处，都在边界上转 PANEL_TZ，改时记得跟 PANEL_TZ_OFFSET 对齐：
+#   预认证密钥 —— 走 API 读，见 blueprints/preauthkey.py；反向发出去的值用
+#                 datetime.now(timezone.utc)（跨 API 边界必须是真 UTC）
+#   headscale 构建时间 —— 见本文件 _localize_build_time
+# 显示时区的**唯一来源**。要改时区只改这一行 —— 另外两个写法都从它算出来：
+#   PANEL_TZ_OFFSET  SQL 用（strftime 修饰符，'+8 hours'）
+#   PANEL_TZ_ISO     前端用（ISO 偏移串，'+08:00'，经 app.py 的 /panel-tz.js 下发）
+#
+# 改这里会牵动 display_ts 里那个 CASE 的前提（它的 ELSE 分支假设裸值就是这个时区
+# 的墙钟）。库里还有裸值时不要改 —— 判据见 find_bare_time_values()。
+PANEL_TZ = timezone(timedelta(hours=8))
+
+
+def _tz_sql_offset(tz):
+    """timezone → SQLite strftime 修饰符，如 '+8 hours'。
+
+    半小时时区不能用 '5 hours 30 minutes' 这种写法：SQLite 把整个字符串当成**一个**
+    修饰符，认不出来时返回 NULL 而不是报错 —— 整列时间会静默变成空。半小的偏移改发
+    'N minutes'（实测 '+330 minutes' 正确）。现在的 +8 走整小时分支，不受影响。
+    """
+    minutes = int(tz.utcoffset(None).total_seconds()) // 60
+
+    if minutes % 60 == 0:
+        return '{0:+d} hours'.format(minutes // 60)
+
+    return '{0:+d} minutes'.format(minutes)
+
+
+def _tz_iso_offset(tz):
+    """timezone → ISO 偏移串，如 '+08:00'（前端拼 ISO 时间用）。"""
+    minutes = int(tz.utcoffset(None).total_seconds()) // 60
+    sign = '+' if minutes >= 0 else '-'
+    hours, mins = divmod(abs(minutes), 60)
+    return '{0}{1:02d}:{2:02d}'.format(sign, hours, mins)
+
+
+PANEL_TZ_OFFSET = _tz_sql_offset(PANEL_TZ)
+PANEL_TZ_ISO = _tz_iso_offset(PANEL_TZ)
+
+
+# 允许出现「裸值」（不带时区偏移）的列。
+#
+# display_ts 里那个 CASE 的 ELSE 分支假设「没有偏移的值 = 面板显示时区的墙钟」。
+# 这个假设**只对旧面板写过的列成立** —— 那几列的历史行真的是裸的北京墙钟。
+#
+# headscale 写的列永远带偏移，对它们来说裸值是**不该存在的东西**：一旦出现就是
+# 代码坏了，而那个 ELSE 分支会安静地猜一个可能错 8 小时的值、不报错（当初那个
+# +8 小时的 bug 就是这么活了很久的）。所以列名必须在这张表里，不在就抛。
+#
+# 加新列进来之前先问：这一列的历史值真的可能是裸的吗？答不上来就别加 ——
+# 读 headscale 的时间应该走 API + api_ts。
+#
+# 不带表名的列名默认属于 users（现有调用点查的都只有 users 表）。
+BARE_TOLERANT_COLUMNS = {
+    'users.created_at', 'users.updated_at', 'users.expire', 'log.created_at',
+}
+
+
+def display_ts(column):
+    """生成「把 <column> 显示成北京墙上时间」的 SQL 片段。理由见上面那条约定。
+
+    对带偏移的值（headscale 写的）和裸值（面板旧版本写的）都正确 —— 那个 CASE 是
+    **迁移 shim**：纯 '+8 hours' 会把裸值当 UTC 读、多显示 8 小时。'YYYY-MM-DD
+    HH:MM:SS' 恰好 19 字符，所以**第 19 位之后出现的 '+'/'-' 只可能是时区偏移**
+    （日期的短横线都在前 10 位内），裸值分支不位移，因为面板旧版本写下的
+    users.expire / users.created_at 本来就是北京墙钟。
+
+    **不要把这个 CASE 收成常量。** 12 的库清干净了不代表生产干净 —— 生产还留着旧
+    面板写下的裸值，收掉会让它们集体多显示 8 小时。要收的前提是**生产**也零裸值。
+
+    另：这个 CASE 的容忍是有代价的 —— 将来谁再写进一个裸值，不会报错，只会静默
+    显示错 8 小时。所以写库那头必须带偏移（本文件 record_log、blueprints/auth.py、
+    blueprints/user.py 的 re_expire 三个写入点）。
+
+    column 必须是代码里写死的列名（可带表前缀），不能来自请求；且必须在
+    BARE_TOLERANT_COLUMNS 里（见那张表上面的理由）。
+    """
+    key = column if '.' in column else 'users.' + column
+
+    if key not in BARE_TOLERANT_COLUMNS:
+        raise ValueError(
+            "display_ts 不接受 {0!r}：它不在「历史值可能是裸值」的列清单里（{1}）。"
+            'headscale 拥有的列永远带偏移，裸值出现即代码有错，不该在这里猜一个值。'
+            '读 headscale 的时间请走 API + api_ts。'.format(
+                column, ' / '.join(sorted(BARE_TOLERANT_COLUMNS)))
+        )
+
+    return _display_ts_sql(column)
+
+
+def _display_ts_sql(column):
+    """display_ts 的实际实现，不做列名检查（自检也要用它，那里传的是字面量）。"""
+    offset = (
+        "CASE WHEN instr(substr({0},20),'+')>0"
+        " OR instr(substr({0},20),'-')>0"
+        " OR substr({0},-1)='Z'"
+        " THEN '{1}' ELSE '0 hours' END"
+    ).format(column, PANEL_TZ_OFFSET)
+    return "strftime('%Y-%m-%d %H:%M:%S', {0}, {1})".format(column, offset)
+
+
+def api_ts(value):
+    """把 headscale API 返回的时间串转成 display_ts 同款格式的北京墙钟串。
+
+    display_ts 管走库那一侧，这个管走 API 那一侧。两条路的输出必须一模一样，
+    否则同一个字段在「读库的页」和「读 API 的页」上会长得不一样。
+
+    别在调用点自己写 fromisoformat + astimezone：这一句里藏着坑（3.11 之前的
+    fromisoformat 不认结尾的 Z），抄错一次就静默差 8 小时 —— 这正是老 local_ts
+    那类 bug 的来源。空值返回 ''。
+    """
+    if not value:
+        return ''
+
+    when = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+
+    return when.astimezone(PANEL_TZ).strftime('%Y-%m-%d %H:%M:%S')
+
+
+# 库里所有时间列。表名 → 列名。加新时间列时记得往这里加，否则扫描漏。
+TIME_COLUMNS = {
+    'users': ('created_at', 'updated_at', 'expire'),
+    'nodes': ('created_at', 'updated_at', 'last_seen', 'expiry'),
+    'log': ('created_at',),
+    'pre_auth_keys': ('created_at', 'expiration'),
+    'api_keys': ('created_at', 'expiration'),
+}
+
+
+def absolute_ts(when):
+    """把 datetime 编成能进库的串，并**挡住不带时区的值**。
+
+    这是「库里一律存绝对时刻」这条约定的唯一关口。裸值一旦进库，不会被任何地方
+    报错 —— display_ts 的 shim 会把它当成 PANEL_TZ 的墙钟**静默放过** —— 所以只能
+    在这里拦。三个写入点（record_log / auth.py 注册 / user.py 的 re_expire）都走它。
+    """
+    if when.utcoffset() is None:
+        raise ValueError(
+            '禁止把裸时间写进库：{0!r}。用 datetime.now(timezone.utc)，或对墙钟值做 '
+            '.replace(tzinfo=PANEL_TZ)。约定见 utils.py 顶部。'.format(when)
+        )
+
+    return when.isoformat(sep=' ')
+
+
+def find_bare_time_values():
+    """扫描库里所有时间列，返回裸值清单 [(表, 列, 行数)]。空列表 = 不变量成立。
+
+    这就是验收判据本身：**全库零裸值 ⟺ display_ts 对每一列都正确**，两者是同一
+    件事。'YYYY-MM-DD HH:MM:SS' 恰好 19 字符，所以第 19 位之后出现 '+'/'-'、或
+    结尾是 'Z' 的，才是带偏移的绝对时刻。
+
+    扫描只报告不修数据；缺表/缺列（老库或 headscale 版本差异）直接跳过。
+    """
+    found = []
+    with SqliteDB() as cursor:
+        for table, cols in TIME_COLUMNS.items():
+            for col in cols:
+                sql = (
+                    "SELECT COUNT(*) AS n FROM {0} WHERE {1} IS NOT NULL"
+                    " AND {1} != ''"
+                    " AND instr(substr({1},20),'+') = 0"
+                    " AND instr(substr({1},20),'-') = 0"
+                    " AND substr({1},-1) != 'Z'"
+                ).format(table, col)
+                try:
+                    row = cursor.execute(sql).fetchone()
+                except Exception:
+                    continue
+
+                if row and row['n']:
+                    found.append((table, col, row['n']))
+
+    return found
+
+
+def check_display_ts():
+    """自检 display_ts 的 SQL 与 PANEL_TZ 是否一致，返回错误描述或 None（=通过）。
+
+    为什么需要：PANEL_TZ_OFFSET 是拼进 SQL 的字符串，写错不会抛异常。SQLite 认不出
+    修饰符时返回 NULL —— 所有时间列会静默变成空，页面上一片空白而不是报错。这里跑
+    一次已知输入的换算，把期望值用 **Python 的时区算术**独立算出来对答案，因此它同时
+    验证了「SQL 修饰符合法」和「SQL 与 Python 两条路算出的偏移一致」。
+    """
+    sql = "SELECT {0} AS t".format(_display_ts_sql("'2026-01-01 00:00:00+00:00'"))
+    expected = (
+        datetime(2026, 1, 1, tzinfo=timezone.utc)
+        .astimezone(PANEL_TZ)
+        .strftime('%Y-%m-%d %H:%M:%S')
+    )
+
+    with SqliteDB() as cursor:
+        try:
+            got = cursor.execute(sql).fetchone()['t']
+        except Exception as e:
+            return 'display_ts 的 SQL 跑不起来：{0}（{1}）'.format(e, sql)
+
+    if got != expected:
+        return (
+            "display_ts 自检不符：UTC 2026-01-01 00:00:00 期望显示 {0!r}，实际 {1!r}"
+            '（PANEL_TZ_OFFSET={2!r}）'.format(expected, got, PANEL_TZ_OFFSET)
+        )
+
+    return None
+
+
 def record_log(user_id, log_content):
     try:
         with SqliteDB() as cursor:
-            current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            # 存 UTC 绝对时刻，由 display_ts 统一换算成北京墙钟。走 absolute_ts
+            # 是为了让「忘了带时区」当场炸掉，而不是写进去之后静默差 8 小时。
+            current_time = absolute_ts(datetime.now(timezone.utc))
             cursor.execute(
                 "INSERT INTO log (user_id, content, created_at) VALUES (?,?,?);",
                 (user_id, log_content, current_time)
@@ -270,9 +502,10 @@ def _forget_headscale_version():
 def _localize_build_time(raw):
     """把 `headscale version` 里的 build time 从 UTC 换成本地时区。
 
-    这个戳是 CI 用 `date -u` 打的，二进制报出来的必然带 Z；而面板里其他所有
-    时间都是本地时区（SQLite 的 'localtime'）。只有这一处是 UTC，于是悬停框
-    里显示 03:39，看的人得自己知道那是 UTC 再减 8 小时才对得上墙上时钟。
+    这个戳是 CI 用 `date -u` 打的，二进制报出来的必然带 Z —— 是个从外面进来的
+    UTC 值，而库里和界面上其余的时间都是容器本地（见上面「面板的时间约定」）。
+    不转的话悬停框里显示 03:39，看的人得自己知道那是 UTC 再减 8 小时才对得上
+    墙上时钟。
 
     输出改成 `2026-10-06 11:39:25 +0800` —— 把偏移显式写出来，而不是留一个
     要靠读者知道含义的 Z。用哪个时区由容器的 TZ 决定（docker-compose 里是
@@ -297,7 +530,9 @@ def _localize_build_time(raw):
             if when.tzinfo is None:
                 lines.append(line)
                 continue
-            line = 'build time: ' + when.astimezone().strftime('%Y-%m-%d %H:%M:%S %z')
+            # 用 PANEL_TZ 而不是裸 .astimezone()：显示时区应当是面板的常量，不是
+            # 容器 TZ 的隐式属性（换环境就会跟别的页面显示不一致）。
+            line = 'build time: ' + when.astimezone(PANEL_TZ).strftime('%Y-%m-%d %H:%M:%S %z')
         lines.append(line)
     return '\n'.join(lines)
 

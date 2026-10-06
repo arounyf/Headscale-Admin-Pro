@@ -1,8 +1,9 @@
+from datetime import datetime
 from flask_login import current_user, login_required
 from exts import SqliteDB
 from login_setup import role_required
 from flask import Blueprint, request
-from utils import res, table_res, is_user_mode, to_request
+from utils import res, table_res, is_user_mode, to_request, display_ts, PANEL_TZ, absolute_ts
 
 bp = Blueprint("user", __name__, url_prefix='/api/user')
 
@@ -18,21 +19,21 @@ def getUsers():
     with SqliteDB() as cursor:
         # 查询总记录数和当前页用户数据
         if is_user_mode():
-            query = """
+            query = f"""
                 SELECT COUNT(*) OVER() as total_count, id, name,
-                strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
+                {display_ts('created_at')} as created_at,
                 cellphone,
-                strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable ,email
+                {display_ts('expire')} as expire, role, node, route, enable ,email
                 FROM users WHERE id =?
                 LIMIT? OFFSET?
             """
             cursor.execute(query, (current_user.id, per_page, (page - 1) * per_page))
         else:
-            query = """
+            query = f"""
                 SELECT COUNT(*) OVER() as total_count, id, name,
-                strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
+                {display_ts('created_at')} as created_at,
                 cellphone,
-                strftime('%Y-%m-%d %H:%M:%S', expire) as expire, role, node, route, enable ,email
+                {display_ts('expire')} as expire, role, node, route, enable ,email
                 FROM users
                 LIMIT? OFFSET?
             """
@@ -46,9 +47,11 @@ def getUsers():
             {
                 'id': row['id'],
                 'userName': row['name'],
-                'createTime': str(row['created_at']),
+                'createTime': row['created_at'] or '',
                 'cellphone': row['cellphone'],
-                'expire': str(row['expire']),
+                # display_ts 对 NULL 返回 NULL（没设到期的用户本来就没有这列值），
+                # 外面再 str() 一下就在页面上显示成字符串 "None"。空串才是「未设置」。
+                'expire': row['expire'] or '',
                 'role': row['role'],
                 'node': row['node'],
                 'route': row['route'],
@@ -67,12 +70,26 @@ def getUsers():
 def re_expire():
 
     user_id = request.form.get('user_id')
-    new_expire = request.form.get('new_expire')
+    new_expire = (request.form.get('new_expire') or '').strip()
+
+    # 前端把表格单元格的编辑结果原样发过来，以前这里不做任何校验就落库；而
+    # user.html / console.html 都拿这一列做倒计时，存进一个解析不了的值会静默
+    # 显示成「已到期」。只接受 display_ts 输出的那种形态：北京墙钟、秒级、无偏移。
+    if new_expire:
+        try:
+            expire_at = datetime.strptime(new_expire, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return res('1', '到期时间格式不正确，应为 YYYY-MM-DD HH:MM:SS')
+        # 库里一律存绝对时刻（见 utils.py 的时间约定）。前端给的是北京墙钟，
+        # 按面板显示时区挂上偏移再落库。
+        expire_at = absolute_ts(expire_at.replace(tzinfo=PANEL_TZ))
+    else:
+        # 清空单元格 = 未设置到期。users.py 那边的读法对空值返回空串。
+        expire_at = ''
 
     with SqliteDB() as cursor:
-        # 更新用户的过期时间
         update_query = "UPDATE users SET expire =? WHERE id =?;"
-        cursor.execute(update_query, (new_expire, user_id))
+        cursor.execute(update_query, (expire_at, user_id))
 
     return res('0', '更新成功','')
 
@@ -177,18 +194,18 @@ def init_data():
     with SqliteDB() as cursor:
         # 查询当前用户的创建时间和过期时间
         current_user_id = current_user.id  # 假设 current_user 有 id 属性
-        user_query = """
-            SELECT 
-            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at,
-            strftime('%Y-%m-%d %H:%M:%S', expire) as expire
+        user_query = f"""
+            SELECT
+            {display_ts('created_at')} as created_at,
+            {display_ts('expire')} as expire
             FROM users WHERE id =?
         """
         cursor.execute(user_query, (current_user_id,))
         user_info = cursor.fetchone()
 
 
-        created_at = str(user_info['created_at'])
-        expire = str(user_info['expire'])
+        created_at = user_info['created_at'] or ''
+        expire = user_info['expire'] or ''
 
         # 查询节点数量
         if is_user_mode():

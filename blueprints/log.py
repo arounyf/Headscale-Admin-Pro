@@ -1,7 +1,7 @@
 from flask_login import login_required, current_user
 from flask import Blueprint,  request
 from exts import SqliteDB
-from utils import is_user_mode
+from utils import is_user_mode, display_ts
 
 
 bp = Blueprint("log", __name__, url_prefix='/api/log')
@@ -16,12 +16,12 @@ def getLogs():
 
     with SqliteDB() as cursor:
         # 构建基础查询语句
-        base_query = """
+        base_query = f"""
             SELECT
                 log.id,
                 log.content,
                 users.name,
-                strftime('%Y-%m-%d %H:%M:%S', log.created_at, 'localtime') as created_at
+                {display_ts('log.created_at')} as created_at
             FROM
                 log
             LEFT JOIN

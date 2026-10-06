@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash
 from wtforms.validators import length, DataRequired, Regexp, Length, EqualTo, Email
 from exts import SqliteDB
 from models import User
-from utils import check_account_locked, record_login_failure
+from utils import check_account_locked, record_login_failure, display_ts
 
 
 class RegisterForm(wtforms.Form):
@@ -85,9 +85,18 @@ class LoginForm(wtforms.Form):
     def validate_username(self, field):
         try:
             with SqliteDB() as cursor:
-                query = """
-                        SELECT id, name, created_at, updated_at,email, password,expire, cellphone, role, node, route, enable 
-                        FROM users 
+                # 时间列必须和 login_setup.py 的 user_loader 走同一个 helper。这里
+                # 原来直接取裸列，于是同一个用户的 expire 在「登录这一次请求」和
+                # 「之后的请求」是两种形态（带 9 位小数和偏移的长串 vs 裸墙钟串），
+                # console.html 的倒计时会吃到两种串。见 utils.py 的时间约定。
+                query = f"""
+                        SELECT id, name,
+                        {display_ts('created_at')} as created_at,
+                        {display_ts('updated_at')} as updated_at,
+                        email, password,
+                        {display_ts('expire')} as expire,
+                        cellphone, role, node, route, enable
+                        FROM users
                         WHERE name =?
                         """
                 cursor.execute(query, (field.data,))

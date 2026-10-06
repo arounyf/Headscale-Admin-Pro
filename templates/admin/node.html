@@ -284,8 +284,8 @@
                 ['设备型号', d.DeviceModel],
                 ['Go 版本', d.GoVersion],
                 ['发布路由', d.Routes],
-                ['创建时间', d.createdAt ? new Date(d.createdAt).toLocaleString() : ''],
-                ['最后在线', d.lastSeen ? new Date(d.lastSeen).toLocaleString() : ''],
+                ['创建时间', d.createdAt || ''],
+                ['最后在线', d.lastSeen || ''],
               ];
               var html = '';
               rows.forEach(function(r){

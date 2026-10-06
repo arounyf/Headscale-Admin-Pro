@@ -113,7 +113,14 @@ def toggleRoute():
 @bp.route('/getRoute')
 @login_required
 def getRoute():
-    """保留旧接口兼容"""
+    """保留旧接口兼容。
+
+    这里原来 SELECT 了 nodes.created_at（经 display_ts 格式化）并在返回里叫
+    createTime，已经删掉：那个字段从来没有模板渲染过，而这个接口自从 2026-06-18
+    路由页重写（c68a3612）之后就没有任何调用方了 —— 前端是在同一个提交里换成
+    getAllRoutes 的。留着它只是留了一个「读 headscale 的时间列走库」的样板，
+    下一个人会照着抄。
+    """
     page = request.args.get('page', default=1, type=int)
     per_page = request.args.get('limit', default=10, type=int)
     offset = (page - 1) * per_page
@@ -124,8 +131,7 @@ def getRoute():
                 nodes.id,
                 users.name,
                 nodes.given_name,
-                nodes.approved_routes,
-                strftime('%Y-%m-%d %H:%M:%S', nodes.created_at, 'localtime') as created_at
+                nodes.approved_routes
             FROM
                 nodes
             JOIN
@@ -159,7 +165,6 @@ def getRoute():
             'name': route['name'],
             'NodeName': route['given_name'],
             'route': route_str,
-            'createTime': route['created_at'],
             'enable': 1
         })
 

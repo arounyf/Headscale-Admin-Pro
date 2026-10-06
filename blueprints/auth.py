@@ -4,7 +4,7 @@ import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 import json
-from utils import record_log, to_request, reset_login_failures, send_email, generate_email_token, verify_email_token, get_ip_location, check_account_locked, record_login_failure
+from utils import record_log, to_request, reset_login_failures, send_email, generate_email_token, verify_email_token, get_ip_location, check_account_locked, record_login_failure, absolute_ts
 from flask_login import login_user, logout_user, current_user, login_required
 from flask import Blueprint, render_template, request, session, redirect, url_for, current_app, json
 from exts import SqliteDB
@@ -165,7 +165,9 @@ def reg():
             email = form.email.data
             default_reg_days = current_app.config['DEFAULT_REG_DAYS']
 
-            create_time = datetime.now()
+            # 必须带时区：expire 是面板自有的列，headscale 原样写进列（proto 里它是
+            # string），而 display_ts 要求库里一律存绝对时刻。
+            create_time = datetime.now().astimezone()
 
 
             if (username == "admin"):
@@ -188,14 +190,21 @@ def reg():
               "email": email,
               "pictureUrl": "NULL",
               "password": password,
-              "expire": expire.isoformat(sep=' '),
+              "expire": absolute_ts(expire),
               "cellphone": phone_number,
               "role": role,
               "enable": str(enable_val),
               "route": "0",
-              "node": str(current_app.config['DEFAULT_NODE_COUNT']),
-              "createdAt": create_time.isoformat(sep=' '),
-              "updatedAt": create_time.isoformat(sep=' ')
+              "node": str(current_app.config['DEFAULT_NODE_COUNT'])
+              # 这里**不要**再发 createdAt/updatedAt。那两个是 GORM 自己的 time.Time
+              # 列，headscale 按绝对时刻读；面板发过去的是按自己格式编的字符串，
+              # 一旦发了就覆盖掉 GORM 写的正确值（裸值被当成 UTC → 面板建的用户
+              # createdAt 晚 8 小时，而 TailscaleUser().Created 会把这个错值发给
+              # 每个节点）。不发，headscale 就自己管，两边都对。
+              # 这是双保险里面板这一半：headscale 侧也已经不再写这两个字段了
+              # （收在 hscontrol/state/state.go 的 setUserAdminFields），送什么都不理。
+              # 两边各自成立，谁都不依赖对方记得。
+              # 顺带：不发 fork 专有字段之后，面板也能直接跑在 upstream headscale 上。
             }
 
             result_reg = to_request('POST','/api/v1/user',data = json_data)

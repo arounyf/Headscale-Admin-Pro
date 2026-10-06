@@ -115,7 +115,8 @@ def info():
     email = current_user.email
     node = current_user.node
     route = current_user.route
-    expire = current_user.expire
+    # 没设到期的用户 expire 是 NULL，直接丢给模板会渲染成字符串 "None"
+    expire = current_user.expire or ''
 
     if (route == "1"):
         route = "checked"
