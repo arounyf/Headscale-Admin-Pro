@@ -103,8 +103,9 @@ type User struct {
 // AutoMigrate must never learn about them.
 //
 // headscale does not interpret any of these values; they are written verbatim
-// to the matching column. All of them are strings because the panel owns the
-// encoding. The zero value means "unset" and causes no write.
+// to the matching column — all but CreatedAt/UpdatedAt, which are ignored; see
+// the note on those two fields. All of them are strings because the panel owns
+// the encoding. The zero value means "unset" and causes no write.
 type UserAdminFields struct {
 	Password  string
 	Expire    string
@@ -114,8 +115,15 @@ type UserAdminFields struct {
 	Route     string
 	Node      string
 
-	// CreatedAt/UpdatedAt override what GORM would write. The panel renders
-	// these columns verbatim, so it keeps supplying them in its own format.
+	// Deprecated and ignored: setUserAdminFields never writes them, so they
+	// cannot reach created_at/updated_at no matter what a caller sends. They
+	// used to be written, in the caller's own format, and an offset-less
+	// string in those columns is read back as UTC — which pushed every
+	// panel-created user's created_at into the future by the panel's UTC
+	// offset, and from there into TailscaleUser().Created and out to every
+	// node. GORM owns created_at/updated_at again; the panel stopped sending
+	// them. Kept only because removing the fields means regenerating the proto
+	// and rewriting the tests that read them back.
 	CreatedAt string
 	UpdatedAt string
 }

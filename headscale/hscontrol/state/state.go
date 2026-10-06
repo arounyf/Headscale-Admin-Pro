@@ -446,25 +446,22 @@ func (s *State) CreateUser(user types.User, admin ...types.UserAdminFields) (*ty
 // to be raw SQL: those columns are intentionally absent from types.User, so
 // GORM's Save cannot reach them (see usersCustomColumns in hscontrol/db).
 //
-// The two timestamps are only written when set, so a caller that supplies the
-// panel columns but no timestamps keeps the ones GORM just wrote instead of
-// blanking them.
+// created_at/updated_at are deliberately NOT writable here. They used to be,
+// when the caller sent them: the panel's string went straight into the column,
+// and an offset-less string in those columns is read back as UTC — which
+// pushed every panel-created user's created_at into the future by the panel's
+// UTC offset, and from there into TailscaleUser().Created and out to every
+// node. GORM owns those two columns now, and a caller has no way to override
+// them even if it tries: types.UserAdminFields.CreatedAt/UpdatedAt are still
+// on the wire (removing them means regenerating the proto) but nothing here
+// reads them. The panel stopped sending them as well; this is the half that
+// does not depend on anyone remembering.
 func setUserAdminFields(tx *gorm.DB, id uint, f types.UserAdminFields) error {
 	assignments := []string{
 		"password = ?", "expire = ?", "cellphone = ?", "role = ?",
 		"enable = ?", "route = ?", "node = ?",
 	}
 	args := []any{f.Password, f.Expire, f.Cellphone, f.Role, f.Enable, f.Route, f.Node}
-
-	if f.CreatedAt != "" {
-		assignments = append(assignments, "created_at = ?")
-		args = append(args, f.CreatedAt)
-	}
-
-	if f.UpdatedAt != "" {
-		assignments = append(assignments, "updated_at = ?")
-		args = append(args, f.UpdatedAt)
-	}
 
 	query := "UPDATE users SET " + strings.Join(assignments, ", ") + " WHERE id = ?"
 	args = append(args, id)

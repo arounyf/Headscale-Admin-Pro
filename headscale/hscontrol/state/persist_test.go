@@ -680,6 +680,10 @@ func TestCreateUserWithAdminFields(t *testing.T) {
 	_, s, _ := persistTestSetup(t)
 	t.Cleanup(func() { _ = s.Close() })
 
+	// CreatedAt/UpdatedAt are set on purpose, to sentinels no clock would ever
+	// produce: setUserAdminFields must ignore them and leave both columns to
+	// GORM (see the comment on that function for why). If they ever reach the
+	// row again, the assertions below name exactly which one did.
 	admin := types.UserAdminFields{
 		Password:  "scrypt:32768:8:1$salt$hash",
 		Expire:    "2026-10-05 12:34:56.789012",
@@ -688,8 +692,8 @@ func TestCreateUserWithAdminFields(t *testing.T) {
 		Enable:    "1",
 		Route:     "0",
 		Node:      "5",
-		CreatedAt: "2026-10-05 12:34:56.789012",
-		UpdatedAt: "2026-10-05 12:34:56.789012",
+		CreatedAt: "1999-01-01 00:00:00",
+		UpdatedAt: "1999-01-01 00:00:00",
 	}
 
 	_, _, err := s.CreateUser(types.User{Name: "panel-user"}, admin)
@@ -712,17 +716,23 @@ func TestCreateUserWithAdminFields(t *testing.T) {
 		return got
 	}
 
-	require.Equal(t, admin, readAdminFields("panel-user"))
+	got := readAdminFields("panel-user")
 
-	// A caller that supplies the panel columns but no timestamps must keep the
-	// ones GORM wrote rather than blanking the columns.
-	_, _, err = s.CreateUser(
-		types.User{Name: "no-timestamps"},
-		types.UserAdminFields{Password: "x"},
-	)
-	require.NoError(t, err)
-	require.NotEmpty(t, readAdminFields("no-timestamps").CreatedAt,
-		"an unset CreatedAt must not blank the column")
+	// The seven panel columns are written verbatim. The timestamps are excluded
+	// from this comparison because they are no longer the caller's to set.
+	withoutTimestamps := func(f types.UserAdminFields) types.UserAdminFields {
+		f.CreatedAt, f.UpdatedAt = "", ""
+
+		return f
+	}
+	require.Equal(t, withoutTimestamps(admin), withoutTimestamps(got))
+
+	require.NotEqual(t, admin.CreatedAt, got.CreatedAt,
+		"a caller-supplied created_at must not reach the column")
+	require.NotEqual(t, admin.UpdatedAt, got.UpdatedAt,
+		"a caller-supplied updated_at must not reach the column")
+	require.NotEmpty(t, got.CreatedAt, "GORM still owns created_at")
+	require.NotEmpty(t, got.UpdatedAt, "GORM still owns updated_at")
 
 	_, _, err = s.CreateUser(types.User{Name: "plain-user"})
 	require.NoError(t, err)

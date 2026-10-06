@@ -87,11 +87,17 @@ git merge-base hs-admin upstream/main     # 在本地那份 headscale 检出里�
 
 - `headscale/` 自带 `.gitignore`，在里面 `make build` 产生的二进制不会被本仓库
   跟踪，不需要额外加规则。
-- `hscontrol/types/version.go` 是唯一一处**故意**和上游不一样的地方（多了
+- `hscontrol/types/version.go` 是**故意**和上游不一样的地方之一（多了
   `Version`/`Commit`/`BuildTime` 三个变量，外加末尾读它们的十来行）。`git subtree pull`
   时它大概率会冲突，解决方式是两边的都要：上游的 `debug.ReadBuildInfo` 逻辑留着，
   注入那一段也留着，别为了消冲突把注入去掉 —— 去掉之后二进制又变回 `dev`，上面那节
   说的校验也就跟着失效了，而且不会有任何报错。
+- **`hscontrol/state/state.go` 的 `setUserAdminFields` 里没有 `created_at`/`updated_at`
+  两项，是故意的。** 上游将来可能往那儿加回 `if f.CreatedAt != ""` 之类的分支（写
+  `users` 表扩展列的那个 patch 不是上游的，所以真冲突时会看起来像"上游的版本更全"）。
+  冲突解决方向是**删掉**：那两个列归 GORM，写 caller 送来的字符串会让面板建的用户
+  `created_at` 差一个时区，并顺着 `TailscaleUser().Created` 发给每个节点。
+  `TestCreateUserWithAdminFields` 会挡住回归 —— 它送哨兵时间戳并断言进不去。
 - `headscale/.github/workflows/` 是**失效的** —— GitHub 只读仓库根目录下的
   `.github/workflows/`。那些工作流（包括原来负责发版的 `build-runyf.yml`）作为
   历史保留，删掉会让以后每次 subtree pull 都冲突，但它们不会运行。本仓库的

@@ -58,6 +58,12 @@ func (api headscaleV1APIServer) CreateUser(
 	// The hs-admin panel passes its extra users-table columns through here so
 	// that creating a user and giving it a password happen in one transaction.
 	// Other callers leave them all unset and nothing extra is written.
+	//
+	// The last two are deprecated and ignored: State.CreateUser does not write
+	// them, so an old panel build that still sends them creates a normal user
+	// rather than one whose created_at is offset by the panel's timezone. See
+	// types.UserAdminFields.CreatedAt. Still copied off the request because
+	// dropping the field means regenerating the proto.
 	admin := types.UserAdminFields{
 		Password:  request.GetPassword(),
 		Expire:    request.GetExpire(),
