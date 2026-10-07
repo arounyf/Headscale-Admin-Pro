@@ -29,7 +29,15 @@ docker-compose up -d
    
 1、访问 http://ip:5000，注册admin账户即为系统管理员账户   
 
-2、进入后台设置，修改你server url、网卡名等，修改之后点击保存，最后重启headscale
+2、进入后台设置，修改 **server url**、网卡名等，修改之后点击保存，最后重启headscale
+
+   server url 是**客户端连接 headscale 的地址**，要填客户端访问得到的地址，例如
+   `http://192.168.1.10:8080`（局域网直连）或 `https://hs.example.com`（配好反向代理后）。
+   出厂值 `http://<你的域名>:8080` 只是占位符：**不改的话，「指令」页给出的第一条命令
+   `tailscale up --login-server=...` 会在客户端上解析失败**（报的是域名解析不了，
+   不会指向这个设置项，容易卡在这一步）。
+
+   它就是配置文件 `~/hs-admin/config/config.yaml` 里的 `server_url`，在设置页保存时会重写该文件。
 
 3、配置derp中转服务器（headscale配置文件路径 ~/hs-admin/config/config.yaml）
 
