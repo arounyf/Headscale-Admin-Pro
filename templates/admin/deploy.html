@@ -329,7 +329,13 @@ layui.use(['form', 'laydate', 'util'], function(){
   }
 
   function render(){
-    var parts = ['tailscale', 'up', '--login-server={{ server_url }}'];
+    // server_url 必须用 tojson 注入，不能直接写 {{ server_url }}。
+    // <script> 是 raw text 元素，浏览器不解码 HTML 实体，而 Flask 默认 autoescape 会把
+    // 值里的 < > 转成 &lt; &gt; 后原样留在 JS 字符串里 —— 出厂占位符是尖括号形式，
+    // 直接注入的话指令页会显示 `--login-server=http://&lt;你的域名&gt;:8080`。
+    // tojson 输出的是 JS 字面量：< > & ' 会被写成 unicode 转义，
+    // 在 script 里安全（闭不了 </script>），JS 取到的又是原值。
+    var parts = ['tailscale', 'up', '--login-server=' + {{ server_url|tojson }}];
     for (var key in opts){
       if (opts[key]){
         parts.push(opts[key]);
