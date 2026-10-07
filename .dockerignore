@@ -17,6 +17,12 @@ docs
 CLAUDE.md
 LICENSE
 
+# AI 操作手册 / 开发笔记（和上面的 CLAUDE.md、docs 同类：面向 GitHub 读者，运行时不需要）。
+# 它在 git 里，所以 CI 构建会把它带上 —— **必须在这里排除**，否则经 `COPY . /init_data`
+# 进镜像、再被 `init.sh` 的 `cp -r /init_data/*` 落进 /app（cp 的 glob `*` 匹配不到
+# 点文件，所以 .claude 天然躲过，普通目录躲不过）。
+claude
+
 # Python 字节码缓存
 __pycache__
 **/__pycache__
