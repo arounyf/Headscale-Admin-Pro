@@ -9,7 +9,10 @@
 #
 # https://myheadscale.example.com:443
 #
-server_url: 'http://hs-admin'
+# 客户端连接 headscale 的地址，必须填客户端访问得到的地址（IP 或域名 + 端口）。
+# 出厂值是占位符，部署后请在面板「设置」页改成真实地址：「指令」页给出的
+# tailscale up --login-server=... 用的就是这个值，不改则客户端解析不了。
+server_url: 'http://<你的域名>:8080'
 
 # Address to listen to / bind to on the server
 #
