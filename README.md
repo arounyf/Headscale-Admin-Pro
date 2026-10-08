@@ -71,13 +71,8 @@ docker-compose up -d
 | --- | --- |
 | v3.x | v0.27.x-hs |
 | v4.x | v0.28.x-hs |
-| v5.0 – v5.4 | v0.29.x-hs |
-| v5.4.1 起 | 与面板同一个 commit，版本号继承上游 CHANGELOG |
+| v5.x | v0.29.x-hs |
 
-v5.4 及以前，headscale 二进制是从 `arounyf/headscale` 的一个 release 里下载的，上表
-右边就是那个被固定在 `Dockerfile` 里的版本。这条链路有个隐患：**面板代码和二进制之间
-没有任何机制保证对齐** —— 改了 proto 却忘了改那个下载 URL，用户点注册时就会撞上
-`unknown field`，而报错来自 protojson 的解析，完全看不出是版本没对上。
 
 v5.4.1 起 headscale 源码以 `git subtree` 并入本仓库的 [`headscale/`](headscale/) 目录，
 二进制由 `Dockerfile` 从这棵树直接构建，两者永远出自同一个 commit。**版本号继承上游**：
