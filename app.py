@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from login_setup import init_login_manager
-from utils import get_data_record, start_headscale, to_init_db, get_headscale_version, get_headscale_version_line, find_bare_time_values, check_display_ts, PANEL_TZ_ISO
+from utils import get_data_record, start_headscale, to_init_db, get_headscale_version, get_headscale_version_line, find_bare_time_values, check_display_ts, PANEL_TZ_ISO, PANEL_VERSION
 import config_loader,os
 
 
@@ -114,7 +114,11 @@ def panel_tz_js():
 
 @app.route('/static/views/system/about.html')
 def about_view():
-    return render_template('admin/about.html', hs_version=get_headscale_version_line())
+    # hs_version 是实时的（二进制自己报）；panel_version 是 utils.PANEL_VERSION，
+    # 发版时要手工 bump —— 没有东西能推导面板自己的版本号。详见那里的注释。
+    return render_template('admin/about.html',
+                           hs_version=get_headscale_version_line(),
+                           panel_version=PANEL_VERSION)
 
 
 # 自定义404错误处理器

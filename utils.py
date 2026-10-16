@@ -16,6 +16,20 @@ from datetime import datetime, timezone, timedelta
 from exts import SqliteDB
 
 
+# 面板自己的版本号，显示在「关于」弹窗里（templates/admin/about.html，经 app.py 的
+# about_view 传进去）。
+#
+# **发版时要手工改这一行** —— 没有任何东西能推导它。跟 headscale 那行不一样：那个
+# 从 headscale/CHANGELOG.md 顶部取上游版本、二进制自己会报，`git subtree pull` 之后
+# 自动就是对的；面板没有对应的版本文件，所以这里偷不了懒。
+#
+# 为什么不用 CI 的 tag 烤进镜像（build-arg / env）：这个面板的部署方式是「镜像 +
+# 可以单独热替换的 /app 挂载」，两者版本能不一致（测试机上长期就是旧镜像配新代码）。
+# 烤进镜像的话，热替换之后「关于」显示的是镜像的版本，恰好不是正在跑的那份代码。
+# 放在代码里，显示的就永远是实际在跑的东西。
+PANEL_VERSION = 'v5.5'
+
+
 # api接口返回格式定义
 def res(code=None, msg=None, data=None):
     if code is None: code = '1'
