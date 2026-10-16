@@ -334,7 +334,12 @@ layui.use(['form', 'laydate', 'util'], function(){
     // 值里的 < > 转成 &lt; &gt; 后原样留在 JS 字符串里 —— 出厂占位符是尖括号形式，
     // 直接注入的话指令页会显示 `--login-server=http://&lt;你的域名&gt;:8080`。
     // tojson 输出的是 JS 字面量：< > & ' 会被写成 unicode 转义，
-    // 在 script 里安全（闭不了 </script>），JS 取到的又是原值。
+    // 在 script 里安全（闭不了 script 的闭合标签），JS 取到的又是原值。
+    //
+    // 上面那句以前把闭合标签原样写出来了，结果整个脚本被截断：script 是 raw text
+    // 元素，浏览器分词器不看 JS 注释、扫到闭合标签就结束元素，于是 render() 断在半截
+    // 报 SyntaxError、整段脚本一行不跑（指令区空白、开关全失效），剩下的源码还印在
+    // 页面上。**这个文件里任何位置都别再写出那个字面标签**，注释里也不行。
     var parts = ['tailscale', 'up', '--login-server=' + {{ server_url|tojson }}];
     for (var key in opts){
       if (opts[key]){
