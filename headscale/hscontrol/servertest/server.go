@@ -16,6 +16,7 @@ import (
 	"github.com/juanfont/headscale/hscontrol/types"
 	"tailscale.com/net/memnet"
 	"tailscale.com/tailcfg"
+	"tailscale.com/types/dnstype"
 )
 
 // TestServer is an in-process Headscale control server suitable for
@@ -43,6 +44,9 @@ type serverConfig struct {
 	nodeExpiry       time.Duration
 	batcherWorkers   int
 	taildropEnabled  bool
+	logTailEnabled   bool
+	magicDNSDomain   string
+	dnsResolvers     []string
 }
 
 func defaultServerConfig() *serverConfig {
@@ -91,6 +95,24 @@ func WithTaildropEnabled(enabled bool) ServerOption {
 	return func(c *serverConfig) { c.taildropEnabled = enabled }
 }
 
+// WithMagicDNS enables MagicDNS under domain, so map responses carry a
+// [tailcfg.DNSConfig].
+func WithMagicDNS(domain string) ServerOption {
+	return func(c *serverConfig) { c.magicDNSDomain = domain }
+}
+
+// WithDNSResolvers sets the global DNS resolvers, so map responses carry a
+// [tailcfg.DNSConfig].
+func WithDNSResolvers(addrs ...string) ServerOption {
+	return func(c *serverConfig) { c.dnsResolvers = addrs }
+}
+
+// WithLogTailEnabled sets logtail.enabled, so the server leaves client log
+// uploads alone instead of telling clients to disable them.
+func WithLogTailEnabled() ServerOption {
+	return func(c *serverConfig) { c.logTailEnabled = true }
+}
+
 // NewServer creates and starts a Headscale test server.
 // The server is fully functional and accepts real Tailscale control
 // protocol connections over Noise.
@@ -130,11 +152,28 @@ func NewServer(tb testing.TB, opts ...ServerOption) *TestServer {
 			Mode: types.PolicyModeDB,
 		},
 		Taildrop: types.TaildropConfig{Enabled: sc.taildropEnabled},
+		LogTail:  types.LogTailConfig{Enabled: sc.logTailEnabled},
 		Tuning: types.Tuning{
+			// Small fixtures rarely fill a batch; bound their write latency.
+			NodeStoreBatchTimeout:          10 * time.Millisecond,
 			BatchChangeDelay:               sc.batchDelay,
 			BatcherWorkers:                 sc.batcherWorkers,
 			NodeMapSessionBufferedChanSize: sc.bufferedChanSize,
 		},
+	}
+
+	if sc.magicDNSDomain != "" || len(sc.dnsResolvers) > 0 {
+		cfg.TailcfgDNSConfig = &tailcfg.DNSConfig{}
+	}
+
+	if sc.magicDNSDomain != "" {
+		cfg.BaseDomain = sc.magicDNSDomain
+		cfg.TailcfgDNSConfig.Proxied = true
+		cfg.TailcfgDNSConfig.Domains = []string{sc.magicDNSDomain}
+	}
+
+	for _, addr := range sc.dnsResolvers {
+		cfg.TailcfgDNSConfig.Resolvers = append(cfg.TailcfgDNSConfig.Resolvers, &dnstype.Resolver{Addr: addr})
 	}
 
 	app, err := hscontrol.NewHeadscale(&cfg)
