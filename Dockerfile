@@ -6,12 +6,21 @@
 # 直接 400，而且报的是 protojson 的 unknown field，看不出是版本没对齐。
 #
 # 这棵子树怎么来的、上游怎么同步，见 headscale/MERGING-UPSTREAM.md。
-FROM golang:1.26.5 AS hs-builder
+FROM golang:1.26.8 AS hs-builder
 
 WORKDIR /src
 
 # 先只拷依赖清单：Go 模块层和源码层分开缓存，改面板代码不会让这一层失效。
-# 镜像 tag 与 go.mod 的 go 指令同为 1.26.5，构建时不需要再联网取工具链。
+# 镜像 tag 要 >= go.mod 的 go 指令（上游 v0.29.5 起是 1.26.8），否则构建时
+# 还得联网取工具链，而构建上下文里没有代理。
+#
+# 不要升到 Go 1.27。1.27 的 encoding/json 开始拒绝不认识的 tag 选项，而
+# tailcfg 的 SSHAction 用的是 `json:"sessionDuration,omitempty,format:nano"`
+# —— format:nano 是 tailscale 自己编码器的扩展，标准库只是以前忽略它。
+# 用 1.27 编出来，只要策略里有 ssh 规则，poll.go 的 json.Marshal 就会
+# 报 "unsupported `format` tag option"，map response 发不出去，SSH ACL
+# 整体失效（servertest 里 4 个 SSH 测试全挂，非 SSH 的全绿）。实测 1.26.5 /
+# 1.26.8 都正常，且没有 GODEBUG 开关能关掉这个校验。
 COPY headscale/go.mod headscale/go.sum ./
 RUN go mod download
 
